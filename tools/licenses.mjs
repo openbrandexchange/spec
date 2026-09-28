@@ -8,6 +8,8 @@ import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 export const ALLOWED = ["MIT", "ISC", "Apache-2.0", "BSD-2-Clause", "BSD-3-Clause", "0BSD", "CC0-1.0", "CC-BY-4.0", "BlueOak-1.0.0", "Python-2.0"];
+// File-level copyleft is fine for tools that only run in tests and are never shipped.
+export const DEV_ONLY_ALLOWED = ["MPL-2.0"];
 // Third-party files committed to the repository (shipped in site/ and the release bundle).
 export const VENDORED = [
   { path: "tools/vendor/redoc.standalone.js", name: "redoc", version: "2.5.4", license: "MIT", notice: "tools/vendor/redoc.LICENSE" },
@@ -20,7 +22,8 @@ export function checkLicenses(lock) {
     const name = path.replace(/^.*node_modules\//, "");
     const expr = pkg.license ?? "(none)";
     // An SPDX "OR" expression is fine when one side is allowed; "AND" needs every side.
-    const ok = expr.split(/\s+OR\s+/).some((alt) => alt.replace(/[()]/g, "").split(/\s+AND\s+/).every((l) => ALLOWED.includes(l.trim())));
+    const allowed = pkg.dev ? [...ALLOWED, ...DEV_ONLY_ALLOWED] : ALLOWED;
+    const ok = expr.split(/\s+OR\s+/).some((alt) => alt.replace(/[()]/g, "").split(/\s+AND\s+/).every((l) => allowed.includes(l.trim())));
     seen.push(`${name}@${pkg.version} ${expr}`);
     if (!ok) problems.push(`${name}@${pkg.version}: licence ${expr} is not in the allowlist`);
   }

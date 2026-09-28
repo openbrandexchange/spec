@@ -13,9 +13,12 @@
     "licenses": "node tools/licenses.mjs",
     "fixtures": "python3 fixtures/generate.py",
     "package": "sh tools/package.sh",
-    "check": "npm run lint && npm run validate && npm run licenses && npm run check:site"
+    "check": "npm run lint && npm run validate && npm run licenses && npm run check:site",
+    "test:site": "playwright test"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.13.0",
+    "@playwright/test": "1.63.0",
     "@redocly/cli": "2.54.3",
     "ajv": "8.20.0",
     "ajv-formats": "3.0.1",

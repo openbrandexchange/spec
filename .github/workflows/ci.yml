@@ -35,6 +35,28 @@ jobs:
             fixtures/ingest/expected-results.json fixtures/ingest/expected-changes.json \
             fixtures/expected/counts.json fixtures/expected/gtin-lookup.json fixtures/expected/gtin-lookup.request.json
 
+  site:
+    name: rendered reference in a browser (Playwright + axe)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:site
+        env:
+          CI: "true"
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-results
+          path: test-results/
+          retention-days: 7
+
   package:
     name: release bundle (dry run)
     runs-on: ubuntu-latest

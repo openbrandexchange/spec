@@ -56,6 +56,8 @@ Needs Node.js 20 or later.
 npm ci
 npm run check        # lint, validation, links, versions, and that site/ is up to date
 npm run build:site   # regenerate site/ after changing openapi/ or schemas/
+npm run test:site    # the rendered reference in Chromium, desktop and phone: self-contained, viewer starts, axe clean
+                     # (first time: npx playwright install chromium)
 npm run fixtures     # regenerate fixtures (python3, standard library only; see fixtures/README.md first)
 npm run package      # the release bundle in dist/ (what the release workflow publishes)
 ```

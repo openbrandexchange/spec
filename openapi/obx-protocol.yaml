@@ -485,7 +485,7 @@ paths:
             Accept-Ranges:
               schema: {type: string, const: bytes}
             Content-Disposition:
-              description: inline; filename="<filename>" (renditions get _web/_square/_thumb before a .jpg extension).
+              description: '`inline; filename="<filename>"` (renditions get `_web`/`_square`/`_thumb` before a `.jpg` extension).'
               schema: {type: string}
             Cache-Control:
               description: private, max-age<=3600

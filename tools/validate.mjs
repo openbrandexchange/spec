@@ -363,6 +363,23 @@ for (const file of ["openapi/obx-protocol.yaml", "openapi/obx-ingest.yaml", "ope
   if (open) fail(file, `contains "${open[1]}"`);
 }
 
+// ---------------------------------------------------------------- descriptions render as Markdown
+// A <placeholder> outside a code span becomes an unknown HTML tag in the rendered reference
+// and silently disappears, so descriptions must put it in backticks.
+function walkDescriptions(node, where) {
+  if (Array.isArray(node)) return node.forEach((v, i) => walkDescriptions(v, `${where}/${i}`));
+  if (!node || typeof node !== "object") return;
+  for (const [k, v] of Object.entries(node)) {
+    if ((k === "description" || k === "summary") && typeof v === "string") {
+      checked++;
+      const bare = /<\/?[A-Za-z_][\w-]*>/.exec(v.replace(/```[\s\S]*?```/g, "").replace(/`[^`]*`/g, ""));
+      if (bare) fail(`${where}/${k}`, `${bare[0]} outside backticks disappears in the rendered reference`);
+    } else walkDescriptions(v, `${where}/${k}`);
+  }
+}
+for (const file of ["obx-protocol.yaml", "obx-ingest.yaml", "node-admin.yaml"]) walkDescriptions(parseYAML(readFileSync(join(root, "openapi", file), "utf8")), `openapi/${file} #`);
+for (const name of schemaNames) walkDescriptions(readJSON(join(schemaDir, `${name}.json`)), `schemas/${name}.json #`);
+
 // ---------------------------------------------------------------- one version everywhere
 {
   const version = readJSON(join(root, "package.json")).version;

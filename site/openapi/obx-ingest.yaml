@@ -1584,7 +1584,7 @@ components:
       properties:
         type:
           type: string
-          description: "URI identifying the problem type: https://openbrandexchange.com/errors/<obx_error>."
+          description: "URI identifying the problem type: `https://openbrandexchange.com/errors/<obx_error>`."
           format: uri
         title:
           type: string
@@ -2007,7 +2007,7 @@ components:
       $id: https://openbrandexchange.com/schemas/v0.1/VariantInput.json
       type: object
       title: VariantInput
-      description: "Ingest write model for a variant. Key: external_id (path); default convention = the GTIN, else <style>-<color>-<size>."
+      description: "Ingest write model for a variant. Key: external_id (path); default convention = the GTIN, else `<style>-<color>-<size>`."
       properties:
         product_external_id:
           $ref: "#/components/schemas/ExternalId"
@@ -2087,7 +2087,7 @@ components:
       $id: https://openbrandexchange.com/schemas/v0.1/AssetInput.json
       type: object
       title: AssetInput
-      description: "Ingest write model for an asset. Key: external_id (path); filename-pattern convention = <style>_<color>_<position>."
+      description: "Ingest write model for an asset. Key: external_id (path); filename-pattern convention = `<style>_<color>_<position>`."
       properties:
         product_external_id:
           $ref: "#/components/schemas/ExternalId"
@@ -2120,7 +2120,7 @@ components:
           type:
             - string
             - "null"
-          description: Download filename; default <external_id>.<ext>.
+          description: Download filename; default `<external_id>.<ext>`.
           maxLength: 255
         alt_text:
           anyOf:

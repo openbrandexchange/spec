@@ -761,7 +761,7 @@ paths:
                 type: string
                 const: bytes
             Content-Disposition:
-              description: inline; filename="<filename>" (renditions get _web/_square/_thumb before a .jpg extension).
+              description: '`inline; filename="<filename>"` (renditions get `_web`/`_square`/`_thumb` before a `.jpg` extension).'
               schema:
                 type: string
             Cache-Control:
@@ -1571,7 +1571,7 @@ components:
       properties:
         type:
           type: string
-          description: "URI identifying the problem type: https://openbrandexchange.com/errors/<obx_error>."
+          description: "URI identifying the problem type: `https://openbrandexchange.com/errors/<obx_error>`."
           format: uri
         title:
           type: string
@@ -2955,7 +2955,7 @@ components:
               minimum: 1
             path:
               type: string
-              description: "Path inside the zip part: <style_number>/<rendition>/<filename>."
+              description: "Path inside the zip part: `<style_number>/<rendition>/<filename>`."
               maxLength: 1024
             bytes:
               type: integer

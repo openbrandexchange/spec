@@ -1739,7 +1739,7 @@ paths:
       tags: [Portal]
       operationId: getPortalProduct
       summary: Product detail (protocol ProductDetail shape)
-      description: Rendition URLs are signed and usable directly in <img>. `original` only when the viewer may download originals.
+      description: Rendition URLs are signed and usable directly in an `<img>` element. `original` only when the viewer may download originals.
       parameters:
         - $ref: '#/components/parameters/IdPath'
       responses:
@@ -1855,7 +1855,7 @@ paths:
         - $ref: '#/components/parameters/Variant'
       responses:
         '200':
-          description: Zip; entries named <filename> (variant suffix _web/_square before .jpg).
+          description: Zip; entries named `<filename>` (variant suffix `_web`/`_square` before `.jpg`).
           content:
             application/zip:
               schema: {type: string, contentMediaType: application/zip}
@@ -2145,7 +2145,7 @@ components:
             - {$ref: '../schemas/LocalizedText.json'}
             - {type: 'null'}
         portal_name:
-          description: The brand's own word for its portal, per language (e.g. {"nl":"Merkbeeldbank"}). The UI shows "<name> · <word>"; without a text for the reader's language it uses the brand's en text, then its first text, then the glossary word for that language.
+          description: The brand's own word for its portal, per language (e.g. {"nl":"Merkbeeldbank"}). The UI shows `<name> · <word>`; without a text for the reader's language it uses the brand's en text, then its first text, then the glossary word for that language.
           oneOf:
             - {$ref: '../schemas/LocalizedText.json'}
             - {type: 'null'}
@@ -2422,7 +2422,7 @@ components:
       required: [user, invite_url, expires_at, email_sent]
       properties:
         user: {$ref: '#/components/schemas/User'}
-        invite_url: {type: string, format: uri, description: '<public_url>/invite/<token>; one-time.'}
+        invite_url: {type: string, format: uri, description: '`<public_url>/invite/<token>`; one-time.'}
         expires_at: {type: string, format: date-time}
         email_sent: {type: boolean}
     ApiClient:

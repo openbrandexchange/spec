@@ -20,8 +20,8 @@ The first release. Implemented by three portals in three runtimes (Cloudflare, G
 - **Governance**: the publisher, the plan for the Open Brand Exchange Foundation (in formation), a Dutch *stichting*, and a sketch of its statutes in English and Dutch ([governance.md](docs/governance.md), [governance/](governance)).
 - Documentation: protocol, ingest, import format, automation recipes, security, conformance, directory, versioning, implementations.
 - Fixtures: fictional "Kestrel Outfitters" catalog with generated images, expected protocol objects, ingest replay script with expected results and change entries, example documents (referenced as examples from the OpenAPI files), webhook signature test vector.
-- Rendered HTML reference, single-file OpenAPI bundles and the schemas at their `$id` paths in `site/`, for the website.
-- Tooling: `npm run check` (Redocly lint, Ajv validation of schemas, fixtures and OpenAPI examples, glossary, links, versions, `site/` freshness), `npm run build:site`, `npm run package`; CI and a tag-triggered release workflow.
+- Rendered HTML reference, single-file OpenAPI bundles and the schemas at their `$id` paths in `site/`, for the website. The pages carry their own Content-Security-Policy, load nothing from other hosts, and pass axe (WCAG 2.1 AA) on desktop and phone.
+- Tooling: `npm run check` (Redocly lint, Ajv validation of schemas, fixtures and OpenAPI examples, glossary, links, versions, licences, `site/` freshness), `npm run build:site`, `npm run test:site` (Playwright + axe), `npm run package`; CI and a tag-triggered release workflow.
 - Project files: SECURITY.md (security@openbrandexchange.com), CONTRIBUTING.md (DCO sign-off), CODE_OF_CONDUCT.md (Contributor Covenant 2.1), NOTICE, issue and pull request templates.
 
 ### Clarified during the implementation of the three portals

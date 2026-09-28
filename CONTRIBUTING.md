@@ -14,6 +14,7 @@ Thank you for helping. Brands, retailers, software vendors and individuals are a
 npm ci
 npm run check        # Redocly lint, schema/fixture/doc validation, glossary, links, versions
 npm run build:site   # regenerate the HTML reference in site/ (commit it with your change)
+npm run test:site    # open it in Chromium: no requests to other hosts, the viewer starts, axe finds nothing
 ```
 
 A normative change updates, in the same pull request:

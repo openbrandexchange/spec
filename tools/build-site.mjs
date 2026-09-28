@@ -50,7 +50,7 @@ function build(out) {
       throw new Error(`tools/vendor/redoc.standalone.js is not the Redoc ${m[1]} viewer this Redocly CLI expects (${integrity}). Run: node tools/build-site.mjs --update-redoc`);
     }
     html = html.replace(m[0], "assets/redoc.standalone.js");
-    writeFileSync(target, html);
+    writeFileSync(target, withCsp(html, a.page));
     const bundle = join(out, "openapi", a.file);
     run("bundle", a.api, "-o", bundle, "--lint-config", "off");
     writeFileSync(bundle, stringifyYAML(inlineExamples(parseYAML(readFileSync(bundle, "utf8"))), { lineWidth: 0 }));
@@ -61,6 +61,21 @@ function build(out) {
   cpSync(join(root, "schemas"), join(out, "schemas", "v0.1"), { recursive: true });
   writeFileSync(join(out, "index.html"), indexPage(redocVersion));
   writeFileSync(join(out, "README.md"), readme());
+}
+
+// A Content-Security-Policy in the page itself, so the reference is locked down wherever it
+// is hosted: scripts only from this folder plus the one inline start-up script (by hash),
+// no requests to other hosts (this also keeps the viewer from loading Redocly's logo from
+// its CDN; the viewer hides the image when it cannot load). styled-components needs inline
+// styles; the search index runs in a blob: worker.
+function withCsp(html, page) {
+  const inline = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]);
+  if (inline.length !== 1) throw new Error(`${page}: expected one inline script, found ${inline.length}`);
+  const hash = "sha256-" + createHash("sha256").update(inline[0]).digest("base64");
+  const csp = ["default-src 'self'", `script-src 'self' '${hash}'`, "style-src 'self' 'unsafe-inline'", "img-src 'self' data:", "font-src 'self' data:", "worker-src blob:", "connect-src 'self'", "base-uri 'none'", "form-action 'none'", "object-src 'none'"].join("; ");
+  const meta = `<meta http-equiv="Content-Security-Policy" content="${csp}">\n  <meta name="referrer" content="strict-origin-when-cross-origin">`;
+  if (!html.includes('<meta charset="utf8" />')) throw new Error(`${page}: charset meta not found`);
+  return html.replace('<meta charset="utf8" />', `<meta charset="utf-8" />\n  ${meta}`);
 }
 
 // Redocly's bundler leaves example values that point at fixture files as $refs; inline

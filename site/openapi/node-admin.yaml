@@ -2359,7 +2359,7 @@ paths:
         - Portal
       operationId: getPortalProduct
       summary: Product detail (protocol ProductDetail shape)
-      description: Rendition URLs are signed and usable directly in <img>. `original` only when the viewer may download originals.
+      description: Rendition URLs are signed and usable directly in an `<img>` element. `original` only when the viewer may download originals.
       parameters:
         - $ref: "#/components/parameters/IdPath"
       responses:
@@ -2504,7 +2504,7 @@ paths:
         - $ref: "#/components/parameters/Variant"
       responses:
         "200":
-          description: Zip; entries named <filename> (variant suffix _web/_square before .jpg).
+          description: Zip; entries named `<filename>` (variant suffix `_web`/`_square` before `.jpg`).
           content:
             application/zip:
               schema:
@@ -2895,7 +2895,7 @@ components:
             - $ref: "#/components/schemas/LocalizedText"
             - type: "null"
         portal_name:
-          description: The brand's own word for its portal, per language (e.g. {"nl":"Merkbeeldbank"}). The UI shows "<name> · <word>"; without a text for the reader's language it uses the brand's en text, then its first text, then the glossary word for that language.
+          description: The brand's own word for its portal, per language (e.g. {"nl":"Merkbeeldbank"}). The UI shows `<name> · <word>`; without a text for the reader's language it uses the brand's en text, then its first text, then the glossary word for that language.
           oneOf:
             - $ref: "#/components/schemas/LocalizedText"
             - type: "null"
@@ -3496,7 +3496,7 @@ components:
         invite_url:
           type: string
           format: uri
-          description: <public_url>/invite/<token>; one-time.
+          description: "`<public_url>/invite/<token>`; one-time."
         expires_at:
           type: string
           format: date-time
@@ -4251,7 +4251,7 @@ components:
       properties:
         type:
           type: string
-          description: "URI identifying the problem type: https://openbrandexchange.com/errors/<obx_error>."
+          description: "URI identifying the problem type: `https://openbrandexchange.com/errors/<obx_error>`."
           format: uri
         title:
           type: string
@@ -4819,7 +4819,7 @@ components:
       $id: https://openbrandexchange.com/schemas/v0.1/VariantInput.json
       type: object
       title: VariantInput
-      description: "Ingest write model for a variant. Key: external_id (path); default convention = the GTIN, else <style>-<color>-<size>."
+      description: "Ingest write model for a variant. Key: external_id (path); default convention = the GTIN, else `<style>-<color>-<size>`."
       properties:
         product_external_id:
           $ref: "#/components/schemas/ExternalId"
@@ -4887,7 +4887,7 @@ components:
       $id: https://openbrandexchange.com/schemas/v0.1/AssetInput.json
       type: object
       title: AssetInput
-      description: "Ingest write model for an asset. Key: external_id (path); filename-pattern convention = <style>_<color>_<position>."
+      description: "Ingest write model for an asset. Key: external_id (path); filename-pattern convention = `<style>_<color>_<position>`."
       properties:
         product_external_id:
           $ref: "#/components/schemas/ExternalId"
@@ -4920,7 +4920,7 @@ components:
           type:
             - string
             - "null"
-          description: Download filename; default <external_id>.<ext>.
+          description: Download filename; default `<external_id>.<ext>`.
           maxLength: 255
         alt_text:
           anyOf:
