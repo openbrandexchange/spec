@@ -1,4 +1,4 @@
-# Canonical import format 0.1 (draft)
+# Canonical import format 0.1
 
 **Status:** normative. Every node (upload in the admin UI, scheduled pull imports, `POST /obx/v1/ingest/imports`) and the `obx` CLI MUST support this format with exactly these rules, so a brand's export works everywhere. Example: [`fixtures/kestrel/`](../fixtures/kestrel).
 

@@ -1,6 +1,6 @@
 # Versioning
 
-- The specification uses **Semantic Versioning**: `MAJOR.MINOR.PATCH` with pre-release tags (`0.1.0-draft`). The current version is in [`CHANGELOG.md`](../CHANGELOG.md), the OpenAPI `info.version` fields and every schema's `$id` path (`/schemas/v0.1/`).
+- The specification uses **Semantic Versioning**: `MAJOR.MINOR.PATCH` with pre-release tags (`0.2.0-rc.1`). The current version is in [`CHANGELOG.md`](../CHANGELOG.md), the OpenAPI `info.version` fields and every schema's `$id` path (`/schemas/v0.1/`).
 - The **URL prefix** carries the major version: `/obx/v1`. Discovery advertises `obx_version` (`major.minor`) and `spec_version` (exact).
 - **Minor** releases are additive: new optional fields, new endpoints, new capabilities, new enum values, new change types, new error codes. Clients written for an older minor keep working because they MUST ignore what they do not know ([protocol.md §2](protocol.md#2-conventions)).
 - **Major** releases may break conforming clients (removing or renaming fields, changing semantics). A node SHOULD serve the previous major (`/obx/v1` next to `/obx/v2`) for at least 12 months after a new major is released.

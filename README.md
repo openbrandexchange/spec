@@ -22,6 +22,9 @@ This repository is the **source of truth** that every implementation follows.
 | [`docs/implementations.md`](docs/implementations.md) | the portals that implement it, what they pass, where they run, known gaps |
 | [`docs/directory.md`](docs/directory.md) · [`docs/versioning.md`](docs/versioning.md) · [`docs/governance.md`](docs/governance.md) | ecosystem |
 | [`fixtures/`](fixtures) | the fictional "Kestrel Outfitters" catalog, expected API output and an ingest replay script |
+| [`site/`](site) | the rendered HTML reference of the three APIs, single-file OpenAPI bundles and the schemas at their `$id` paths (generated; the website includes it) |
+| [`docs/glossary.md`](docs/glossary.md) | the words people see, in 25 languages |
+| [`governance/`](governance) | the sketch of the foundation's statutes (English and Dutch) |
 
 ## 60-second tour
 
@@ -47,16 +50,22 @@ For an **implementer**: read [`docs/protocol.md`](docs/protocol.md) and [`docs/i
 
 ## Working on this repository
 
+Needs Node.js 20 or later.
+
 ```sh
-npm install
-npm run check        # redocly lint of the three APIs + schema/fixture validation
-npm run fixtures     # regenerate fixtures (python3, standard library only)
+npm ci
+npm run check        # lint, validation, links, versions, and that site/ is up to date
+npm run build:site   # regenerate site/ after changing openapi/ or schemas/
+npm run fixtures     # regenerate fixtures (python3, standard library only; see fixtures/README.md first)
+npm run package      # the release bundle in dist/ (what the release workflow publishes)
 ```
 
-`npm run check` must pass before every commit: it lints the OpenAPI files, compiles every schema, validates every example and expected object, checks GTIN check digits, the CSV columns, the image filename rule and that every error code is documented.
+`npm run check` must pass before every commit. It lints the three OpenAPI files (Redocly), compiles every schema in Ajv strict mode, validates every fixture, expected object and OpenAPI example, checks GTIN check digits, the CSV columns, the image filename rule, that every error code is documented, that the glossary has all 25 languages, that every link between the documents resolves, that the version is the same everywhere, that nothing unfinished is left in the documents, and that `site/` matches the sources. See [CONTRIBUTING.md](CONTRIBUTING.md) (sign your commits) and [SECURITY.md](SECURITY.md) (report vulnerabilities to security@openbrandexchange.com).
 
 ## Status and licence
 
-Version **0.1.0-draft**: feedback welcome, breaking changes still possible (see [`CHANGELOG.md`](CHANGELOG.md)). "Open Brand Exchange" is a working name. The specification is initiated by Photopilot and designed to be vendor-neutral; see [governance](docs/governance.md).
+Version **0.1.0** ([changelog](CHANGELOG.md)). Before 1.0, minor versions may still contain breaking changes, each with a migration note ([versioning](docs/versioning.md)). Three portals in three runtimes, the Go SDK and the conformance suite implement it ([implementations](docs/implementations.md)).
 
-Licensed under [Creative Commons Attribution 4.0 International](LICENSE) (CC-BY-4.0). You may implement, copy and adapt it, including commercially, with attribution.
+Open Brand Exchange is an initiative of Richard Lindhout · Open Brand Exchange Foundation (in formation). It is designed to be vendor-neutral, and the copyright, the name and the domain are to be transferred to a Dutch foundation (*stichting*); see [governance](docs/governance.md). Contact: hello@openbrandexchange.com.
+
+Licensed under [Creative Commons Attribution 4.0 International](LICENSE) (CC-BY-4.0). You may implement, copy and adapt it, including commercially, with attribution ([NOTICE](NOTICE)).

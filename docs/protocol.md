@@ -1,6 +1,6 @@
-# OBX Protocol 0.1 (draft)
+# OBX Protocol 0.1
 
-**Status:** v0.1.0-draft. Normative. Machine-readable contract: [`openapi/obx-protocol.yaml`](../openapi/obx-protocol.yaml) and [`schemas/`](../schemas). Where this document and the OpenAPI file disagree, report it; until fixed, this document wins.
+**Status:** v0.1.0. Normative. Machine-readable contract: [`openapi/obx-protocol.yaml`](../openapi/obx-protocol.yaml) and [`schemas/`](../schemas). Where this document and the OpenAPI file disagree, report it; until fixed, this document wins.
 
 The key words MUST, MUST NOT, REQUIRED, SHALL, SHOULD, SHOULD NOT, RECOMMENDED, MAY and OPTIONAL are to be interpreted as described in RFC 2119 and RFC 8174 when, and only when, they appear in all capitals.
 

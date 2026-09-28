@@ -1,0 +1,77 @@
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  check:
+    name: lint, validate, site, licences, audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # Redocly lint, Ajv validation (schemas, fixtures, OpenAPI examples), glossary,
+      # links, versions, licences, and that site/ matches openapi/ and schemas/.
+      - run: npm run check
+      # Every npm package is a build tool (nothing from node_modules is shipped), so the
+      # audit covers the dev dependencies too.
+      - run: npm audit --audit-level=high
+      - name: fixtures still match their generator
+        # PNG bytes (and so every hash) depend on the zlib version, so only the files
+        # without image hashes are compared; the committed fixtures stay canonical.
+        run: |
+          python3 fixtures/generate.py
+          git diff --exit-code -- fixtures/kestrel/products.csv fixtures/kestrel/assets.csv \
+            fixtures/ingest/expected-results.json fixtures/ingest/expected-changes.json \
+            fixtures/expected/counts.json fixtures/expected/gtin-lookup.json fixtures/expected/gtin-lookup.request.json
+
+  package:
+    name: release bundle (dry run)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: check
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run package
+      - uses: actions/upload-artifact@v4
+        with:
+          name: obx-spec-bundle
+          path: dist/
+          retention-days: 7
+
+  dco:
+    name: commits are signed off
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: every commit in the pull request has a Signed-off-by line
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          missing=0
+          for c in $(git rev-list "$BASE..$HEAD"); do
+            if ! git show -s --format=%B "$c" | grep -q '^Signed-off-by: '; then
+              echo "::error::commit $c has no Signed-off-by line (git commit -s, see CONTRIBUTING.md)"; missing=1
+            fi
+          done
+          exit $missing

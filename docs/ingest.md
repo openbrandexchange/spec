@@ -1,6 +1,6 @@
-# OBX Ingest API 0.1 (draft)
+# OBX Ingest API 0.1
 
-**Status:** v0.1.0-draft. Normative. Contract: [`openapi/obx-ingest.yaml`](../openapi/obx-ingest.yaml). RFC 2119 keywords as in [protocol.md](protocol.md).
+**Status:** v0.1.0. Normative. Contract: [`openapi/obx-ingest.yaml`](../openapi/obx-ingest.yaml). RFC 2119 keywords as in [protocol.md](protocol.md).
 
 The Ingest API is how a brand's **own systems** publish to a node: a PIM or ERP connector, a nightly spreadsheet export, a DAM, the `obx` command-line tool, a GitHub Action, n8n/Make/Zapier. Because every conforming node speaks it, a brand's automation keeps working when it moves between nodes (self-hosted, a different runtime, a vendor).
 
