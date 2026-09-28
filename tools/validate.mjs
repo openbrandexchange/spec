@@ -7,6 +7,7 @@ import addFormats from "ajv-formats";
 import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { join, dirname, basename } from "node:path";
 import { fileURLToPath } from "node:url";
+import { checkGlossary } from "./glossary.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const failures = [];
@@ -236,6 +237,10 @@ if (existsSync(protocolDoc)) {
   const doc = readFileSync(protocolDoc, "utf8");
   for (const code of codes) { checked++; if (!doc.includes(`\`${code}\``)) fail("docs/protocol.md", `error code ${code} is not documented`); }
 } else fail("docs/protocol.md", "missing");
+
+// ---------------------------------------------------------------- glossary: 25 languages, no gaps
+checked++;
+for (const p of checkGlossary(readFileSync(join(root, "docs", "glossary.md"), "utf8"))) fail("docs/glossary.md", p);
 
 if (failures.length) {
   console.error(`✗ ${failures.length} problem(s) in ${checked} checks:\n  ` + failures.join("\n  "));
