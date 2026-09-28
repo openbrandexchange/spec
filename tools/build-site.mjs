@@ -101,10 +101,15 @@ function indexPage(redocVersion) {
       </li>`).join("\n");
   const schemas = readdirSync(join(root, "schemas")).filter((f) => f.endsWith(".json")).sort()
     .map((f) => `<a href="schemas/v0.1/${f}">${f.replace(/\.json$/, "")}</a>`).join(", ");
+  // Like the API pages, the overview carries its own policy: no scripts at all, only its
+  // inline stylesheet, nothing from other hosts.
+  const csp = ["default-src 'none'", "style-src 'unsafe-inline'", "img-src 'self' data:", "base-uri 'none'", "form-action 'none'"].join("; ");
   return `<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="${csp}">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>API reference ${version} · Open Brand Exchange</title>
   <meta name="description" content="Rendered reference of the Open Brand Exchange APIs and JSON Schemas, version ${version}.">
@@ -155,7 +160,7 @@ Built by \`npm run build:site\` (tools/build-site.mjs) from \`openapi/\` and \`s
 | \`schemas/v0.1/*.json\` | the JSON Schemas at the path of their \`$id\` (\`https://openbrandexchange.com/schemas/v0.1/…\`) |
 | \`assets/redoc.standalone.js\` | the Redoc viewer (MIT, \`assets/redoc.LICENSE\`; bundled libraries in \`redoc.standalone.js.LICENSE.txt\`), served locally instead of from a CDN |
 
-For the website: copy this folder as it is, for example to \`/reference/\`, and serve \`schemas/\` at \`/schemas/\` so the schema \`$id\`s resolve. The pages work without JavaScript (the content is pre-rendered); with JavaScript the viewer adds search and navigation. Each page ends with one inline script that starts the viewer; a Content-Security-Policy for these pages needs \`script-src 'self' 'unsafe-inline'\` or a hash of that script.
+For the website: copy this folder as it is, for example to \`/reference/\`, and serve \`schemas/\` at \`/schemas/\` so the schema \`$id\`s resolve. The pages work without JavaScript (the content is pre-rendered); with JavaScript the viewer adds search and navigation. Every page, the overview included, carries its own Content-Security-Policy in a \`<meta>\` element (the API pages allow their one inline start-up script by hash), so a host should not add a stricter policy header for this folder.
 `;
 }
 

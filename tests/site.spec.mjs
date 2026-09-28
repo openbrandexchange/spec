@@ -18,6 +18,16 @@ test("overview page links to every reference and passes axe", async ({ page }) =
   expect(results.violations.map((v) => `${v.id}: ${v.nodes.length}`)).toEqual([]);
 });
 
+test("overview page carries its own Content-Security-Policy and its styles still apply", async ({ page }) => {
+  const violations = [];
+  page.on("console", (m) => { if (m.type() === "error" && /Content Security Policy/.test(m.text())) violations.push(m.text()); });
+  await page.goto("/");
+  await expect(page.locator('meta[http-equiv="Content-Security-Policy"]')).toHaveAttribute("content", /default-src 'none'/);
+  // The inline stylesheet is allowed: main is laid out at its max-width, not full width.
+  expect(await page.evaluate(() => getComputedStyle(document.querySelector("main")).maxWidth)).not.toBe("none");
+  expect(violations).toEqual([]);
+});
+
 test("overview page works with the keyboard", async ({ page }) => {
   await page.goto("/");
   const seen = [];
