@@ -1,0 +1,33 @@
+name: Spec change (RFC)
+description: Propose a new field, endpoint, capability, error code or a change of behaviour.
+labels: [RFC]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What can brands, retailers or implementers not do today, or what goes wrong?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: The change, with the affected sections, schemas and endpoints. Examples with the fictional Kestrel Outfitters data.
+    validations:
+      required: true
+  - type: dropdown
+    id: compatibility
+    attributes:
+      label: Compatibility
+      options:
+        - Additive (minor release)
+        - Breaking (needs a migration note)
+        - Wording or clarification only (patch release)
+    validations:
+      required: true
+  - type: textarea
+    id: implementations
+    attributes:
+      label: Implementations affected
+      description: Which portals, SDKs or consumers need to change? Are you willing to implement it?

@@ -1,0 +1,22 @@
+name: Problem in the spec
+description: A contradiction, an unclear rule, a broken example or a schema that disagrees with the prose.
+labels: [bug]
+body:
+  - type: input
+    id: where
+    attributes:
+      label: Where
+      description: File and section, e.g. docs/protocol.md §6.2 or schemas/Asset.json
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What is wrong
+      description: What the text says, what you expected, and (if you have one) what your implementation does.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Spec version or commit

@@ -1,0 +1,10 @@
+name: Question
+description: Ask how something in the specification is meant.
+labels: [question]
+body:
+  - type: textarea
+    id: question
+    attributes:
+      label: Question
+    validations:
+      required: true
