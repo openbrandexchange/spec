@@ -4,6 +4,9 @@ All notable changes to the Open Brand Exchange specification. Format: [Keep a Ch
 
 ## [Unreleased]
 
+### Added
+- Node Admin API: optional read-only `Settings.node.cron` (`url`, `command`, `last_run_at`) for nodes that need an outside scheduler, so the admin can show the cron address again after installation.
+
 ## [0.1.0] - 2026-09-28
 
 The first release. Implemented by three portals in three runtimes (Cloudflare, Google Cloud & Docker, web hosting), the Go SDK and CLI, and the conformance suite; see [docs/implementations.md](docs/implementations.md).

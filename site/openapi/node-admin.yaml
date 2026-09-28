@@ -3157,6 +3157,28 @@ components:
             custom_domain_help:
               type: string
               description: Short hosting-specific instructions for pointing a custom domain at this node (Markdown).
+            cron:
+              type: object
+              description: |
+                Only on nodes that need an outside scheduler (ordinary web hosting): what to call
+                every few minutes for background work. Absent when the node schedules itself.
+              required:
+                - url
+              properties:
+                url:
+                  type: string
+                  format: uri
+                  description: Secret address; calling it runs due background work. Shown to admins only.
+                command:
+                  type:
+                    - string
+                    - "null"
+                  description: The same as a command line, when the host allows it.
+                last_run_at:
+                  type:
+                    - string
+                    - "null"
+                  format: date-time
     AdminProductSummary:
       type: object
       required:
