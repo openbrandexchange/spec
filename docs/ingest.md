@@ -29,7 +29,7 @@ Everything is addressed by the brand's **external id** in the path (percent-enco
 | brand | `/brands/{external_id}` | slug of the brand name (`Kestrel Trail` → `kestrel-trail`) |
 | product | `/products/{external_id}` | the style number |
 | variant | `/variants/{external_id}` | the GTIN as supplied; without GTIN `<style>-<color>-<size>` |
-| asset | `/assets/{external_id}` | `<style>_<color>_<position>` (the image filename pattern without qualifiers and extension) |
+| asset | `/assets/{external_id}` | `<style>_<color>_<position>` (the image filename pattern without qualifiers and extension); `<style>_ALL_<position>` for an image of all colours ([import-format.md](import-format.md#all-colours)) |
 
 Parents are referenced by external id in the body (`brand_external_id`, `product_external_id`). `brand_external_id` MAY be omitted when the node has exactly one brand. The node assigns the protocol `id`s and returns them in results.
 

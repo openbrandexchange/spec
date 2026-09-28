@@ -2032,6 +2032,7 @@ paths:
                 name: {type: string, minLength: 1, maxLength: 200}
                 scopes:
                   type: array
+                  description: Omitted = the same defaults as ApiClientInput.scopes.
                   items: {$ref: '../schemas/Common.json#/$defs/Scope'}
       responses:
         '201':
@@ -2249,7 +2250,7 @@ components:
                 - {$ref: '../schemas/LocalizedText.json'}
                 - {type: 'null'}
             portal_name:
-              description: Overrides the local portal word ("Beeldbank", "Händlerportal" ...) per language; null uses the glossary word. See PublicBranding.portal_name.
+              description: 'Overrides the local portal word ("Beeldbank", "Händlerportal" ...) per language; null uses the glossary word. See PublicBranding.portal_name. The settings update is a JSON merge patch (RFC 7396): `{"branding":{"portal_name":{"de":null}}}` removes the German text only, `{"branding":{"portal_name":null}}` removes the whole override. A client that edits the texts as a whole sends `null` for every language it removed.'
               oneOf:
                 - {$ref: '../schemas/LocalizedText.json'}
                 - {type: 'null'}
@@ -2446,7 +2447,7 @@ components:
         name: {type: string, minLength: 1, maxLength: 200}
         scopes:
           type: array
-          description: Default catalog:read media:read (+ media:original when allowed).
+          description: 'Omitted: `catalog:read` and `media:read`, plus `media:original` when the retailer may download originals. `usage:write` only when requested explicitly. Scopes are limited to what the retailer''s grant allows.'
           items: {$ref: '../schemas/Common.json#/$defs/Scope'}
     ApiClientWithSecret:
       type: object

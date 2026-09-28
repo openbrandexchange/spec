@@ -29,16 +29,17 @@ Schema: [Directory](../schemas/Directory.json) / [DirectoryEntry](../schemas/Dir
 - `id`: unique slug in that directory.
 - `discovery_url`: MUST return a valid discovery document; everything else (logo, contact, capabilities, whether access requests are open) is read live from there, so a listing never goes stale.
 - `categories` (recommended): `fashion`, `shoes`, `accessories`, `sports`, `outdoor`, `kids`, `lingerie`, `home`.
+- Extensions use `x-<vendor>-` names like everywhere in OBX. One is shared by all directories: `"x-obx-demo": true` marks a demonstration portal (fictional brand, test data). Directory front-ends SHOULD label such entries as a demo and MUST NOT count them as real brands.
 
 Consumers SHOULD fetch the discovery document before showing an entry and hide entries whose node does not answer. Directory operators SHOULD re-check listings weekly and remove entries that fail for 30 days.
 
 ## The public directory at openbrandexchange.com
 
-The website repository keeps `data/directory.json`. To be listed:
+The [website repository](https://github.com/openbrandexchange/website) keeps the file at `public/directory.json`, so it is served as `https://openbrandexchange.com/directory.json`. To be listed:
 
 1. Make sure `https://<your-host>/.well-known/obx` answers and your node passes the protocol conformance profile.
 2. Open a pull request against the website repository adding one entry (keep entries sorted by `id`).
 3. The CI of the website validates the file against the schema and fetches your discovery URL.
 4. Only the brand itself (or its hosting provider on its behalf) may request a listing. Retailers, scrapers or aggregators cannot list a brand.
 
-To be removed, open a pull request removing the entry or contact the maintainers.
+To be removed, open a pull request removing the entry or write to hello@openbrandexchange.com.

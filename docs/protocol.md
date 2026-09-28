@@ -27,7 +27,7 @@ Out of scope for v0.1: prices, stock, orders, EDI, video/3D assets (reserved), f
 
 - HTTPS only (plain HTTP is allowed for `localhost` development). JSON bodies are UTF-8. Field names are `snake_case`. Timestamps are RFC 3339 (UTC RECOMMENDED).
 - **Forward compatibility.** Clients MUST ignore unknown fields, unknown enum values, unknown change `type`s, unknown capability strings and unknown webhook event types. The JSON Schemas in this repository are *closed* so that producers can check their output; consumers MUST NOT reject documents at runtime because of unknown members.
-- **Extensions.** Implementation-specific fields MUST be prefixed `x-<vendor>-` (for example `x-photopilot-crop`). Standard fields never start with `x-`.
+- **Extensions.** Implementation-specific fields MUST be prefixed `x-<vendor>-` (for example `x-acme-crop`). Standard fields never start with `x-`.
 - **Ids.** Every object has a node-assigned opaque `id` (`^[A-Za-z0-9][A-Za-z0-9._~-]{0,127}$`), stable for the life of the object, and the brand's own `external_id`. Clients MUST treat ids and cursors as opaque.
 - **Localised text** is an object keyed by BCP 47 tag: `{"nl": "Trui", "en": "Sweater"}`. Enumerations are stable lowercase keys; labels are presentation and belong to the client.
 - **Null vs absent.** Response objects include every property of their schema; unknown values are `null` (except where a schema says a property is only present in some responses).
@@ -35,7 +35,7 @@ Out of scope for v0.1: prices, stock, orders, EDI, video/3D assets (reserved), f
 
 ## 3. Discovery
 
-`GET https://<host>/.well-known/obx` (public, CORS `*`) returns the [DiscoveryDocument](../schemas/DiscoveryDocument.json): protocol version, the publisher (name, logo, accent colour, contact, welcome text), `api_base` (`https://<host>/obx/v1`), the OAuth2 token endpoint and scopes, the access-request URL, the ingest URL, `capabilities`, the published brands, content `languages` (first = default) and `limits`.
+`GET https://<host>/.well-known/obx` (public, `Access-Control-Allow-Origin: *`; it is the only endpoint with CORS headers, see [security.md §4](security.md#4-urls-and-downloads)) returns the [DiscoveryDocument](../schemas/DiscoveryDocument.json): protocol version, the publisher (name, logo, accent colour, contact, welcome text), `api_base` (`https://<host>/obx/v1`), the OAuth2 token endpoint and scopes, the access-request URL, the ingest URL, `capabilities`, the published brands, content `languages` (first = default) and `limits`.
 
 It MUST work on every hostname the node answers on, including a brand's custom domain. Before first-run setup a node answers `503` with `setup_required`.
 
@@ -192,7 +192,7 @@ A `grant` entry (`data`: the new Grant) with `resync: true` means the visible se
 
 **Pagination.** List endpoints take `limit` and an opaque `cursor` and return `{"items": [...], "next_cursor": "…" | null}`.
 
-**GTIN lookup.** `POST /obx/v1/products:by-gtin` with `{"gtins": [...]}` (max 2000; more is `400 limit_exceeded`) or `GET ?gtin=a,b,c` (max 100). Each input is trimmed and inner spaces removed; 8, 12, 13 or 14 digits are normalised to GTIN-14 and compared with `Variant.gtin`; check digits are not validated here. Anything else is `invalid`. Duplicate inputs after normalisation are reported once (first occurrence). The [GtinLookupResult](../schemas/GtinLookupResult.json) has one result per distinct input in input order (`matched`, `unmatched`, `invalid`) and every matched product once as ProductDetail.
+**GTIN lookup.** `POST /obx/v1/products:by-gtin` with `{"gtins": [...]}` (max 2000; more is `400 limit_exceeded`) or `GET ?gtin=a,b,c` (max 100). Each input is trimmed (leading and trailing whitespace) and echoed that way in `input` (`" 2000 200101031"` → `"2000 200101031"`); for matching, inner spaces are then removed; 8, 12, 13 or 14 digits are normalised to GTIN-14 and compared with `Variant.gtin`; check digits are not validated here. Anything else is `invalid`. Duplicate inputs after normalisation are reported once (first occurrence). The [GtinLookupResult](../schemas/GtinLookupResult.json) has one result per distinct input in input order (`matched`, `unmatched`, `invalid`) and every matched product once as ProductDetail.
 
 ## 8. Bulk exports (capability `exports`)
 
@@ -235,7 +235,7 @@ Errors are `application/problem+json` (RFC 9457) [Problem](../schemas/Problem.js
 | `insufficient_scope` | 403 | token lacks the scope |
 | `forbidden` | 403 | not allowed (role, brand restriction, feature disabled by the brand) |
 | `not_found` | 404 | does not exist or is not visible to the caller |
-| `method_not_allowed` | 405 | method not supported on this path |
+| `method_not_allowed` | 405 | method not supported on an existing path (SHOULD; a node MAY answer `404 not_found` instead) |
 | `conflict` | 409 | state conflict (not pending, still has children, concurrent job) |
 | `precondition_failed` | 412 | `If-Match` did not match |
 | `payload_too_large` | 413 | body above the node's limit |

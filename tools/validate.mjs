@@ -167,18 +167,34 @@ const ROLES = ["packshot", "model", "detail", "ghost", "flatlay", "scene", "swat
 const VIEWS = ["front", "back", "side", "left", "right", "top", "bottom", "tilted_left", "tilted_right", "inside", "detail", "other"];
 
 // Filename pattern per docs/import-format.md: {style}_{color}_{position}[_{qualifier}...].{ext}
+const isQualifier = (q) => ROLES.includes(q) || VIEWS.includes(q);
 export function parseImageFilename(name) {
   const m = /^(.+)\.(jpe?g|png|webp|tiff?)$/i.exec(name);
   if (!m) return null;
   const parts = m[1].split("_");
   const quals = [];
-  while (parts.length > 3 && (ROLES.includes(parts.at(-1).toLowerCase()) || VIEWS.includes(parts.at(-1).toLowerCase()))) {
-    quals.unshift(parts.pop().toLowerCase());
+  for (;;) {
+    const two = parts.length > 4 ? `${parts.at(-2)}_${parts.at(-1)}`.toLowerCase() : null;
+    if (two && isQualifier(two)) { quals.unshift(two); parts.splice(-2); continue; }
+    if (parts.length > 3 && isQualifier(parts.at(-1).toLowerCase())) { quals.unshift(parts.pop().toLowerCase()); continue; }
+    break;
   }
   if (parts.length < 3 || !/^[1-9][0-9]{0,2}$/.test(parts.at(-1))) return null;
   const position = Number(parts.pop());
   const color = parts.pop();
   return { style: parts.join("_"), color, position, qualifiers: quals };
+}
+// Role and view from the qualifiers, applied right to left, each filling only what is still empty.
+export function roleAndView(qualifiers) {
+  let role = null, view = null;
+  const otherIsView = qualifiers.some((q) => q !== "other" && ROLES.includes(q));
+  for (const q of [...qualifiers].reverse()) {
+    if (q === "detail") { role ??= "detail"; view ??= "detail"; }
+    else if (q === "other") { if (otherIsView) view ??= "other"; else role ??= "other"; }
+    else if (ROLES.includes(q)) role ??= q;
+    else view ??= q;
+  }
+  return { role: role ?? "packshot", view };
 }
 
 const kestrel = join(root, "fixtures", "kestrel");
@@ -222,12 +238,34 @@ const cases = [
   ["KO-1001_NVY_1.jpg", { style: "KO-1001", color: "NVY", position: 1, qualifiers: [] }],
   ["KO-1003_RST_3_model.png", { style: "KO-1003", color: "RST", position: 3, qualifiers: ["model"] }],
   ["AB_12_34_BLK_2_packshot_back.JPG", { style: "AB_12_34", color: "BLK", position: 2, qualifiers: ["packshot", "back"] }],
+  ["KO-1005_all_4_size_chart.png", { style: "KO-1005", color: "all", position: 4, qualifiers: ["size_chart"] }],
   ["KO-1001_NVY_front.jpg", null],
   ["KO-1001_NVY_0.jpg", null],
 ];
+// The colour part ALL (any case) means "all colours": color_code null, external id {style}_ALL_{position}.
+export const colorCodeOf = (parsed) => (parsed.color.toUpperCase() === "ALL" ? null : parsed.color);
+export const assetExternalId = (style, color, position) => `${style}_${color ?? "ALL"}_${position}`;
+for (const [name, color, id] of [["KO-1005_all_4_size_chart.png", null, "KO-1005_ALL_4"], ["KO-1001_NVY_2_back.jpg", "NVY", "KO-1001_NVY_2"]]) {
+  checked++;
+  const p = parseImageFilename(name);
+  if (colorCodeOf(p) !== color || assetExternalId(p.style, colorCodeOf(p), p.position) !== id) fail("filename rule", `${name}: colour ${colorCodeOf(p)}, id ${assetExternalId(p.style, colorCodeOf(p), p.position)}`);
+}
 for (const [name, want] of cases) {
   checked++;
   if (JSON.stringify(parseImageFilename(name)) !== JSON.stringify(want)) fail("filename rule", `${name} -> ${JSON.stringify(parseImageFilename(name))}`);
+}
+for (const [name, want] of [
+  ["KO-1001_NVY_1.jpg", { role: "packshot", view: null }],
+  ["KO-1004_IND_3_detail.jpg", { role: "detail", view: "detail" }],
+  ["KO-1002_BLK_4_model_tilted_left.jpg", { role: "model", view: "tilted_left" }],
+  ["KO-1001_NVY_5_back_front.jpg", { role: "packshot", view: "front" }],
+  ["KO-1001_NVY_6_model_other.jpg", { role: "model", view: "other" }],
+  ["KO-1001_NVY_7_other.jpg", { role: "other", view: null }],
+  ["AB_12_34_BLK_2_packshot_back.JPG", { role: "packshot", view: "back" }],
+]) {
+  checked++;
+  const got = roleAndView(parseImageFilename(name)?.qualifiers ?? ["x"]);
+  if (JSON.stringify(got) !== JSON.stringify(want)) fail("filename rule", `${name}: ${JSON.stringify(got)}, want ${JSON.stringify(want)}`);
 }
 
 // ---------------------------------------------------------------- docs consistency

@@ -29,14 +29,18 @@ Normative for nodes (all three faces) and for the `obx` CLI where noted. RFC 211
 ## 4. URLs and downloads
 - Rendition, export and download-job URLs are either signed and short-lived (RECOMMENDED 1 h, maximum 24 h; HMAC-SHA256 over method, path and expiry with a node key) or require the Bearer token/session. No permanent public URLs for content. Logos in the discovery document are public by design.
 - Responses with content set `Cache-Control: private` and `X-Content-Type-Options: nosniff`; downloads set `Content-Disposition` with a sanitised filename (RFC 6266 `filename*` for non-ASCII).
-- The admin UI is served with a strict `Content-Security-Policy` (no inline script), `X-Frame-Options: DENY` (or `frame-ancestors 'none'`), `Referrer-Policy: strict-origin-when-cross-origin`.
+- The admin UI is served with a strict `Content-Security-Policy` (no inline script), `X-Frame-Options: DENY` (or `frame-ancestors 'none'`), `Referrer-Policy: strict-origin-when-cross-origin`. Behind TLS, nodes SHOULD send `Strict-Transport-Security` (RECOMMENDED `max-age=31536000`); never on plain-HTTP development addresses.
+- **CORS only on discovery.** `GET /.well-known/obx` answers `Access-Control-Allow-Origin: *` (it is public). No other endpoint (protocol, ingest, admin, portal, renditions) sends `Access-Control-Allow-*` headers or answers CORS preflights: the protocol is for servers, the admin UI is same-origin, and a browser-based consumer runs through its own backend. All nodes behave the same so a tool that works against one works against all.
 
 ## 5. Outbound requests (SSRF)
-Scheduled import URLs, `logo_url` fetches, SFTP/S3 endpoints and webhook URLs are attacker-influenced. Nodes MUST:
+Scheduled import URLs, `logo_url` fetches, SFTP/S3 endpoints and webhook URLs are attacker-influenced. The same rule applies on every node. Nodes MUST:
 - allow only `https` (plus `sftp` for SFTP sources; `http` only with the development switch below);
-- resolve the host and refuse loopback, private (RFC 1918, RFC 4193), link-local (169.254/16, fe80::/10, including cloud metadata 169.254.169.254), CGNAT (100.64/10), multicast and unspecified addresses (`422 unsafe_url`), **re-checking after every redirect** and pinning the resolved address for the connection (DNS rebinding);
-- cap redirects (≤ 5), response size and time (RECOMMENDED 15 s connect, 10 min total for imports);
-- allow private addresses only when the operator sets `OBX_ALLOW_PRIVATE_URLS=true` (local development, MinIO on the same host).
+- parse the host the way a browser does (WHATWG URL: `127.1`, `0x7f.1`, `2130706433` and `0177.0.0.1` are IPv4 addresses) and resolve names; refuse the request when **any** resolved address is loopback (127/8, ::1), private (RFC 1918, RFC 4193 fc00::/7), link-local (169.254/16, fe80::/10), CGNAT (100.64/10), multicast, unspecified (`0.0.0.0`, `::`), IPv4-mapped or -translated IPv6 forms of those, or a cloud metadata endpoint (`169.254.169.254`, `fd00:ec2::254`, `100.100.100.200`, the names `metadata.google.internal` and `metadata`) (`422 unsafe_url` when saving; the fetch fails when checked at run time);
+- **pin the checked address for the connection**: connect to exactly the address that passed the check (dialer control, `CURLOPT_RESOLVE` or equivalent), so a DNS answer that changes between check and connect (DNS rebinding) cannot reach a refused address; runtimes without private network access at all (Cloudflare Workers) satisfy this by construction;
+- **re-check after every redirect** (with the same pinning), cap redirects (≤ 5; webhooks follow none), response size and time (RECOMMENDED 15 s connect, 10 min total for imports, 10 s for webhooks);
+- check at save time **and** again at every run (a name that was public when saved may point elsewhere later).
+
+**Development switch.** `OBX_ALLOW_PRIVATE_URLS=true` (only for local development and tests, for example MinIO or a webhook receiver on the same host) allows `http`, loopback, private and CGNAT addresses. It never allows link-local or cloud metadata addresses: those stay refused in every configuration, because on a cloud host they hand out the machine's credentials. A node SHOULD log a warning at start when the switch is on.
 
 ## 6. Uploads and archives
 - Enforce size limits before buffering (`413`). Verify declared sha256 (`422 checksum_mismatch`).
@@ -57,4 +61,4 @@ HMAC-SHA256 signatures with timestamp (`OBX-Webhook-Signature: v1=…`, 300 s to
 Keep personal data minimal: contact name/e-mail of retailer users and access requests. Download statistics store the retailer and account, not the IP (IPs only in short-lived abuse logs, ≤ 30 days). Deleting a user removes its personal data; statistics keep the retailer name only.
 
 ## 10. Reporting vulnerabilities
-Until a dedicated address exists, report privately to the maintainers via GitHub security advisories on the affected repository. Do not open public issues for vulnerabilities.
+Report privately to **security@openbrandexchange.com** or through a GitHub private security advisory on the affected repository; never in a public issue. See [`SECURITY.md`](../SECURITY.md) for what to include, response times and disclosure.

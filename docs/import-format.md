@@ -92,10 +92,11 @@ Codes separated by `|`, in label order. Aligned with ISO 3758 (GINETEX symbols).
 {style}_{color}_{position}[_{qualifier}…].{ext}
 ```
 - `ext`: `jpg`, `jpeg`, `png`, `webp`, `tif`, `tiff` (case-insensitive).
-- Parse from the **right**: strip the extension; while more than three `_`-separated parts remain and the last part is a role or view key, pop it as a qualifier; the last part must then be the position (`1`–`999`, no leading zero), the one before it the colour code, and everything before that (joined with `_`) the style number. So style numbers may contain `_`; colour codes may not.
-- Qualifiers (optional, any order): a **role** (`packshot`, `model`, `detail`, `ghost`, `flatlay`, `scene`, `swatch`, `size_chart`, `other`) and/or a **view** (`front`, `back`, `side`, `left`, `right`, `top`, `bottom`, `tilted_left`, `tilted_right`, `inside`, `detail`, `other`). `detail` sets role `detail` **and** view `detail`. Without a role qualifier the role is `packshot`; without a view qualifier the view is `null`.
+- Parse from the **right**: strip the extension and split the rest on `_`. Then repeat: if more than four parts remain and the last **two** parts joined with `_` are a role or view key (`size_chart`, `tilted_left`, `tilted_right`), pop both as one qualifier; otherwise, if more than three parts remain and the last part is a role or view key, pop it; otherwise stop. The last part must then be the position (`1`–`999`, no leading zero), the one before it the colour code, and everything before that (joined with `_`) the style number. So style numbers may contain `_`; colour codes may not.
+- Qualifiers (optional, any order): a **role** (`packshot`, `model`, `detail`, `ghost`, `flatlay`, `scene`, `swatch`, `size_chart`, `other`) and/or a **view** (`front`, `back`, `side`, `left`, `right`, `top`, `bottom`, `tilted_left`, `tilted_right`, `inside`, `detail`, `other`). Qualifiers are applied in the order they are popped (right to left), and each only fills what is still empty: `detail` sets the role and the view to `detail`; `other` is the view when the name also has another role qualifier (`KO-1001_NVY_6_model_other.jpg`), otherwise the role; any other key sets the role or the view it belongs to. A second role or view further left is therefore ignored (the rightmost one wins). Without a role qualifier the role is `packshot`; without a view qualifier the view is `null`.
 - Matching the style number and colour code against the catalog is case-insensitive; the asset takes the catalog's spelling.
-- The asset's external id is `{style_number}_{color_code}_{position}` (catalog spelling, no qualifiers, no extension), so re-sending a file with the same style, colour and position **replaces** that image, and renaming `_front` to `_back` only changes the view. The original file name becomes the asset `filename`.
+- <a id="all-colours"></a>**Images without a colour.** The colour part `ALL` (any case) means the image belongs to every colour of the product (`color_code: null`), for example a size chart or a detail shared by all colours: `KO-1005_ALL_4_size_chart.png`. `ALL` is therefore reserved: a product colour whose code is `ALL` cannot be addressed by file name (use `assets.csv` with an explicit `color_code`), and brands SHOULD NOT use it as a colour code.
+- The asset's external id is `{style_number}_{color_code}_{position}` (catalog spelling, no qualifiers, no extension; `{style_number}_ALL_{position}` for an image without a colour), so re-sending a file with the same style, colour and position **replaces** that image, and renaming `_front` to `_back` only changes the view. The original file name becomes the asset `filename`.
 
 | File | style | colour | position | role | view |
 |---|---|---|---|---|---|
@@ -104,9 +105,12 @@ Codes separated by `|`, in label order. Aligned with ISO 3758 (GINETEX symbols).
 | `KO-1003_RST_3_model.png` | KO-1003 | RST | 3 | model | null |
 | `AB_12_34_BLK_2_packshot_back.JPG` | AB_12_34 | BLK | 2 | packshot | back |
 | `KO-1004_IND_3_detail.jpg` | KO-1004 | IND | 3 | detail | detail |
+| `KO-1002_BLK_4_model_tilted_left.jpg` | KO-1002 | BLK | 4 | model | tilted_left |
+| `KO-1001_NVY_5_back_front.jpg` | KO-1001 | NVY | 5 | packshot | front (rightmost wins) |
+| `KO-1005_all_4_size_chart.png` | KO-1005 | `null` (all colours; external id `KO-1005_ALL_4`) | 4 | size_chart | null |
 | `KO-1001_NVY_front.jpg` | — | — | — | error `validation_failed`: no position | |
 
-Images whose style/colour is not in the catalog (this import or already on the node) are errors `unknown_parent`. Images that match neither the pattern nor an `assets.csv` row are errors (`validation_failed`). Two files resolving to the same external id in one import are an error for both.
+Images whose style/colour is not in the catalog (this import or already on the node) are errors `unknown_parent` (`ALL` always matches). Images that match neither the pattern nor an `assets.csv` row are errors (`validation_failed`). Two files resolving to the same external id in one import are an error for both.
 
 ### 2.2 assets.csv (optional)
 Same file rules as `products.csv`. One row per image file; empty cells keep the value from the filename or the defaults.
@@ -115,7 +119,7 @@ Same file rules as `products.csv`. One row per image file; empty cells keep the 
 |---|---|
 | `file` | **required**; image file name (basename) in this import or in `images_manifest` |
 | `asset_id` | external id override |
-| `product_id` / `style_number`, `color_code`, `position` | needed only when the file name does not follow the pattern; `color_code` empty = all colours |
+| `product_id` / `style_number`, `color_code`, `position` | needed only when the file name does not follow the pattern; `color_code` empty = all colours (and `ALL` here is an ordinary colour code) |
 | `role`, `view` | override the qualifiers |
 | `alt_text`, `alt_text:<lang>` | |
 | `license`, `license_text`, `channels` (`\|`-separated), `territories` (`\|`-separated), `embargo_until`, `expires_at`, `credit`, `model_release` | rights; empty = node default |
@@ -146,3 +150,4 @@ Scheduled pull imports (SFTP folder, S3 prefix) treat the folder like an unpacke
 4. `mode: upsert` (default) only touches what is in the import. `mode: mirror` also unpublishes products of the brands present in the file that the file does not contain; refused (`mass_unpublish_refused`) when that would be more than half of them, unless `allow_mass_unpublish`.
 5. `dry_run` validates and reports counts and errors without writing.
 6. Images are deduplicated by sha256: an unchanged image costs no upload (CLI/UI send a manifest) and no change entry.
+7. **Counts** (`ImportRun.counts`) count the objects the import wrote or compared: products, variants and assets from the files, and brands the import created. A brand the import only refers to (it already exists) is counted neither as `created` nor as `unchanged`, so a second import of the same file reports one object fewer as `unchanged` than the first reported as `created` when that first import created the brand.

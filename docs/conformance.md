@@ -12,10 +12,14 @@ An implementation is **OBX-conformant** for a profile when `obx-conformance` (in
 ## Running
 
 ```sh
-obx-conformance protocol --url https://node.example --client-id obxc_… --client-secret obxs_… [--second-client …] [--fixtures ./spec/fixtures]
+obx-conformance protocol --url https://node.example --client-id obxc_… --client-secret obxs_… \
+    [--second-client-id … --second-client-secret …] [--no-original-client-id … --no-original-client-secret …] [--fixtures ./spec/fixtures]
 obx-conformance ingest   --url https://node.example --token obxi_… --client-id … --client-secret …   # needs a fresh node
 obx-conformance portal   --url https://node.example --setup-code …                                  # needs a fresh node
 obx-conformance all      --url http://localhost:8080 --setup-code …                                 # fresh node: setup, then everything
+obx-conformance all      --url http://localhost:8080 --setup-code … --rate-limit-test               # also S-RATE-2 (locks the test IP out for a while)
+obx-conformance list                                                                                # every test id, REQUIRED or optional
+obx-conformance mock --addr :8080                                                                   # the in-memory mock node
 ```
 
 `all` on a **fresh** node is the reference path used in CI by every node repository: it completes setup (company "Kestrel Outfitters", first brand "Kestrel" → external id `kestrel`, languages `nl,en`), creates an ingest token and two retailers with API clients (one restricted to brand `kestrel`, one without originals), imports [`fixtures/kestrel`](../fixtures/kestrel), then runs all profiles. The suite also ships a **mock node** (`obx-conformance mock`) that passes everything, for developing consumers.
@@ -31,7 +35,7 @@ obx-conformance all      --url http://localhost:8080 --setup-code …           
 
 | Id | Test |
 |---|---|
-| P-DISC-1 | `/.well-known/obx` is public, valid DiscoveryDocument, CORS `*`, `api_base` ends in `/obx/v1` |
+| P-DISC-1 | `/.well-known/obx` is public, valid DiscoveryDocument, CORS `*`, `api_base` ends in `/obx/v1`; the other protocol endpoints send no `Access-Control-Allow-Origin` |
 | P-DISC-2 | capabilities include `changes`, `products`, `by_gtin`, `renditions`; each advertised optional capability works and each missing one answers `501 not_implemented` |
 | P-AUTH-1 | token endpoint: `client_secret_basic` works; wrong secret → 401 `invalid_client`; unknown scope → 400 `invalid_scope` |
 | P-AUTH-2 | no/invalid token → 401 problem+json with `unauthorized` / `invalid_token`; revoked client → `access_revoked` on the next call |
@@ -51,7 +55,7 @@ obx-conformance all      --url http://localhost:8080 --setup-code …           
 | P-MEDIA-2 | every rendition: bytes hash to `sha256`; `ETag` and `OBX-Content-SHA256` headers; `Range` → 206; `If-None-Match` → 304; signed URL works without Authorization until expiry |
 | P-MEDIA-3 | `original` bytes are identical to the fixture file; web ≤ 2000 px, thumb ≤ 600 px, square is square, all `image/jpeg`, never upscaled |
 | P-ERR-1 | every 4xx/5xx body is problem+json with a known `obx_error` |
-| P-RATE-1 | rate-limited responses carry `RateLimit-*`; 429 carries `Retry-After` (tested with a low limit when the node offers `--test-rate-limit`) |
+| P-RATE-1 | rate-limited responses carry `RateLimit-*`; 429 carries `Retry-After` (a real 429 is only provoked with `--rate-limit-test` against a node running with a lowered limit) |
 | P-EXP-1 | (if `exports`) export of brand `kestrel` with web renditions: manifest header, lines valid, every file line matches a zip entry and its hash; `changes_cursor` usable |
 | P-HOOK-1 | (if `webhooks`) subscribe to a local receiver; `webhook.test` arrives with a valid signature and timestamp; https-only and private-address targets rejected |
 | P-USE-1 | (if `usage`) `POST /usage` → 202 with accepted count; appears in admin stats (portal profile) |
@@ -63,7 +67,7 @@ obx-conformance all      --url http://localhost:8080 --setup-code …           
 | I-INFO-1 | `GET /obx/v1/ingest` valid IngestInfo; limits ≥ the minimums in ingest.md §9 |
 | I-AUTH-1 | missing scope → 403 `insufficient_scope`; brand-restricted token cannot write another brand |
 | I-REPLAY-1 | replay [`fixtures/ingest/script.ndjson`](../fixtures/ingest) one operation at a time (PUT/PATCH/DELETE endpoints); results match `expected-results.json`; after each operation the new `/changes` entries match `expected-changes.json` (`after_op`). Before an asset operation's entries are read, the runner waits until the asset is no longer `pending_files` (max 60 s). On nodes with `server_generated: false` the runner adds client-generated renditions to `files`. |
-| I-REPLAY-2 | the same script with every `external_id` (and `brand_external_id`/`product_external_id` reference) suffixed `-b`, sent as one `POST /batch` (JSON array), then suffixed `-c` as NDJSON, gives the same results and change entries |
+| I-REPLAY-2 | the same script with every `external_id` (and `brand_external_id`/`product_external_id` reference) suffixed `-b`, sent as one `POST /batch` (JSON array), then suffixed `-c` as NDJSON: the results equal `expected-results.json`. `/changes` is read once, after the whole batch, so by [protocol.md §6.2](protocol.md#62-what-a-consumer-sees) it omits upserts of objects that are no longer visible at that moment. The expected entries are therefore `expected-changes.json` without the `upsert` entries of objects that are not visible after the last operation, in the same order (every `delete` entry stays). |
 | I-IDEM-1 | repeating any upsert → `unchanged` and no change entry; `Idempotency-Key` returns the same job |
 | I-FILE-1 | blob HEAD/PUT dedupe; wrong sha256 → 422 `checksum_mismatch`; unknown sha in `files` → 422 `blob_missing` |
 | I-FILE-2 | multipart upload of a 12 MiB file in parts, resume after skipping a part (`upload_incomplete` first), complete |
@@ -100,7 +104,7 @@ Runs last (it creates extra retailers and changes settings back and forth). REQU
 | S-SESS-1 | a retailer user gets 403 on every admin endpoint; a session cookie is dead after logout; login does not keep a pre-login session id; changing the password ends the user's other sessions |
 | S-ISO-1 | exports, retailer webhooks, access-request status, download jobs, selections and self-service API keys answer 404 to anyone but their owner; a brand-restricted key's export and GTIN lookup stay in its grant |
 | S-URL-1 | a signed rendition URL cannot be moved to another asset or rendition, stripped, extended or re-signed, and stops working when the asset is unpublished |
-| S-SSRF-1 | import sources, brand webhooks and retailer webhooks refuse loopback, private, CGNAT, link-local and metadata addresses in every spelling (IPv4-mapped IPv6, `0.0.0.0`, `localhost`) and non-https schemes; numeric shorthands such as `127.1` or `2130706433` may be saved but must never be fetched |
+| S-SSRF-1 | import sources, brand webhooks and retailer webhooks refuse loopback, private, CGNAT, link-local and metadata addresses in every spelling (IPv4-mapped IPv6, `0.0.0.0`, `localhost`) and non-https schemes; numeric shorthands such as `127.1` or `2130706433` may be saved but must never be fetched. With `OBX_ALLOW_PRIVATE_URLS=true`, link-local and metadata addresses are still refused ([security.md §5](security.md#5-outbound-requests-ssrf)) |
 | S-UPL-1 | a blob over `max_upload_bytes` and a JSON object over `max_object_bytes` → 413; HTML sent as `image/png` → 415; an SVG logo is refused |
 | S-CSV-1 (optional) | `data.csv` prefixes cells starting with `=` or `+` so spreadsheets do not run them |
 | S-PATH-1 | encoded `..` paths under `/`, `/assets/`, `/locales/` and the logo URL never serve files outside the UI; `.env`, the database and configuration files are not served |

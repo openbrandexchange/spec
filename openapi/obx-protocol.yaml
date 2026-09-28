@@ -15,7 +15,7 @@ info:
     Conventions for every endpoint:
     - JSON is UTF-8, field names are snake_case, timestamps are RFC 3339.
     - Clients MUST ignore unknown fields, unknown enum values and unknown change types.
-      Extension fields are prefixed `x-<vendor>-` (for example `x-photopilot-crop`).
+      Extension fields are prefixed `x-<vendor>-` (for example `x-acme-crop`).
     - Errors are `application/problem+json` (RFC 9457) with an `obx_error` code, except the
       OAuth2 token endpoint which uses RFC 6749 error JSON.
     - Responses carry `OBX-Version: 0.1` and rate limit headers (`RateLimit-Limit`,
@@ -59,7 +59,7 @@ paths:
       tags: [Discovery]
       operationId: getDiscovery
       summary: Discovery document
-      description: 'Public. MUST be served with `Access-Control-Allow-Origin: *` and SHOULD be cacheable for 5 minutes.'
+      description: 'Public. MUST be served with `Access-Control-Allow-Origin: *` and SHOULD be cacheable for 5 minutes. It is the only endpoint with CORS headers; all others send none (security.md section 4).'
       security: []
       responses:
         '200':

@@ -1,6 +1,6 @@
 # Notes for implementers
 
-Decisions taken while writing v0.1.0-draft where the plan was silent or ambiguous. Each is the simplest reading; challenge them with a pull request.
+Decisions taken while writing v0.1.0 where the plan was silent or ambiguous. Each is the simplest reading; challenge them with a pull request.
 
 ## Interpretation decisions
 
@@ -8,7 +8,7 @@ Decisions taken while writing v0.1.0-draft where the plan was silent or ambiguou
 2. **`/changes` entries embed the current object** (`data` on upserts) so a consumer syncs in one pass. Upsert entries of objects that are not visible at read time are omitted (a delete entry always follows a visible → invisible transition).
 3. **Grant changes trigger a resync** (`grant` entry with `resync: true`) instead of per-retailer synthetic upserts/deletes. Consumers restart without a cursor and mark-and-sweep after the snapshot (first `phase: live` page).
 4. **Product responses embed variants and assets** (`ProductDetail`); feed entries do not (separate entries).
-5. **A product is visible without images.** The Photopilot portal requires at least one final image per article; OBX publishes article data (GTIN, materials) even before photos exist.
+5. **A product is visible without images.** OBX publishes article data (GTIN, materials) even before photos exist. An implementation MAY be stricter for its own reasons (one commercial implementation hides products without a final image); consumers must cope with both.
 6. **PUT replaces, except `status` and asset `files`** (omitted = keep), so nightly syncs never republish what a person unpublished.
 7. **One key per object**: the external id in the path. Conventions: product = style number, variant = GTIN as supplied, asset = `{style}_{color}_{position}`.
 8. **Position uniqueness is enforced on write** (`position_conflict`) among non-deleted assets of product + colour; reordering has its own atomic endpoint (`asset-order`), and one import applies a product colour's positions atomically.
@@ -39,11 +39,16 @@ Decisions taken while writing v0.1.0-draft where the plan was silent or ambiguou
 - The admin UI generates `web`/`square`/`thumb` in the browser when `Settings.node.renditions_server_generated` is false, uploads them as blobs and imports with an `images_manifest`.
 - The UI shows enum keys (roles, views, care codes, item types) with its own en/nl labels.
 - E-mails (as built in node-go; the other nodes should match): texts are the `email.*` groups in the vendored admin-ui `dist/locales/<lang>.json` (`invite`, `accessRequestReceived`, `accessRequestNew`, `accessApproved`, `accessRejected`, `zipReady`, `passwordReset`), in the recipient's language with `en` fallback. Plain text in this order: `greeting` (or `greetingNoName`), `body`, `reason`, `apiNote` (only when an API key was created), `button` + `:` + newline + link, `expiry`, `ignore`, `contact`, `signoff`, then `-- ` and `footer`. A line with an unfilled `{{placeholder}}` is left out. `{{portal}}` is "<brand> · <word>", the word being the brand's `portal_name` for that language or `glossary.portal`; `{{expires}}` is written `YYYY-MM-DD`. Links: invite `/invite/{token}`, reset `/reset-password/{token}`, admin review `/admin/requests`, approved `/login`, zip `/downloads`.
-- `branding.portal_name` (Settings and PublicBranding, not yet in node-admin.yaml): optional LocalizedText that replaces the portal word.
+- `branding.portal_name` (Settings and PublicBranding in node-admin.yaml): optional LocalizedText that replaces the portal word; updated by JSON merge patch, so removing one language means sending `null` for it.
+- **Several brand companies on one host.** The protocol assumes one node per host. A hosted service that serves several brand companies from one application host MAY select the company with a query parameter (for example `?portal=<slug>`) on discovery and access requests, provided the discovery document it returns hands out `api_base`, `token_endpoint`, `access_request_url` and `ingest_url` that already carry the selector, so a consumer never has to know about it. A separate hostname per brand company remains the RECOMMENDED setup.
+- **Import counts** count brands only when the import created them (see [import-format.md §4](docs/import-format.md#4-processing-rules), rule 7).
+- **API keys** made in the admin get `catalog:read` and `media:read` (+ `media:original` when allowed) unless the admin picks scopes; `usage:write` only on request.
+- **Images of all colours** are named `{style}_ALL_{position}` ([import-format.md](docs/import-format.md#all-colours)).
+- **`obx pull`** downloads the `web` version by default (`--renditions original,web,square,thumb` for more); it mirrors a catalog for a retailer and is not a backup of the brand's originals.
 
 ## Open questions
 
-- Final name after trademark search (governance).
+- Trademark registration of "Open Brand Exchange" (governance: planned at BOIP by the foundation).
 - Whether `print` belongs in the default channels.
 - Video/3D asset types (reserved: `media_type` values beyond `image`).
 - Per-collection grants (v0.1 grants are per brand).

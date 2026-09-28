@@ -11,7 +11,7 @@ Publishing should happen by itself: your PIM, ERP, DAM or a shared folder alread
 | n8n, Make or Zapier | [5. HTTP steps](#5-n8n-make-zapier) | none (visual) |
 | a developer connecting a PIM/ERP | [6. Direct API](#6-direct-api-for-developers) | small |
 
-All recipes need two values from your node's admin, **Automation → Ingest tokens → New token**:
+All recipes need two values from your portal's admin, **Automatic upload → Access keys → New key** (an *automatic upload key*; the API calls it an ingest token):
 
 - `OBX_URL`: your node's address, for example `https://brands.kestrel.example`
 - `OBX_TOKEN`: the token (starts with `obxi_`, shown once; store it as a secret)
@@ -23,20 +23,27 @@ Give each system its own token, so you can revoke one without breaking the other
 `obx` (from [obx-go](https://github.com/openbrandexchange/obx-go)) is a single program for Windows, macOS and Linux. It reads `OBX_URL` and `OBX_TOKEN` from the environment (or `--url` / `--token`).
 
 ```sh
-obx info                                           # check the token, see limits and brands
-obx push --csv products.csv --images ./images      # publish a CSV and a folder (or zip) of images
-obx push --package export.zip                      # same, as one zip (products.csv + images)
-obx push --csv products.csv --images ./images --mirror   # also unpublish what is no longer in the file
-obx push … --dry-run                               # only check, change nothing
+obx login https://brands.kestrel.example           # once per computer: stores the upload key (or --token obxi_…)
+obx info                                           # check the key, see limits, brands and languages
+obx push ./export                                  # a folder with products.csv, optional assets.csv and the images
+obx push --csv products.csv --images ./images      # a CSV and a folder (or zip) of images
+obx push --package export.zip                      # one zip (products.csv + assets.csv + images)
+obx push ./export --mirror                         # also unpublish what is no longer in the file
+obx push ./export --dry-run                        # only check, change nothing
 obx watch ./outbox                                 # keep publishing whatever lands in a folder
-obx status                                         # recent jobs and their errors
+obx status [--job <id>]                            # recent uploads and their problems
+obx logout                                         # forget the stored key
 ```
+
+Other `push` options: `--assets-csv assets.csv`, `--language nl` (language of the plain `name`/`description` columns), `--no-wait` (start the job and exit), `--json` (machine-readable output). `obx <command> --help` lists everything.
+
+For **retailers**, `obx pull https://brands.kestrel.example --out ./kestrel` mirrors a brand's catalog with an API key (`--client-id`/`--client-secret` or `OBX_CLIENT_ID`/`OBX_CLIENT_SECRET`): article data plus, by default, the `web` version of every image. `--renditions original,web,square,thumb` picks other versions (originals only when the brand allows them), and `--follow` keeps it up to date from the change feed.
 
 What `obx push` does, so you know it is cheap to run often: it hashes every image, asks the node which ones it already has, uploads only new or changed images (large files resumably), generates web/square/thumb versions itself when the node needs that, and starts one import job with the CSV and an image manifest. Unchanged products and images cause no work at the node and no updates for retailers. It waits for the job and prints a summary; exit code `0` = all good, `2` = done but some rows had errors (listed), `1` = failed.
 
 ## 1. Scheduled pull import (no code)
 
-In the admin: **Imports → Scheduled imports → Add**.
+In the admin: **Automatic upload → Scheduled imports → Add**.
 
 - **Web address (HTTPS):** the URL of a `products.csv` or a package zip (`products.csv` + `assets.csv` + images). If it needs a login, add a header such as `Authorization: Bearer …` (stored encrypted, never shown again).
 - **SFTP:** host, user, password or private key, and the folder with `products.csv` and the images. The server key is pinned on first connection.
@@ -96,18 +103,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install obx
-        run: |
-          curl -fsSL https://github.com/openbrandexchange/obx-go/releases/latest/download/obx_linux_amd64.tar.gz | tar -xz obx
-          sudo mv obx /usr/local/bin/
-      - name: Publish
-        env:
-          OBX_URL: ${{ secrets.OBX_URL }}
-          OBX_TOKEN: ${{ secrets.OBX_TOKEN }}
-        run: obx push --csv export/products.csv --assets-csv export/assets.csv --images export/images
+      - uses: openbrandexchange/obx-go/push-action@v0
+        with:
+          url: ${{ secrets.OBX_URL }}
+          token: ${{ secrets.OBX_TOKEN }}
+          folder: export
 ```
 
-The same works in GitLab CI, Bitbucket Pipelines or Azure DevOps: install `obx`, run `obx push`.
+The action installs `obx` and runs `obx push`; its other inputs are `csv`, `assets-csv`, `images`, `package`, `mirror`, `allow-mass-unpublish` and `version` (see [push-action/action.yml](https://github.com/openbrandexchange/obx-go/blob/main/push-action/action.yml)). Without the action, or in GitLab CI, Bitbucket Pipelines or Azure DevOps, install and run it yourself:
+
+```sh
+curl -fsSL https://github.com/openbrandexchange/obx-go/releases/latest/download/obx_linux_amd64.tar.gz | tar -xz obx
+./obx push export
+```
 
 ## 5. n8n, Make, Zapier
 
@@ -124,7 +132,7 @@ Use a plain **HTTP Request** step. Authentication: header `Authorization` = `Bea
 
 Every call is safe to repeat: the same data twice changes nothing.
 
-**Get told when things happen:** admin → Automation → Webhooks, events `import_run.completed`, `ingest_job.completed`, `access_request.created` (a retailer asked for access). Point it at an n8n/Make/Zapier webhook trigger. Verify the `OBX-Webhook-Signature` header when you can ([protocol.md §9](protocol.md#9-webhooks-capability-webhooks)).
+**Get told when things happen:** admin → Automatic upload → Notifications (webhooks), events `import_run.completed`, `ingest_job.completed`, `access_request.created` (a retailer asked for access). Point it at an n8n/Make/Zapier webhook trigger. Verify the `OBX-Webhook-Signature` header when you can ([protocol.md §9](protocol.md#9-webhooks-capability-webhooks)).
 
 ## 6. Direct API (for developers)
 
