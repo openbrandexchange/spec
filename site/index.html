@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>API reference 0.1.0 · Open Brand Exchange</title>
+  <meta name="description" content="Rendered reference of the Open Brand Exchange APIs and JSON Schemas, version 0.1.0.">
+  <style>
+    :root { color-scheme: light dark; --fg: #1d2330; --muted: #5b6475; --bg: #ffffff; --line: #d9dde5; --link: #1f5fbf; }
+    @media (prefers-color-scheme: dark) { :root { --fg: #e8ebf1; --muted: #a4acbb; --bg: #11151c; --line: #2b3240; --link: #8ab4ff; } }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
+    main { max-width: 46rem; margin: 0 auto; padding: 2.5rem 1rem 4rem; }
+    h1 { font-size: 1.75rem; margin: 0 0 .25rem; } h2 { font-size: 1.15rem; margin-top: 2.25rem; }
+    p { margin: .25rem 0 0; } .lead, footer, li p { color: var(--muted); }
+    ul { list-style: none; padding: 0; } li { padding: .9rem 0; border-bottom: 1px solid var(--line); }
+    li > a { font-weight: 600; font-size: 1.05rem; }
+    a { color: var(--link); } a:focus-visible { outline: 3px solid var(--link); outline-offset: 2px; }
+    .tag { font-size: .8rem; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 0 .5rem; margin-left: .35rem; }
+    .schemas { overflow-wrap: anywhere; } footer { margin-top: 3rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>API reference</h1>
+    <p class="lead">Open Brand Exchange 0.1.0. Generated from the <a href="https://github.com/openbrandexchange/spec">specification</a>; the prose in <code>docs/</code> is authoritative where this reference is silent.</p>
+    <h2>APIs</h2>
+    <ul>
+      <li>
+        <a href="protocol.html">OBX Protocol</a> <span class="tag">normative</span>
+        <p>What retailers' software reads: discovery, access, the change feed, products, images, exports, webhooks. <a href="openapi/obx-protocol.yaml">OpenAPI (YAML)</a></p>
+      </li>
+      <li>
+        <a href="ingest.html">OBX Ingest API</a> <span class="tag">normative</span>
+        <p>How a brand's own systems publish: idempotent writes, files by checksum, batches, imports, jobs. <a href="openapi/obx-ingest.yaml">OpenAPI (YAML)</a></p>
+      </li>
+      <li>
+        <a href="admin.html">Node Admin + Portal API</a> <span class="tag">non-normative</span>
+        <p>The API behind the shared admin and retailer portal of the reference portals. <a href="openapi/node-admin.yaml">OpenAPI (YAML)</a></p>
+      </li>
+    </ul>
+    <h2>JSON Schemas</h2>
+    <p class="schemas"><a href="schemas/v0.1/AccessRequest.json">AccessRequest</a>, <a href="schemas/v0.1/AccessRequestInput.json">AccessRequestInput</a>, <a href="schemas/v0.1/Asset.json">Asset</a>, <a href="schemas/v0.1/AssetInput.json">AssetInput</a>, <a href="schemas/v0.1/Blob.json">Blob</a>, <a href="schemas/v0.1/Brand.json">Brand</a>, <a href="schemas/v0.1/BrandInput.json">BrandInput</a>, <a href="schemas/v0.1/Care.json">Care</a>, <a href="schemas/v0.1/Change.json">Change</a>, <a href="schemas/v0.1/ChangesPage.json">ChangesPage</a>, <a href="schemas/v0.1/Color.json">Color</a>, <a href="schemas/v0.1/Common.json">Common</a>, <a href="schemas/v0.1/Directory.json">Directory</a>, <a href="schemas/v0.1/DirectoryEntry.json">DirectoryEntry</a>, <a href="schemas/v0.1/DiscoveryDocument.json">DiscoveryDocument</a>, <a href="schemas/v0.1/Export.json">Export</a>, <a href="schemas/v0.1/ExportManifestLine.json">ExportManifestLine</a>, <a href="schemas/v0.1/ExportRequest.json">ExportRequest</a>, <a href="schemas/v0.1/Grant.json">Grant</a>, <a href="schemas/v0.1/GtinLookupResult.json">GtinLookupResult</a>, <a href="schemas/v0.1/ImportRowError.json">ImportRowError</a>, <a href="schemas/v0.1/ImportRun.json">ImportRun</a>, <a href="schemas/v0.1/ImportSource.json">ImportSource</a>, <a href="schemas/v0.1/IngestInfo.json">IngestInfo</a>, <a href="schemas/v0.1/IngestJob.json">IngestJob</a>, <a href="schemas/v0.1/IngestOperation.json">IngestOperation</a>, <a href="schemas/v0.1/IngestRecord.json">IngestRecord</a>, <a href="schemas/v0.1/IngestResult.json">IngestResult</a>, <a href="schemas/v0.1/LocalizedText.json">LocalizedText</a>, <a href="schemas/v0.1/Materials.json">Materials</a>, <a href="schemas/v0.1/Problem.json">Problem</a>, <a href="schemas/v0.1/Product.json">Product</a>, <a href="schemas/v0.1/ProductDetail.json">ProductDetail</a>, <a href="schemas/v0.1/ProductInput.json">ProductInput</a>, <a href="schemas/v0.1/Provenance.json">Provenance</a>, <a href="schemas/v0.1/Rendition.json">Rendition</a>, <a href="schemas/v0.1/Rights.json">Rights</a>, <a href="schemas/v0.1/TokenResponse.json">TokenResponse</a>, <a href="schemas/v0.1/Upload.json">Upload</a>, <a href="schemas/v0.1/Usage.json">Usage</a>, <a href="schemas/v0.1/UsageEvent.json">UsageEvent</a>, <a href="schemas/v0.1/Variant.json">Variant</a>, <a href="schemas/v0.1/VariantInput.json">VariantInput</a>, <a href="schemas/v0.1/WebhookEvent.json">WebhookEvent</a>, <a href="schemas/v0.1/WebhookSubscription.json">WebhookSubscription</a></p>
+    <footer>
+      <p>An initiative of Richard Lindhout · Open Brand Exchange Foundation (in formation) · <a href="mailto:hello@openbrandexchange.com">hello@openbrandexchange.com</a></p>
+      <p>Specification licensed under <a href="https://creativecommons.org/licenses/by/4.0/">CC-BY-4.0</a>. Rendered with Redocly CLI and the Redoc v2.5.4 viewer (MIT).</p>
+    </footer>
+  </main>
+</body>
+</html>

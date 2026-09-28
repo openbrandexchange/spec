@@ -1,0 +1,6137 @@
+openapi: 3.1.0
+info:
+  title: OBX Node Admin + Portal API
+  version: 0.1.0
+  summary: The API between the shared admin-ui and a node (brand admin + retailer portal).
+  description: |
+    **Non-normative.** Not part of the OBX standard; it is the contract between the shared
+    `admin-ui` (a static single-page app) and the reference nodes (node-go, node-php,
+    node-ts), so one UI works on every node. Other OBX implementations are free to build their
+    own UI.
+
+    **Serving.** A node serves the admin-ui build at `/` with single-page-app fallback: any
+    GET that is not under `/admin/api`, `/obx/` or `/.well-known/` and accepts `text/html`
+    returns `index.html`. UI routes that the node itself links to (e-mails):
+    `/invite/{token}`, `/reset-password/{token}`, `/request-access`, `/login`.
+    The node's public base URL comes from its configuration (`OBX_PUBLIC_URL`).
+
+    **Sessions.** Cookie `obx_session` (HttpOnly, Secure except on http://localhost,
+    SameSite=Lax, Path=/), sliding expiry, at most 30 days, invalidated on logout, password
+    change and blocking. Bearer tokens are NOT accepted here.
+
+    **CSRF.** Every POST/PUT/PATCH/DELETE under `/admin/api` MUST carry header
+    `X-CSRF-Token` equal to the `csrf_token` returned by `GET /admin/api/session` (which works
+    without being logged in and sets the matching HttpOnly cookie `obx_csrf`), else 403
+    `csrf_failed`. Login rotates the token (use the one in the login response).
+
+    **Roles.** `admin` (the brand) and `retailer`. `/admin/api/portal/*` is for retailers;
+    admins may call it too and get a preview of everything published (their downloads are
+    not logged). Everything else except public/session/setup/password/invite endpoints
+    requires `admin`. Before first-run setup every other endpoint answers 409
+    `setup_required`.
+
+    **Catalog writes.** `/admin/api/catalog/*` has exactly the semantics of the OBX Ingest API
+    (same bodies, results, errors, change-feed effects), just with session auth.
+
+    **Errors.** `application/problem+json` with `obx_error` (docs/protocol.md#errors).
+    Lists use `limit` + opaque `cursor` and return `{items, next_cursor}`.
+  license:
+    name: CC-BY-4.0
+    url: https://creativecommons.org/licenses/by/4.0/
+servers:
+  - url: https://{host}
+    variables:
+      host:
+        default: brand.example.org
+security:
+  - session: []
+tags:
+  - name: Session
+    description: Login, logout, CSRF, password reset, invites.
+  - name: Setup
+    description: First-run wizard.
+  - name: Settings
+    description: Brand profile, branding and defaults.
+  - name: Catalog
+    description: Brand-side catalog management (ingest semantics).
+  - name: Imports
+    description: Uploads and scheduled pull imports.
+  - name: Retailers
+    description: Retailers, access requests, accounts and API clients.
+  - name: Automation
+    description: Ingest tokens and webhooks for the brand's own systems.
+  - name: Stats
+    description: Downloads and usage.
+  - name: Portal
+    description: The retailer portal.
+paths:
+  /admin/api/public/branding:
+    get:
+      tags:
+        - Session
+      operationId: getPublicBranding
+      summary: Branding for the login and request-access pages
+      security: []
+      responses:
+        "200":
+          description: Public branding.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicBranding"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+  /admin/api/setup:
+    get:
+      tags:
+        - Setup
+      operationId: getSetupState
+      summary: Is first-run setup still required?
+      security: []
+      responses:
+        "200":
+          description: Setup state.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - required
+                properties:
+                  required:
+                    type: boolean
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+    post:
+      tags:
+        - Setup
+      operationId: completeSetup
+      summary: Complete the first-run wizard
+      description: |
+        Creates the brand profile, the first brand and the first admin (password chosen here;
+        there is never a default password) and logs in. Requires the one-time `setup_code`
+        that the node prints in its log on first start (or that the operator preset with
+        `OBX_SETUP_CODE`), so nobody else can claim a freshly deployed node. Rate limited
+        (10 per 15 min per IP). 409 `setup_completed` once done.
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/Csrf"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetupInput"
+      responses:
+        "201":
+          description: Done; session cookie set.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Session"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+  /admin/api/session:
+    get:
+      tags:
+        - Session
+      operationId: getSession
+      summary: Current session (also when logged out) and CSRF token
+      security: []
+      responses:
+        "200":
+          description: Session state.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Session"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+  /admin/api/session/login:
+    post:
+      tags:
+        - Session
+      operationId: login
+      summary: Log in with e-mail and password
+      description: 401 `invalid_credentials` (same answer for unknown e-mail), 403 `account_blocked`. Rate limited per IP and per e-mail (10 per 15 min).
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/Csrf"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  $ref: "#/components/schemas/Email"
+                password:
+                  type: string
+                  maxLength: 200
+      responses:
+        "200":
+          description: Logged in; cookie set.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Session"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+  /admin/api/session/logout:
+    post:
+      tags:
+        - Session
+      operationId: logout
+      summary: Log out
+      parameters:
+        - $ref: "#/components/parameters/Csrf"
+      responses:
+        "204":
+          description: Logged out.
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /admin/api/password/forgot:
+    post:
+      tags:
+        - Session
+      operationId: forgotPassword
+      summary: Send a reset link
+      description: Always 202 (no account enumeration). Link `<public_url>/reset-password/<token>`, valid 1 hour, one-time. Rate limited (5 per 15 min per IP).
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/Csrf"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+              properties:
+                email:
+                  $ref: "#/components/schemas/Email"
+      responses:
+        "202":
+          description: Accepted.
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+  /admin/api/password/reset:
+    post:
+      tags:
+        - Session
+      operationId: resetPassword
+      summary: Set a new password with a reset token
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/Csrf"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - token
+                - password
+              properties:
+                token:
+                  type: string
+                  minLength: 20
+                  maxLength: 200
+                password:
+                  $ref: "#/components/schemas/Password"
+      responses:
+        "200":
+          description: Password set; logged in.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Session"
+        "400":
+          $ref: "#/components/responses/InviteInvalid"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+  /admin/api/invites/{token}:
+    get:
+      tags:
+        - Session
+      operationId: getInvite
+      summary: Look up an invitation
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/TokenPath"
+      responses:
+        "200":
+          description: Invitation details.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - email
+                  - role
+                  - expires_at
+                properties:
+                  email:
+                    $ref: "#/components/schemas/Email"
+                  name:
+                    type:
+                      - string
+                      - "null"
+                  role:
+                    type: string
+                    enum:
+                      - admin
+                      - retailer
+                  retailer_name:
+                    type:
+                      - string
+                      - "null"
+                  expires_at:
+                    $ref: "#/components/schemas/DateTime"
+        "400":
+          $ref: "#/components/responses/InviteInvalid"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+  /admin/api/invites/{token}/accept:
+    post:
+      tags:
+        - Session
+      operationId: acceptInvite
+      summary: Accept an invitation by choosing a password
+      description: One-time (the token is consumed atomically), valid 7 days. Logs in.
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/TokenPath"
+        - $ref: "#/components/parameters/Csrf"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - password
+              properties:
+                name:
+                  type: string
+                  maxLength: 200
+                password:
+                  $ref: "#/components/schemas/Password"
+                language:
+                  $ref: "#/components/schemas/LanguageTag"
+      responses:
+        "200":
+          description: Account active; logged in.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Session"
+        "400":
+          $ref: "#/components/responses/InviteInvalid"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+  /admin/api/me:
+    patch:
+      tags:
+        - Session
+      operationId: updateMe
+      summary: Update own name, language or password
+      description: Changing the password requires `current_password` and ends all other sessions.
+      parameters:
+        - $ref: "#/components/parameters/Csrf"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 200
+                language:
+                  $ref: "#/components/schemas/LanguageTag"
+                current_password:
+                  type: string
+                  maxLength: 200
+                new_password:
+                  $ref: "#/components/schemas/Password"
+      responses:
+        "200":
+          description: Updated session.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Session"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+  /admin/api/settings:
+    get:
+      tags:
+        - Settings
+      operationId: getSettings
+      summary: Node settings
+      responses:
+        "200":
+          description: Settings.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Settings"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    patch:
+      tags:
+        - Settings
+      operationId: updateSettings
+      summary: Update settings (JSON merge patch of the writable parts)
+      description: Changing `portal.allow_original_download` or default rights affects what retailers see and is reflected in /changes (grant entries with resync, or asset upserts).
+      parameters:
+        - $ref: "#/components/parameters/Csrf"
+      requestBody:
+        required: true
+        content:
+          application/merge-patch+json:
+            schema:
+              $ref: "#/components/schemas/Settings"
+      responses:
+        "200":
+          description: Updated settings.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Settings"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+  /admin/api/settings/logo:
+    put:
+      tags:
+        - Settings
+      operationId: uploadLogo
+      summary: Upload the portal logo (PNG, JPEG or WebP, max 5 MB; no SVG)
+      parameters:
+        - $ref: "#/components/parameters/Csrf"
+      requestBody:
+        required: true
+        content:
+          image/png:
+            schema:
+              type: string
+              contentMediaType: image/png
+          image/jpeg:
+            schema:
+              type: string
+              contentMediaType: image/jpeg
+          image/webp:
+            schema:
+              type: string
+              contentMediaType: image/webp
+      responses:
+        "200":
+          description: Updated settings.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Settings"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+    delete:
+      tags:
+        - Settings
+      operationId: deleteLogo
+      summary: Remove the logo
+      parameters:
+        - $ref: "#/components/parameters/Csrf"
+      responses:
+        "200":
+          description: Updated settings.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Settings"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /admin/api/catalog/brands:
+    get:
+      tags:
+        - Catalog
+      operationId: adminListBrands
+      summary: All brands (any status)
+      responses:
+        "200":
+          description: Brands.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/IngestRecord"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /admin/api/catalog/brands/{external_id}:
+    parameters:
+      - $ref: "#/components/parameters/ExternalId"
+    put:
+      tags:
+        - Catalog
+      operationId: adminPutBrand
+      summary: Create or replace a brand
+      parameters:
+        - $ref: "#/components/parameters/Csrf"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BrandInput"
+      responses:
+        "200":
+          $ref: "#/components/responses/IngestResult"
+        "201":
+          $ref: "#/components/responses/IngestResult"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+    patch:
+      tags:
+        - Catalog
+      operationId: adminPatchBrand
+      summary: Patch a brand
+      parameters:
+        - $ref: "#/components/parameters/Csrf"
+      requestBody:
+        required: true
+        content:
+          application/merge-patch+json:
+            schema:
+              type: object
+      responses:
+        "200":
+          $ref: "#/components/responses/IngestResult"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+    delete:
+      tags:
+        - Catalog
+      operationId: adminDeleteBrand
+      summary: Delete a brand without products
+      parameters:
+        - $ref: "#/components/parameters/Csrf"
+      responses:
+        "200":
+          $ref: "#/components/responses/IngestResult"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /admin/api/catalog/products:
+    get:
+      tags:
+        - Catalog
+      operationId: adminListProducts
+      summary: Search products (any status)
+      parameters:
+        - name: q
+          in: query
+          description: Matches style number, name, GTIN, SKU (case-insensitive substring).
+          schema:
+            type: string
+            maxLength: 200
+        - name: brand
+          in: query
+          description: Brand external id.
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum:
+              - published
+              - unpublished
+        - name: visibility
+          in: query
+          schema:
+            type: string
+            enum:
+              - visible
+              - hidden
+              - pending_files
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum:
+              - updated_desc
+              - style_number
+              - name
+            default: updated_desc
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Products.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                  - next_cursor
+                  - total
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/AdminProductSummary"
+                  next_cursor:
+                    $ref: "#/components/schemas/NextCursor"
+                  total:
+                    type: integer
+                    minimum: 0
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /admin/api/catalog/products/{external_id}:
+    parameters:
+      - $ref: "#/components/parameters/ExternalId"
+    get:
+      tags:
+        - Catalog
+      operationId: adminGetProduct
+      summary: Product with all variants and assets (any status)
+      responses:
+        "200":
+          description: Product detail.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminProductDetail"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      tags:
+        - Catalog
+      operationId: adminPutProduct
+      summary: Create or replace a product
+      parameters:
+        - $ref: "#/components/parameters/Csrf"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductInput"
+      responses:
+        "200":
+          $ref: "#/components/responses/IngestResult"
+        "201":
+          $ref: "#/components/responses/IngestResult"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+    patch:
+      tags:
+        - Catalog
+      operationId: adminPatchProduct
+      summary: Patch a product (e.g. publish/unpublish)
+      parameters:
+        - $ref: "#/components/parameters/Csrf"
+      requestBody:
+        required: true
+        content:
+          application/merge-patch+json:
+            schema:
+              type: object
+      responses:
+        "200":
+          $ref: "#/components/responses/IngestResult"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+    delete:
+      tags:
+        - Catalog
+      operationId: adminDeleteProduct
+      summary: Delete a product with its variants and assets
+      parameters:
+        - $ref: "#/components/parameters/Csrf"
+      responses:
+        "200":
+          $ref: "#/components/responses/IngestResult"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /admin/api/catalog/products/{external_id}/asset-order:
+    put:
+      tags:
+        - Catalog
+      operationId: adminPutAssetOrder
+      summary: Reorder the images of one product colour
+      description: Same as Ingest `PUT /products/{external_id}/asset-order`.
+      parameters:
+        - $ref: "#/components/parameters/ExternalId"
+        - $ref: "#/components/parameters/Csrf"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssetOrder"
+      responses:
+        "200":
+          description: Positions updated.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/IngestResult"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+  /admin/api/catalog/variants/{external_id}:
+    parameters:
+      - $ref: "#/components/parameters/ExternalId"
+    put:
+      tags:
+        - Catalog
+      operationId: adminPutVariant
+      summary: Create or replace a variant
+      parameters:
+        - $ref: "#/components/parameters/Csrf"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VariantInput"
+      responses:
+        "200":
+          $ref: "#/components/responses/IngestResult"
+        "201":
+          $ref: "#/components/responses/IngestResult"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+    patch:
+      tags:
+        - Catalog
+      operationId: adminPatchVariant
+      summary: Patch a variant
+      parameters:
+        - $ref: "#/components/parameters/Csrf"
+      requestBody:
+        required: true
+        content:
+          application/merge-patch+json:
+            schema:
+              type: object
+      responses:
+        "200":
+          $ref: "#/components/responses/IngestResult"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+    delete:
+      tags:
+        - Catalog
+      operationId: adminDeleteVariant
+      summary: Delete a variant
+      parameters:
+        - $ref: "#/components/parameters/Csrf"
+      responses:
+        "200":
+          $ref: "#/components/responses/IngestResult"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /admin/api/catalog/assets/{external_id}:
+    parameters:
+      - $ref: "#/components/parameters/ExternalId"
+    put:
+      tags:
+        - Catalog
+      operationId: adminPutAsset
+      summary: Create or replace asset metadata
+      parameters:
+        - $ref: "#/components/parameters/Csrf"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssetInput"
+      responses:
+        "200":
+          $ref: "#/components/responses/IngestResult"
+        "201":
+          $ref: "#/components/responses/IngestResult"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+    patch:
+      tags:
+        - Catalog
+      operationId: adminPatchAsset
+      summary: Patch asset metadata (role, view, rights, provenance, status)
+      parameters:
+        - $ref: "#/components/parameters/Csrf"
+      requestBody:
+        required: true
+        content:
+          application/merge-patch+json:
+            schema:
+              type: object
+      responses:
+        "200":
+          $ref: "#/components/responses/IngestResult"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+    delete:
+      tags:
+        - Catalog
+      operationId: adminDeleteAsset
+      summary: Delete an asset
+      parameters:
+        - $ref: "#/components/parameters/Csrf"
+      responses:
+        "200":
+          $ref: "#/components/responses/IngestResult"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /admin/api/catalog/assets/{external_id}/files/{rendition}:
+    put:
+      tags:
+        - Catalog
+      operationId: adminPutAssetFile
+      summary: Upload the original or a client-generated rendition
+      description: Same as Ingest `PUT /assets/{external_id}/files/{rendition}`. The admin-ui generates web/square/thumb in the browser when the node reports `renditions_server_generated=false` (Settings.node).
+      parameters:
+        - $ref: "#/components/parameters/ExternalId"
+        - name: rendition
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/RenditionName"
+        - name: OBX-Content-SHA256
+          in: header
+          required: false
+          schema:
+            $ref: "#/components/schemas/Sha256"
+        - $ref: "#/components/parameters/Csrf"
+      requestBody:
+        required: true
+        content:
+          image/*:
+            schema:
+              type: string
+              contentMediaType: application/octet-stream
+      responses:
+        "200":
+          $ref: "#/components/responses/IngestResult"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+  /admin/api/catalog/blobs/{sha256}:
+    parameters:
+      - name: sha256
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/Sha256"
+    head:
+      tags:
+        - Catalog
+      operationId: adminHeadBlob
+      summary: Does the node already have these bytes? (200/404)
+      responses:
+        "200":
+          description: Present.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Not present.
+    put:
+      tags:
+        - Catalog
+      operationId: adminPutBlob
+      summary: Upload bytes (same as Ingest PUT /blobs/{sha256})
+      parameters:
+        - $ref: "#/components/parameters/Csrf"
+      requestBody:
+        required: true
+        content:
+          image/*:
+            schema:
+              type: string
+              contentMediaType: application/octet-stream
+      responses:
+        "200":
+          description: Already present.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Blob"
+        "201":
+          description: Stored.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Blob"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+  /admin/api/imports:
+    get:
+      tags:
+        - Imports
+      operationId: listImportRuns
+      summary: Import runs (uploads, API, scheduled), newest first
+      parameters:
+        - name: source_id
+          in: query
+          schema:
+            $ref: "#/components/schemas/Id"
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Runs.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                  - next_cursor
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ImportRun"
+                  next_cursor:
+                    $ref: "#/components/schemas/NextCursor"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      tags:
+        - Imports
+      operationId: createImportRun
+      summary: Upload a CSV and/or images (same fields as Ingest POST /imports)
+      parameters:
+        - $ref: "#/components/parameters/Csrf"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                package:
+                  type: string
+                  contentMediaType: application/zip
+                csv:
+                  type: string
+                  contentMediaType: text/csv
+                assets_csv:
+                  type: string
+                  contentMediaType: text/csv
+                images:
+                  type: array
+                  items:
+                    type: string
+                    contentMediaType: application/octet-stream
+                images_manifest:
+                  description: Same as Ingest ImagesManifest (blobs uploaded via /admin/api/catalog/blobs/{sha256}).
+                  type: array
+                  items:
+                    type: object
+                options:
+                  type: object
+                  properties:
+                    mode:
+                      type: string
+                      enum:
+                        - upsert
+                        - mirror
+                    allow_mass_unpublish:
+                      type: boolean
+                    dry_run:
+                      type: boolean
+                    default_language:
+                      $ref: "#/components/schemas/LanguageTag"
+      responses:
+        "202":
+          description: Run queued.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImportRun"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+  /admin/api/imports/{id}:
+    get:
+      tags:
+        - Imports
+      operationId: getImportRun
+      summary: One import run
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "200":
+          description: The run.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImportRun"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /admin/api/imports/{id}/errors:
+    get:
+      tags:
+        - Imports
+      operationId: listImportRunErrors
+      summary: Row and file errors/warnings of a run
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Errors in file/row order.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                  - next_cursor
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ImportRowError"
+                  next_cursor:
+                    $ref: "#/components/schemas/NextCursor"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /admin/api/import-template.csv:
+    get:
+      tags:
+        - Imports
+      operationId: getImportTemplate
+      summary: Canonical CSV template with header and two example rows
+      responses:
+        "200":
+          description: CSV.
+          content:
+            text/csv:
+              schema:
+                type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /admin/api/import-sources:
+    get:
+      tags:
+        - Imports
+      operationId: listImportSources
+      summary: Scheduled pull imports
+      responses:
+        "200":
+          description: Sources (credentials never returned).
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ImportSource"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      tags:
+        - Imports
+      operationId: createImportSource
+      summary: Add a scheduled pull import (https_url, sftp or s3)
+      parameters:
+        - $ref: "#/components/parameters/Csrf"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ImportSourceInput"
+      responses:
+        "201":
+          description: Created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImportSource"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+  /admin/api/import-sources/{id}:
+    parameters:
+      - $ref: "#/components/parameters/IdPath"
+    get:
+      tags:
+        - Imports
+      operationId: getImportSource
+      summary: One source
+      responses:
+        "200":
+          description: Source.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImportSource"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      tags:
+        - Imports
+      operationId: updateImportSource
+      summary: Update a source (merge patch; credentials write-only)
+      parameters:
+        - $ref: "#/components/parameters/Csrf"
+      requestBody:
+        required: true
+        content:
+          application/merge-patch+json:
+            schema:
+              $ref: "#/components/schemas/ImportSourceInput"
+      responses:
+        "200":
+          description: Updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImportSource"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+    delete:
+      tags:
+        - Imports
+      operationId: deleteImportSource
+      summary: Delete a source (its runs stay in history)
+      parameters:
+        - $ref: "#/components/parameters/Csrf"
+      responses:
+        "204":
+          description: Deleted.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /admin/api/import-sources/{id}/run:
+    post:
+      tags:
+        - Imports
+      operationId: runImportSource
+      summary: Run now (also for manual schedules)
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+        - $ref: "#/components/parameters/Csrf"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                dry_run:
+                  type: boolean
+                  default: false
+                force:
+                  type: boolean
+                  default: false
+                  description: Import even if the remote files did not change.
+      responses:
+        "202":
+          description: Run queued.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImportRun"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /admin/api/import-sources/{id}/test:
+    post:
+      tags:
+        - Imports
+      operationId: testImportSource
+      summary: Check the connection and list what would be imported
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+        - $ref: "#/components/parameters/Csrf"
+      responses:
+        "200":
+          description: Test result.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - ok
+                  - files
+                properties:
+                  ok:
+                    type: boolean
+                  message:
+                    type:
+                      - string
+                      - "null"
+                  host_key_fingerprint:
+                    type:
+                      - string
+                      - "null"
+                    description: "sftp: the key seen (to pin)."
+                  files:
+                    type: array
+                    maxItems: 100
+                    items:
+                      type: object
+                      required:
+                        - name
+                        - bytes
+                      properties:
+                        name:
+                          type: string
+                        bytes:
+                          type: integer
+                        modified_at:
+                          type:
+                            - string
+                            - "null"
+                          format: date-time
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+  /admin/api/retailers:
+    get:
+      tags:
+        - Retailers
+      operationId: listRetailers
+      summary: Retailers
+      parameters:
+        - name: q
+          in: query
+          schema:
+            type: string
+            maxLength: 200
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum:
+              - active
+              - blocked
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Retailers.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                  - next_cursor
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Retailer"
+                  next_cursor:
+                    $ref: "#/components/schemas/NextCursor"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      tags:
+        - Retailers
+      operationId: createRetailer
+      summary: Add a retailer manually
+      parameters:
+        - $ref: "#/components/parameters/Csrf"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RetailerInput"
+      responses:
+        "201":
+          description: Created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Retailer"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+  /admin/api/retailers/{id}:
+    parameters:
+      - $ref: "#/components/parameters/IdPath"
+    get:
+      tags:
+        - Retailers
+      operationId: getRetailer
+      summary: One retailer
+      responses:
+        "200":
+          description: Retailer.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Retailer"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      tags:
+        - Retailers
+      operationId: updateRetailer
+      summary: Update a retailer, its grant, or block/unblock it (status)
+      description: Blocking ends all its sessions and invalidates its API tokens immediately (`access_revoked`). Grant changes emit a grant change with resync for its consumers.
+      parameters:
+        - $ref: "#/components/parameters/Csrf"
+      requestBody:
+        required: true
+        content:
+          application/merge-patch+json:
+            schema:
+              $ref: "#/components/schemas/RetailerInput"
+      responses:
+        "200":
+          description: Updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Retailer"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+    delete:
+      tags:
+        - Retailers
+      operationId: deleteRetailer
+      summary: Delete a retailer with its accounts and API clients (download history is kept, anonymised to the retailer name)
+      parameters:
+        - $ref: "#/components/parameters/Csrf"
+      responses:
+        "204":
+          description: Deleted.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /admin/api/access-requests:
+    get:
+      tags:
+        - Retailers
+      operationId: listAccessRequests
+      summary: Access requests, newest first
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum:
+              - pending
+              - approved
+              - rejected
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Requests.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                  - next_cursor
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/AdminAccessRequest"
+                  next_cursor:
+                    $ref: "#/components/schemas/NextCursor"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /admin/api/access-requests/{id}:
+    get:
+      tags:
+        - Retailers
+      operationId: getAdminAccessRequest
+      summary: One access request
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "200":
+          description: Request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminAccessRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /admin/api/access-requests/{id}/approve:
+    post:
+      tags:
+        - Retailers
+      operationId: approveAccessRequest
+      summary: Approve
+      description: |
+        Creates (or links) the retailer, optionally invites the contact as a portal user
+        (e-mail with a one-time link) and optionally creates an API client whose secret is
+        handed to the requester exactly once via the protocol status endpoint. 409 `conflict`
+        if not pending.
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+        - $ref: "#/components/parameters/Csrf"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                retailer_id:
+                  description: Link to an existing retailer instead of creating one.
+                  $ref: "#/components/schemas/Id"
+                brand_ids:
+                  description: Grant; null/omitted = the requested brands, or all when none requested.
+                  type:
+                    - array
+                    - "null"
+                  items:
+                    $ref: "#/components/schemas/Id"
+                invite_portal_user:
+                  type: boolean
+                  description: Default true when 'portal' was requested.
+                create_api_client:
+                  type: boolean
+                  description: Default true when 'api' was requested.
+      responses:
+        "200":
+          description: Approved.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - access_request
+                  - retailer
+                properties:
+                  access_request:
+                    $ref: "#/components/schemas/AdminAccessRequest"
+                  retailer:
+                    $ref: "#/components/schemas/Retailer"
+                  invite:
+                    $ref: "#/components/schemas/InviteResult"
+                  api_client:
+                    $ref: "#/components/schemas/ApiClient"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /admin/api/access-requests/{id}/reject:
+    post:
+      tags:
+        - Retailers
+      operationId: rejectAccessRequest
+      summary: Reject (reason optional, shown to the requester)
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+        - $ref: "#/components/parameters/Csrf"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type:
+                    - string
+                    - "null"
+                  maxLength: 2000
+      responses:
+        "200":
+          description: Rejected.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminAccessRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /admin/api/users:
+    get:
+      tags:
+        - Retailers
+      operationId: listUsers
+      summary: Accounts (admins and retailer users)
+      parameters:
+        - name: role
+          in: query
+          schema:
+            type: string
+            enum:
+              - admin
+              - retailer
+        - name: retailer_id
+          in: query
+          schema:
+            $ref: "#/components/schemas/Id"
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Users.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                  - next_cursor
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/User"
+                  next_cursor:
+                    $ref: "#/components/schemas/NextCursor"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /admin/api/users/invites:
+    post:
+      tags:
+        - Retailers
+      operationId: inviteUser
+      summary: Invite an admin or a retailer user by e-mail (one-time link, 7 days)
+      description: 409 `conflict` when the e-mail already has an account on this node. When e-mail is not configured, `email_sent` is false and the admin copies `invite_url` manually.
+      parameters:
+        - $ref: "#/components/parameters/Csrf"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - role
+              properties:
+                email:
+                  $ref: "#/components/schemas/Email"
+                name:
+                  type: string
+                  maxLength: 200
+                role:
+                  type: string
+                  enum:
+                    - admin
+                    - retailer
+                retailer_id:
+                  description: Required for role retailer.
+                  $ref: "#/components/schemas/Id"
+                language:
+                  $ref: "#/components/schemas/LanguageTag"
+      responses:
+        "201":
+          description: Invited.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InviteResult"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+  /admin/api/users/{id}:
+    parameters:
+      - $ref: "#/components/parameters/IdPath"
+    patch:
+      tags:
+        - Retailers
+      operationId: updateUser
+      summary: Block/unblock or rename an account
+      parameters:
+        - $ref: "#/components/parameters/Csrf"
+      requestBody:
+        required: true
+        content:
+          application/merge-patch+json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  maxLength: 200
+                status:
+                  type: string
+                  enum:
+                    - active
+                    - blocked
+      responses:
+        "200":
+          description: Updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: "`conflict`: you cannot block or delete the last active admin or yourself."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+    delete:
+      tags:
+        - Retailers
+      operationId: deleteUser
+      summary: Delete an account
+      parameters:
+        - $ref: "#/components/parameters/Csrf"
+      responses:
+        "204":
+          description: Deleted.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /admin/api/users/{id}/resend-invite:
+    post:
+      tags:
+        - Retailers
+      operationId: resendInvite
+      summary: New invitation link (old one stops working)
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+        - $ref: "#/components/parameters/Csrf"
+      responses:
+        "200":
+          description: Re-invited.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InviteResult"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /admin/api/api-clients:
+    get:
+      tags:
+        - Retailers
+      operationId: listApiClients
+      summary: API clients for retailers' software
+      parameters:
+        - name: retailer_id
+          in: query
+          schema:
+            $ref: "#/components/schemas/Id"
+      responses:
+        "200":
+          description: Clients.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ApiClient"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      tags:
+        - Retailers
+      operationId: createApiClient
+      summary: Create client credentials for a retailer (secret shown once)
+      parameters:
+        - $ref: "#/components/parameters/Csrf"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApiClientInput"
+      responses:
+        "201":
+          description: Created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiClientWithSecret"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+  /admin/api/api-clients/{id}/rotate:
+    post:
+      tags:
+        - Retailers
+      operationId: rotateApiClient
+      summary: New secret (old one stops working immediately; shown once)
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+        - $ref: "#/components/parameters/Csrf"
+      responses:
+        "200":
+          description: Rotated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiClientWithSecret"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /admin/api/api-clients/{id}:
+    delete:
+      tags:
+        - Retailers
+      operationId: revokeApiClient
+      summary: Revoke (its tokens stop working immediately)
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+        - $ref: "#/components/parameters/Csrf"
+      responses:
+        "204":
+          description: Revoked.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /admin/api/ingest-tokens:
+    get:
+      tags:
+        - Automation
+      operationId: listIngestTokens
+      summary: Ingest tokens for the brand's own automation
+      responses:
+        "200":
+          description: Tokens (secrets never returned).
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/IngestToken"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      tags:
+        - Automation
+      operationId: createIngestToken
+      summary: Create an ingest token (shown once)
+      parameters:
+        - $ref: "#/components/parameters/Csrf"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - scopes
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 200
+                scopes:
+                  type: array
+                  minItems: 1
+                  items:
+                    $ref: "#/components/schemas/IngestScope"
+                brand_external_ids:
+                  type:
+                    - array
+                    - "null"
+                  items:
+                    $ref: "#/components/schemas/ExternalId"
+                expires_at:
+                  oneOf:
+                    - $ref: "#/components/schemas/DateTime"
+                    - type: "null"
+      responses:
+        "201":
+          description: Created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IngestTokenWithSecret"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+  /admin/api/ingest-tokens/{id}/rotate:
+    post:
+      tags:
+        - Automation
+      operationId: rotateIngestToken
+      summary: New secret (old one stops working immediately; shown once)
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+        - $ref: "#/components/parameters/Csrf"
+      responses:
+        "200":
+          description: Rotated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IngestTokenWithSecret"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /admin/api/ingest-tokens/{id}:
+    delete:
+      tags:
+        - Automation
+      operationId: revokeIngestToken
+      summary: Revoke
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+        - $ref: "#/components/parameters/Csrf"
+      responses:
+        "204":
+          description: Revoked.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /admin/api/webhooks:
+    get:
+      tags:
+        - Automation
+      operationId: listAdminWebhooks
+      summary: The brand's own webhooks
+      responses:
+        "200":
+          description: Subscriptions.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/WebhookSubscription"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      tags:
+        - Automation
+      operationId: createAdminWebhook
+      summary: Subscribe the brand's system to node events
+      description: Events access_request.created, import_run.completed, ingest_job.completed. Same signing scheme as protocol webhooks. The secret is returned once.
+      parameters:
+        - $ref: "#/components/parameters/Csrf"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - url
+                - events
+              properties:
+                url:
+                  $ref: "#/components/schemas/Url"
+                events:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: string
+                    enum:
+                      - access_request.created
+                      - import_run.completed
+                      - ingest_job.completed
+      responses:
+        "201":
+          description: Created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookSubscription"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+  /admin/api/webhooks/{id}:
+    parameters:
+      - $ref: "#/components/parameters/IdPath"
+    patch:
+      tags:
+        - Automation
+      operationId: updateAdminWebhook
+      summary: Change events or re-enable
+      parameters:
+        - $ref: "#/components/parameters/Csrf"
+      requestBody:
+        required: true
+        content:
+          application/merge-patch+json:
+            schema:
+              type: object
+              properties:
+                events:
+                  type: array
+                  items:
+                    type: string
+                status:
+                  type: string
+                  enum:
+                    - active
+                    - disabled
+      responses:
+        "200":
+          description: Updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookSubscription"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags:
+        - Automation
+      operationId: deleteAdminWebhook
+      summary: Delete
+      parameters:
+        - $ref: "#/components/parameters/Csrf"
+      responses:
+        "204":
+          description: Deleted.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /admin/api/webhooks/{id}/test:
+    post:
+      tags:
+        - Automation
+      operationId: testAdminWebhook
+      summary: Send webhook.test now
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+        - $ref: "#/components/parameters/Csrf"
+      responses:
+        "200":
+          description: Delivery.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookDelivery"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /admin/api/webhooks/{id}/deliveries:
+    get:
+      tags:
+        - Automation
+      operationId: listAdminWebhookDeliveries
+      summary: Recent deliveries (last 7 days)
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Deliveries, newest first.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                  - next_cursor
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/WebhookDelivery"
+                  next_cursor:
+                    $ref: "#/components/schemas/NextCursor"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /admin/api/stats:
+    get:
+      tags:
+        - Stats
+      operationId: getStats
+      summary: Download and usage statistics
+      parameters:
+        - name: days
+          in: query
+          schema:
+            type: integer
+            enum:
+              - 7
+              - 30
+              - 90
+              - 365
+            default: 30
+      responses:
+        "200":
+          description: Stats.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Stats"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /admin/api/stats/events:
+    get:
+      tags:
+        - Stats
+      operationId: listStatEvents
+      summary: Raw download/usage log, newest first
+      parameters:
+        - name: retailer_id
+          in: query
+          schema:
+            $ref: "#/components/schemas/Id"
+        - name: kind
+          in: query
+          schema:
+            $ref: "#/components/schemas/DownloadKind"
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Events.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                  - next_cursor
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/DownloadEvent"
+                  next_cursor:
+                    $ref: "#/components/schemas/NextCursor"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /admin/api/portal/viewer:
+    get:
+      tags:
+        - Portal
+      operationId: getPortalViewer
+      summary: Who is looking and what they may do
+      responses:
+        "200":
+          description: Viewer.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PortalViewer"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /admin/api/portal/products:
+    get:
+      tags:
+        - Portal
+      operationId: listPortalProducts
+      summary: Browse the catalog (visible products only)
+      parameters:
+        - name: q
+          in: query
+          description: Style number, name, colour, GTIN or SKU.
+          schema:
+            type: string
+            maxLength: 200
+        - name: brand_id
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: true
+        - name: item_type
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: true
+        - name: color
+          in: query
+          description: Colour code.
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: true
+        - name: season
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: true
+        - name: collection
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: true
+        - name: target_group
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: true
+        - name: updated_since
+          in: query
+          description: '"New since": products that got new/changed data or images since this time.'
+          schema:
+            type: string
+            format: date-time
+      responses:
+        "200":
+          description: A page of products.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                  - next_cursor
+                  - total
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/PortalProductSummary"
+                  next_cursor:
+                    $ref: "#/components/schemas/NextCursor"
+                  total:
+                    type: integer
+                    minimum: 0
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /admin/api/portal/facets:
+    get:
+      tags:
+        - Portal
+      operationId: getPortalFacets
+      summary: Filter options with counts for the current filter
+      parameters:
+        - name: q
+          in: query
+          description: Style number, name, colour, GTIN or SKU.
+          schema:
+            type: string
+            maxLength: 200
+        - name: brand_id
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: true
+        - name: item_type
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: true
+        - name: color
+          in: query
+          description: Colour code.
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: true
+        - name: season
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: true
+        - name: collection
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: true
+        - name: target_group
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: true
+        - name: updated_since
+          in: query
+          description: '"New since": products that got new/changed data or images since this time.'
+          schema:
+            type: string
+            format: date-time
+      responses:
+        "200":
+          description: Facets.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Facets"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /admin/api/portal/products/{id}:
+    get:
+      tags:
+        - Portal
+      operationId: getPortalProduct
+      summary: Product detail (protocol ProductDetail shape)
+      description: Rendition URLs are signed and usable directly in <img>. `original` only when the viewer may download originals.
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "200":
+          description: Product.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductDetail"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /admin/api/portal/gtin-lookup:
+    post:
+      tags:
+        - Portal
+      operationId: portalGtinLookup
+      summary: Paste an EAN/GTIN list (max 2000) and get matches + unmatched
+      description: "`text` is split on anything that is not a digit (newlines, commas, semicolons, tabs, spaces between codes are all fine) - or send `gtins`. Same result shape and matching rules as the protocol by-GTIN lookup."
+      parameters:
+        - $ref: "#/components/parameters/Csrf"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                text:
+                  type: string
+                  maxLength: 100000
+                gtins:
+                  type: array
+                  maxItems: 2000
+                  items:
+                    type: string
+                    maxLength: 64
+      responses:
+        "200":
+          description: Result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GtinLookupResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /admin/api/portal/selection:
+    get:
+      tags:
+        - Portal
+      operationId: getSelection
+      summary: The viewer's selection (persisted per user)
+      responses:
+        "200":
+          description: Selection.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Selection"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    put:
+      tags:
+        - Portal
+      operationId: putSelection
+      summary: Replace the selection (max 1000 products; invisible ids are dropped)
+      parameters:
+        - $ref: "#/components/parameters/Csrf"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - product_ids
+              properties:
+                product_ids:
+                  type: array
+                  maxItems: 1000
+                  uniqueItems: true
+                  items:
+                    $ref: "#/components/schemas/Id"
+      responses:
+        "200":
+          description: Selection.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Selection"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    delete:
+      tags:
+        - Portal
+      operationId: clearSelection
+      summary: Clear the selection
+      parameters:
+        - $ref: "#/components/parameters/Csrf"
+      responses:
+        "204":
+          description: Cleared.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /admin/api/portal/assets/{id}/download:
+    get:
+      tags:
+        - Portal
+      operationId: portalDownloadAsset
+      summary: Download one image (logged)
+      description: "Content-Disposition: attachment. 403 `original_not_allowed` for original when not permitted."
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+        - $ref: "#/components/parameters/Variant"
+      responses:
+        "200":
+          description: Image.
+          content:
+            image/*:
+              schema:
+                type: string
+                contentMediaType: application/octet-stream
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /admin/api/portal/products/{id}/download.zip:
+    get:
+      tags:
+        - Portal
+      operationId: portalDownloadProductZip
+      summary: All images of one product as zip (streamed, logged)
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+        - $ref: "#/components/parameters/Variant"
+      responses:
+        "200":
+          description: Zip; entries named <filename> (variant suffix _web/_square before .jpg).
+          content:
+            application/zip:
+              schema:
+                type: string
+                contentMediaType: application/zip
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /admin/api/portal/selection/download.zip:
+    get:
+      tags:
+        - Portal
+      operationId: portalDownloadSelectionZip
+      summary: Images of the selection as zip (max 400 images; more = use a download job)
+      parameters:
+        - $ref: "#/components/parameters/Variant"
+      responses:
+        "200":
+          description: Zip; one folder per style number.
+          content:
+            application/zip:
+              schema:
+                type: string
+                contentMediaType: application/zip
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /admin/api/portal/selection/data.csv:
+    get:
+      tags:
+        - Portal
+      operationId: portalSelectionCsv
+      summary: Article data of the selection as CSV (logged)
+      description: Canonical CSV columns (docs/import-format.md) plus image_files. 403 when the brand disabled article data export.
+      parameters:
+        - $ref: "#/components/parameters/Delimiter"
+      responses:
+        "200":
+          description: CSV, UTF-8 with BOM, one row per variant.
+          content:
+            text/csv:
+              schema:
+                type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /admin/api/portal/products/data.csv:
+    get:
+      tags:
+        - Portal
+      operationId: portalFilterCsv
+      summary: Article data of the current filter as CSV (logged)
+      parameters:
+        - name: q
+          in: query
+          schema:
+            type: string
+        - name: brand_id
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+        - name: updated_since
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - $ref: "#/components/parameters/Delimiter"
+      responses:
+        "200":
+          description: CSV.
+          content:
+            text/csv:
+              schema:
+                type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /admin/api/portal/download-jobs:
+    get:
+      tags:
+        - Portal
+      operationId: listDownloadJobs
+      summary: The viewer's background downloads (last 7 days)
+      responses:
+        "200":
+          description: Jobs.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/DownloadJob"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      tags:
+        - Portal
+      operationId: createDownloadJob
+      summary: Build a large zip in the background (selection, EAN list or whole filter)
+      description: Max 2 running jobs per user (409). When finished the node e-mails the user (if mail is configured) and the job shows a download link. Files are kept 7 days.
+      parameters:
+        - $ref: "#/components/parameters/Csrf"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DownloadJobInput"
+      responses:
+        "202":
+          description: Queued.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DownloadJob"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+  /admin/api/portal/download-jobs/{id}:
+    get:
+      tags:
+        - Portal
+      operationId: getDownloadJob
+      summary: Job status
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "200":
+          description: Job.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DownloadJob"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /admin/api/portal/download-jobs/{id}/file:
+    get:
+      tags:
+        - Portal
+      operationId: getDownloadJobFile
+      summary: Download the finished zip (Range supported; only the job owner)
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "200":
+          description: Zip.
+          content:
+            application/zip:
+              schema:
+                type: string
+                contentMediaType: application/zip
+        "206":
+          description: Partial content.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "410":
+          description: "`export_expired`."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /admin/api/portal/api-clients:
+    get:
+      tags:
+        - Portal
+      operationId: listPortalApiClients
+      summary: The retailer's own API clients
+      responses:
+        "200":
+          description: Clients.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ApiClient"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags:
+        - Portal
+      operationId: createPortalApiClient
+      summary: Create an API client for the retailer's own software (only if the brand allows self-service)
+      description: 403 `forbidden` when `portal.retailer_api_self_service` is off. Scopes are limited to the retailer's grant. Max 5 active clients per retailer.
+      parameters:
+        - $ref: "#/components/parameters/Csrf"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 200
+                scopes:
+                  type: array
+                  description: Omitted = the same defaults as ApiClientInput.scopes.
+                  items:
+                    $ref: "#/components/schemas/Scope"
+      responses:
+        "201":
+          description: Created; secret shown once.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiClientWithSecret"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /admin/api/portal/api-clients/{id}/rotate:
+    post:
+      tags:
+        - Portal
+      operationId: rotatePortalApiClient
+      summary: Rotate own client secret
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+        - $ref: "#/components/parameters/Csrf"
+      responses:
+        "200":
+          description: Rotated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiClientWithSecret"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /admin/api/portal/api-clients/{id}:
+    delete:
+      tags:
+        - Portal
+      operationId: revokePortalApiClient
+      summary: Revoke own client
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+        - $ref: "#/components/parameters/Csrf"
+      responses:
+        "204":
+          description: Revoked.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+components:
+  securitySchemes:
+    session:
+      type: apiKey
+      in: cookie
+      name: obx_session
+  parameters:
+    Csrf:
+      name: X-CSRF-Token
+      in: header
+      required: true
+      schema:
+        type: string
+    IdPath:
+      name: id
+      in: path
+      required: true
+      schema:
+        $ref: "#/components/schemas/Id"
+    TokenPath:
+      name: token
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 20
+        maxLength: 200
+    ExternalId:
+      name: external_id
+      in: path
+      required: true
+      schema:
+        $ref: "#/components/schemas/ExternalId"
+    Cursor:
+      name: cursor
+      in: query
+      required: false
+      schema:
+        $ref: "#/components/schemas/Cursor"
+    Limit:
+      name: limit
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 200
+        default: 50
+    Variant:
+      name: variant
+      in: query
+      required: false
+      description: Default original when allowed, else web.
+      schema:
+        type: string
+        enum:
+          - original
+          - web
+          - square
+    Delimiter:
+      name: delimiter
+      in: query
+      required: false
+      description: The UI uses semicolon for Dutch users (Excel), comma otherwise.
+      schema:
+        type: string
+        enum:
+          - comma
+          - semicolon
+        default: comma
+  schemas:
+    NextCursor:
+      description: null on the last page.
+      oneOf:
+        - $ref: "#/components/schemas/Cursor"
+        - type: "null"
+    Password:
+      type: string
+      minLength: 10
+      maxLength: 72
+      description: 10-72 characters (72 keeps bcrypt-based nodes compatible). Nodes store argon2id or bcrypt hashes only.
+    PublicBranding:
+      type: object
+      required:
+        - name
+        - languages
+        - default_language
+        - access_requests_enabled
+        - setup_required
+      properties:
+        name:
+          type: string
+        logo_url:
+          type:
+            - string
+            - "null"
+        accent_color:
+          type:
+            - string
+            - "null"
+          pattern: ^#[0-9a-fA-F]{6}$
+        welcome_text:
+          oneOf:
+            - $ref: "#/components/schemas/LocalizedText"
+            - type: "null"
+        portal_name:
+          description: The brand's own word for its portal, per language (e.g. {"nl":"Merkbeeldbank"}). The UI shows "<name> · <word>"; without a text for the reader's language it uses the brand's en text, then its first text, then the glossary word for that language.
+          oneOf:
+            - $ref: "#/components/schemas/LocalizedText"
+            - type: "null"
+        languages:
+          type: array
+          items:
+            $ref: "#/components/schemas/LanguageTag"
+        default_language:
+          $ref: "#/components/schemas/LanguageTag"
+        access_requests_enabled:
+          type: boolean
+        setup_required:
+          type: boolean
+        brands:
+          type: array
+          description: Published brands (for the request-access form).
+          items:
+            type: object
+            required:
+              - id
+              - name
+            properties:
+              id:
+                type: string
+              name:
+                type: string
+    SetupInput:
+      type: object
+      required:
+        - setup_code
+        - company
+        - admin
+      properties:
+        setup_code:
+          type: string
+          minLength: 6
+          maxLength: 64
+        company:
+          type: object
+          required:
+            - name
+            - default_language
+          properties:
+            name:
+              type: string
+              minLength: 1
+              maxLength: 200
+              description: Brand company name; also the first brand unless first_brand_name is set.
+            first_brand_name:
+              type: string
+              maxLength: 200
+            website:
+              type: string
+              format: uri
+            contact_email:
+              $ref: "#/components/schemas/Email"
+            default_language:
+              $ref: "#/components/schemas/LanguageTag"
+            languages:
+              type: array
+              items:
+                $ref: "#/components/schemas/LanguageTag"
+            accent_color:
+              type: string
+              pattern: ^#[0-9a-fA-F]{6}$
+        admin:
+          type: object
+          required:
+            - name
+            - email
+            - password
+          properties:
+            name:
+              type: string
+              minLength: 1
+              maxLength: 200
+            email:
+              $ref: "#/components/schemas/Email"
+            password:
+              $ref: "#/components/schemas/Password"
+    User:
+      type: object
+      required:
+        - id
+        - email
+        - name
+        - role
+        - status
+        - language
+        - created_at
+      properties:
+        id:
+          $ref: "#/components/schemas/Id"
+        email:
+          $ref: "#/components/schemas/Email"
+        name:
+          type: string
+        role:
+          type: string
+          enum:
+            - admin
+            - retailer
+        retailer_id:
+          oneOf:
+            - $ref: "#/components/schemas/Id"
+            - type: "null"
+        status:
+          type: string
+          enum:
+            - invited
+            - active
+            - blocked
+        language:
+          $ref: "#/components/schemas/LanguageTag"
+        last_login_at:
+          type:
+            - string
+            - "null"
+          format: date-time
+        invite_expires_at:
+          type:
+            - string
+            - "null"
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+    Session:
+      type: object
+      required:
+        - authenticated
+        - csrf_token
+        - setup_required
+      properties:
+        authenticated:
+          type: boolean
+        csrf_token:
+          type: string
+        setup_required:
+          type: boolean
+        user:
+          oneOf:
+            - $ref: "#/components/schemas/User"
+            - type: "null"
+        retailer:
+          description: For retailer users.
+          oneOf:
+            - type: object
+              required:
+                - id
+                - name
+              properties:
+                id:
+                  type: string
+                name:
+                  type: string
+            - type: "null"
+    Settings:
+      type: object
+      properties:
+        company:
+          type: object
+          properties:
+            name:
+              type: string
+              minLength: 1
+              maxLength: 200
+            website:
+              type:
+                - string
+                - "null"
+              format: uri
+            contact_email:
+              oneOf:
+                - $ref: "#/components/schemas/Email"
+                - type: "null"
+            country:
+              type:
+                - string
+                - "null"
+              pattern: ^[A-Z]{2}$
+        branding:
+          type: object
+          properties:
+            display_name:
+              type: string
+              minLength: 1
+              maxLength: 200
+            logo_url:
+              type:
+                - string
+                - "null"
+              readOnly: true
+              description: Set via PUT /admin/api/settings/logo.
+            accent_color:
+              type:
+                - string
+                - "null"
+              pattern: ^#[0-9a-fA-F]{6}$
+            welcome_text:
+              oneOf:
+                - $ref: "#/components/schemas/LocalizedText"
+                - type: "null"
+            portal_name:
+              description: 'Overrides the local portal word ("Beeldbank", "Händlerportal" ...) per language; null uses the glossary word. See PublicBranding.portal_name. The settings update is a JSON merge patch (RFC 7396): `{"branding":{"portal_name":{"de":null}}}` removes the German text only, `{"branding":{"portal_name":null}}` removes the whole override. A client that edits the texts as a whole sends `null` for every language it removed.'
+              oneOf:
+                - $ref: "#/components/schemas/LocalizedText"
+                - type: "null"
+        portal:
+          type: object
+          properties:
+            access_requests_enabled:
+              type: boolean
+              default: true
+            allow_original_download:
+              type: boolean
+              default: true
+            allow_article_data_export:
+              type: boolean
+              default: true
+            retailer_api_self_service:
+              type: boolean
+              default: false
+            languages:
+              type: array
+              minItems: 1
+              items:
+                $ref: "#/components/schemas/LanguageTag"
+            default_language:
+              $ref: "#/components/schemas/LanguageTag"
+        defaults:
+          type: object
+          properties:
+            rights:
+              $ref: "#/components/schemas/Rights"
+            ingest_status:
+              $ref: "#/components/schemas/PublicationStatus"
+        node:
+          type: object
+          readOnly: true
+          description: Read-only facts from the node's configuration.
+          properties:
+            public_url:
+              type: string
+              format: uri
+            discovery_url:
+              type: string
+              format: uri
+            software:
+              type: string
+            version:
+              type: string
+            email_configured:
+              type: boolean
+            renditions_server_generated:
+              type: boolean
+            max_upload_bytes:
+              type: integer
+            custom_domain_help:
+              type: string
+              description: Short hosting-specific instructions for pointing a custom domain at this node (Markdown).
+    AdminProductSummary:
+      type: object
+      required:
+        - id
+        - external_id
+        - style_number
+        - name
+        - status
+        - visibility
+        - variant_count
+        - asset_count
+        - updated_at
+      properties:
+        id:
+          $ref: "#/components/schemas/Id"
+        external_id:
+          $ref: "#/components/schemas/ExternalId"
+        brand_external_id:
+          type: string
+        style_number:
+          type: string
+        name:
+          $ref: "#/components/schemas/LocalizedText"
+        status:
+          $ref: "#/components/schemas/PublicationStatus"
+        visibility:
+          type: string
+          enum:
+            - visible
+            - hidden
+        variant_count:
+          type: integer
+        asset_count:
+          type: integer
+        pending_asset_count:
+          type: integer
+        thumb_url:
+          type:
+            - string
+            - "null"
+          format: uri
+        updated_at:
+          type: string
+          format: date-time
+    AdminAsset:
+      type: object
+      required:
+        - record
+      properties:
+        record:
+          $ref: "#/components/schemas/IngestRecord"
+        renditions:
+          type: object
+          description: Signed URLs for whatever files exist (also for unpublished assets).
+          additionalProperties:
+            $ref: "#/components/schemas/Rendition"
+    AdminProductDetail:
+      type: object
+      required:
+        - record
+        - variants
+        - assets
+      properties:
+        record:
+          $ref: "#/components/schemas/IngestRecord"
+        variants:
+          type: array
+          items:
+            $ref: "#/components/schemas/IngestRecord"
+        assets:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminAsset"
+    AssetOrder:
+      type: object
+      required:
+        - color_code
+        - asset_external_ids
+      properties:
+        color_code:
+          type:
+            - string
+            - "null"
+        asset_external_ids:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          description: All assets of this product+colour in the desired order; they get positions 1..n atomically.
+          items:
+            $ref: "#/components/schemas/ExternalId"
+    ImportSourceInput:
+      type: object
+      description: ImportSource writable fields (name, kind, enabled, schedule, mode, allow_mass_unpublish, config, credentials). kind cannot change after creation.
+      properties:
+        name:
+          type: string
+        kind:
+          type: string
+          enum:
+            - https_url
+            - sftp
+            - s3
+        enabled:
+          type: boolean
+        schedule:
+          type: object
+        mode:
+          type: string
+          enum:
+            - upsert
+            - mirror
+        allow_mass_unpublish:
+          type: boolean
+        config:
+          type: object
+        credentials:
+          type:
+            - object
+            - "null"
+    Retailer:
+      type: object
+      required:
+        - id
+        - name
+        - status
+        - brand_ids
+        - allow_original
+        - created_at
+      properties:
+        id:
+          $ref: "#/components/schemas/Id"
+        name:
+          type: string
+        reference:
+          type:
+            - string
+            - "null"
+          description: The retailer's customer number at the brand.
+        website:
+          type:
+            - string
+            - "null"
+        vat_number:
+          type:
+            - string
+            - "null"
+        country:
+          type:
+            - string
+            - "null"
+        notes:
+          type:
+            - string
+            - "null"
+        status:
+          type: string
+          enum:
+            - active
+            - blocked
+        brand_ids:
+          type:
+            - array
+            - "null"
+          description: Grant; null = all published brands.
+          items:
+            type: string
+        allow_original:
+          type:
+            - boolean
+            - "null"
+          description: null = follow the portal setting; false = never originals for this retailer.
+        user_count:
+          type: integer
+        api_client_count:
+          type: integer
+        last_activity_at:
+          type:
+            - string
+            - "null"
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+    RetailerInput:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        reference:
+          type:
+            - string
+            - "null"
+          maxLength: 100
+        website:
+          type:
+            - string
+            - "null"
+        vat_number:
+          type:
+            - string
+            - "null"
+        country:
+          type:
+            - string
+            - "null"
+          pattern: ^[A-Z]{2}$
+        notes:
+          type:
+            - string
+            - "null"
+          maxLength: 5000
+        status:
+          type: string
+          enum:
+            - active
+            - blocked
+        brand_ids:
+          type:
+            - array
+            - "null"
+          items:
+            type: string
+        allow_original:
+          type:
+            - boolean
+            - "null"
+    AdminAccessRequest:
+      type: object
+      required:
+        - id
+        - status
+        - created_at
+        - retailer
+        - contact
+        - access
+      properties:
+        id:
+          $ref: "#/components/schemas/Id"
+        status:
+          type: string
+          enum:
+            - pending
+            - approved
+            - rejected
+        created_at:
+          type: string
+          format: date-time
+        decided_at:
+          type:
+            - string
+            - "null"
+          format: date-time
+        reason:
+          type:
+            - string
+            - "null"
+        retailer:
+          type: object
+          required:
+            - name
+          properties:
+            name:
+              type: string
+            reference:
+              type:
+                - string
+                - "null"
+            website:
+              type:
+                - string
+                - "null"
+            vat_number:
+              type:
+                - string
+                - "null"
+            country:
+              type:
+                - string
+                - "null"
+        contact:
+          type: object
+          required:
+            - name
+            - email
+          properties:
+            name:
+              type: string
+            email:
+              type: string
+            phone:
+              type:
+                - string
+                - "null"
+            language:
+              type:
+                - string
+                - "null"
+        access:
+          type: array
+          items:
+            type: string
+            enum:
+              - portal
+              - api
+        requested_brand_ids:
+          type:
+            - array
+            - "null"
+          items:
+            type: string
+        message:
+          type:
+            - string
+            - "null"
+        retailer_id:
+          type:
+            - string
+            - "null"
+          description: Set after approval.
+        source_ip_country:
+          type:
+            - string
+            - "null"
+          description: Optional coarse hint; never the IP itself.
+    InviteResult:
+      type: object
+      required:
+        - user
+        - invite_url
+        - expires_at
+        - email_sent
+      properties:
+        user:
+          $ref: "#/components/schemas/User"
+        invite_url:
+          type: string
+          format: uri
+          description: <public_url>/invite/<token>; one-time.
+        expires_at:
+          type: string
+          format: date-time
+        email_sent:
+          type: boolean
+    ApiClient:
+      type: object
+      required:
+        - id
+        - client_id
+        - name
+        - retailer_id
+        - scopes
+        - status
+        - created_at
+      properties:
+        id:
+          $ref: "#/components/schemas/Id"
+        client_id:
+          type: string
+          description: obxc_...
+        name:
+          type: string
+        retailer_id:
+          type: string
+        scopes:
+          type: array
+          items:
+            $ref: "#/components/schemas/Scope"
+        status:
+          type: string
+          enum:
+            - active
+            - revoked
+        created_at:
+          type: string
+          format: date-time
+        last_used_at:
+          type:
+            - string
+            - "null"
+          format: date-time
+    ApiClientInput:
+      type: object
+      required:
+        - retailer_id
+        - name
+      properties:
+        retailer_id:
+          type: string
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        scopes:
+          type: array
+          description: "Omitted: `catalog:read` and `media:read`, plus `media:original` when the retailer may download originals. `usage:write` only when requested explicitly. Scopes are limited to what the retailer's grant allows."
+          items:
+            $ref: "#/components/schemas/Scope"
+    ApiClientWithSecret:
+      type: object
+      required:
+        - client
+        - client_secret
+        - token_endpoint
+        - discovery_url
+      properties:
+        client:
+          $ref: "#/components/schemas/ApiClient"
+        client_secret:
+          type: string
+          description: obxs_...; shown once.
+        token_endpoint:
+          type: string
+          format: uri
+        discovery_url:
+          type: string
+          format: uri
+    IngestToken:
+      type: object
+      required:
+        - id
+        - name
+        - prefix
+        - scopes
+        - status
+        - created_at
+      properties:
+        id:
+          $ref: "#/components/schemas/Id"
+        name:
+          type: string
+        prefix:
+          type: string
+          description: First 12 characters (e.g. obxi_Ab12Cd3) to recognise it.
+        scopes:
+          type: array
+          items:
+            $ref: "#/components/schemas/IngestScope"
+        brand_external_ids:
+          type:
+            - array
+            - "null"
+          items:
+            type: string
+        status:
+          type: string
+          enum:
+            - active
+            - revoked
+            - expired
+        expires_at:
+          type:
+            - string
+            - "null"
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        last_used_at:
+          type:
+            - string
+            - "null"
+          format: date-time
+    IngestTokenWithSecret:
+      type: object
+      required:
+        - token
+        - secret
+        - ingest_url
+      properties:
+        token:
+          $ref: "#/components/schemas/IngestToken"
+        secret:
+          type: string
+          description: obxi_...; shown once.
+        ingest_url:
+          type: string
+          format: uri
+    WebhookDelivery:
+      type: object
+      required:
+        - id
+        - event_id
+        - event_type
+        - at
+        - success
+        - attempt
+      properties:
+        id:
+          type: string
+        event_id:
+          type: string
+        event_type:
+          type: string
+        at:
+          type: string
+          format: date-time
+        status_code:
+          type:
+            - integer
+            - "null"
+        duration_ms:
+          type:
+            - integer
+            - "null"
+        attempt:
+          type: integer
+        success:
+          type: boolean
+        error:
+          type:
+            - string
+            - "null"
+    DownloadKind:
+      type: string
+      enum:
+        - image
+        - product_zip
+        - selection_zip
+        - bulk_zip
+        - csv
+        - api_rendition
+        - api_export
+        - usage
+    DownloadEvent:
+      type: object
+      required:
+        - id
+        - at
+        - kind
+      properties:
+        id:
+          type: string
+        at:
+          type: string
+          format: date-time
+        kind:
+          $ref: "#/components/schemas/DownloadKind"
+        retailer_id:
+          type:
+            - string
+            - "null"
+        retailer_name:
+          type:
+            - string
+            - "null"
+        actor_type:
+          type: string
+          enum:
+            - user
+            - api_client
+        actor_name:
+          type:
+            - string
+            - "null"
+        variant:
+          type:
+            - string
+            - "null"
+          enum:
+            - original
+            - web
+            - square
+            - thumb
+            - null
+        product_id:
+          type:
+            - string
+            - "null"
+        asset_id:
+          type:
+            - string
+            - "null"
+        usage_event:
+          type:
+            - string
+            - "null"
+          description: "For kind usage: synced|published|downloaded|removed."
+        files:
+          type: integer
+          minimum: 0
+        bytes:
+          type:
+            - integer
+            - "null"
+    Stats:
+      type: object
+      required:
+        - days
+        - totals
+        - by_day
+        - top_retailers
+        - top_products
+      properties:
+        days:
+          type: integer
+        totals:
+          type: object
+          required:
+            - downloads
+            - images
+            - zips
+            - csv_exports
+            - api_downloads
+            - usage_events
+            - active_retailers
+          properties:
+            downloads:
+              type: integer
+              description: Download actions (portal + API).
+            images:
+              type: integer
+              description: Image files delivered (a zip counts its images; CSVs excluded).
+            zips:
+              type: integer
+            csv_exports:
+              type: integer
+            api_downloads:
+              type: integer
+            usage_events:
+              type: integer
+            active_retailers:
+              type: integer
+        by_day:
+          type: array
+          items:
+            type: object
+            required:
+              - date
+              - downloads
+              - images
+            properties:
+              date:
+                type: string
+                format: date
+              downloads:
+                type: integer
+              images:
+                type: integer
+        top_retailers:
+          type: array
+          maxItems: 20
+          items:
+            type: object
+            required:
+              - retailer_id
+              - name
+              - downloads
+              - images
+            properties:
+              retailer_id:
+                type: string
+              name:
+                type: string
+              downloads:
+                type: integer
+              images:
+                type: integer
+              last_activity_at:
+                type:
+                  - string
+                  - "null"
+                format: date-time
+        top_products:
+          type: array
+          maxItems: 20
+          items:
+            type: object
+            required:
+              - product_id
+              - style_number
+              - downloads
+            properties:
+              product_id:
+                type: string
+              style_number:
+                type: string
+              name:
+                $ref: "#/components/schemas/LocalizedText"
+              downloads:
+                type: integer
+    PortalViewer:
+      type: object
+      required:
+        - preview
+        - brands
+        - permissions
+        - branding
+        - languages
+      properties:
+        preview:
+          type: boolean
+          description: true for admins looking at their own portal.
+        retailer:
+          oneOf:
+            - type: object
+              required:
+                - id
+                - name
+              properties:
+                id:
+                  type: string
+                name:
+                  type: string
+            - type: "null"
+        brands:
+          type: array
+          items:
+            $ref: "#/components/schemas/Brand"
+        permissions:
+          type: object
+          required:
+            - original_download
+            - article_data_export
+            - api_self_service
+          properties:
+            original_download:
+              type: boolean
+            article_data_export:
+              type: boolean
+            api_self_service:
+              type: boolean
+        branding:
+          $ref: "#/components/schemas/PublicBranding"
+        languages:
+          type: array
+          items:
+            $ref: "#/components/schemas/LanguageTag"
+        selection_count:
+          type: integer
+        limits:
+          type: object
+          properties:
+            selection_max_products:
+              type: integer
+              const: 1000
+            sync_zip_max_images:
+              type: integer
+              const: 400
+            gtin_lookup_max:
+              type: integer
+              const: 2000
+    PortalProductSummary:
+      type: object
+      required:
+        - id
+        - style_number
+        - name
+        - brand
+        - colors
+        - image_count
+        - variant_count
+        - updated_at
+      properties:
+        id:
+          $ref: "#/components/schemas/Id"
+        style_number:
+          type: string
+        name:
+          $ref: "#/components/schemas/LocalizedText"
+        brand:
+          type: object
+          required:
+            - id
+            - name
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+        item_type:
+          type:
+            - string
+            - "null"
+        target_group:
+          type:
+            - string
+            - "null"
+        season:
+          type:
+            - string
+            - "null"
+        collection:
+          type:
+            - string
+            - "null"
+        thumb_url:
+          type:
+            - string
+            - "null"
+          format: uri
+          description: Signed thumb of the first image (lowest colour code, position 1).
+        colors:
+          type: array
+          items:
+            type: object
+            required:
+              - code
+            properties:
+              code:
+                type: string
+              name:
+                oneOf:
+                  - $ref: "#/components/schemas/LocalizedText"
+                  - type: "null"
+              thumb_url:
+                type:
+                  - string
+                  - "null"
+                format: uri
+        image_count:
+          type: integer
+        variant_count:
+          type: integer
+        updated_at:
+          type: string
+          format: date-time
+    FacetValue:
+      type: object
+      required:
+        - value
+        - count
+      properties:
+        value:
+          type: string
+        label:
+          description: Display label (brand name, colour name); the UI translates known enum keys itself.
+          oneOf:
+            - type: string
+            - $ref: "#/components/schemas/LocalizedText"
+        count:
+          type: integer
+    Facets:
+      type: object
+      required:
+        - brands
+        - item_types
+        - colors
+        - seasons
+        - collections
+        - target_groups
+      properties:
+        brands:
+          type: array
+          items:
+            $ref: "#/components/schemas/FacetValue"
+        item_types:
+          type: array
+          items:
+            $ref: "#/components/schemas/FacetValue"
+        colors:
+          type: array
+          items:
+            $ref: "#/components/schemas/FacetValue"
+        seasons:
+          type: array
+          items:
+            $ref: "#/components/schemas/FacetValue"
+        collections:
+          type: array
+          items:
+            $ref: "#/components/schemas/FacetValue"
+        target_groups:
+          type: array
+          items:
+            $ref: "#/components/schemas/FacetValue"
+    Selection:
+      type: object
+      required:
+        - product_ids
+        - image_count
+      properties:
+        product_ids:
+          type: array
+          items:
+            $ref: "#/components/schemas/Id"
+        image_count:
+          type: integer
+          description: Visible images across the selected products.
+        updated_at:
+          type:
+            - string
+            - "null"
+          format: date-time
+    DownloadJobInput:
+      type: object
+      required:
+        - source
+        - variant
+      properties:
+        source:
+          type: string
+          enum:
+            - selection
+            - products
+            - filter
+        product_ids:
+          type: array
+          maxItems: 10000
+          description: For source products (e.g. matches of an EAN list).
+          items:
+            type: string
+        filter:
+          type: object
+          description: For source filter; same keys as the portal product filters.
+          properties:
+            q:
+              type: string
+            brand_id:
+              type: array
+              items:
+                type: string
+            item_type:
+              type: array
+              items:
+                type: string
+            color:
+              type: array
+              items:
+                type: string
+            season:
+              type: array
+              items:
+                type: string
+            collection:
+              type: array
+              items:
+                type: string
+            target_group:
+              type: array
+              items:
+                type: string
+            updated_since:
+              type: string
+              format: date-time
+        variant:
+          type: string
+          enum:
+            - original
+            - web
+            - square
+        include_data_csv:
+          type: boolean
+          default: true
+    DownloadJob:
+      type: object
+      required:
+        - id
+        - status
+        - source
+        - variant
+        - created_at
+        - progress
+      properties:
+        id:
+          $ref: "#/components/schemas/Id"
+        status:
+          type: string
+          enum:
+            - queued
+            - running
+            - succeeded
+            - failed
+            - expired
+        source:
+          type: string
+          enum:
+            - selection
+            - products
+            - filter
+        variant:
+          type: string
+          enum:
+            - original
+            - web
+            - square
+        include_data_csv:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        finished_at:
+          type:
+            - string
+            - "null"
+          format: date-time
+        expires_at:
+          type:
+            - string
+            - "null"
+          format: date-time
+        progress:
+          type: object
+          required:
+            - done
+            - total
+          properties:
+            done:
+              type: integer
+            total:
+              type:
+                - integer
+                - "null"
+        file_url:
+          type:
+            - string
+            - "null"
+          description: /admin/api/portal/download-jobs/{id}/file once succeeded.
+        bytes:
+          type:
+            - integer
+            - "null"
+        files:
+          type:
+            - integer
+            - "null"
+        error:
+          type:
+            - string
+            - "null"
+    LocalizedText:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      $id: https://openbrandexchange.com/schemas/v0.1/LocalizedText.json
+      title: LocalizedText
+      description: 'Free text per language, keyed by BCP 47 tag. At least one language. Example: {"nl": "Trui", "en": "Sweater"}.'
+      type: object
+      minProperties: 1
+      patternProperties:
+        ^[a-z]{2,3}(-[A-Z]{2})?$:
+          type: string
+          minLength: 1
+          maxLength: 20000
+      additionalProperties: false
+    LanguageTag:
+      type: string
+      description: BCP 47 language tag, restricted to language or language-REGION.
+      pattern: ^[a-z]{2,3}(-[A-Z]{2})?$
+      examples:
+        - nl
+        - en
+        - de-CH
+    ErrorCode:
+      type: string
+      enum:
+        - invalid_request
+        - validation_failed
+        - unauthorized
+        - invalid_token
+        - access_revoked
+        - insufficient_scope
+        - forbidden
+        - not_found
+        - method_not_allowed
+        - conflict
+        - precondition_failed
+        - payload_too_large
+        - unsupported_media_type
+        - rate_limited
+        - limit_exceeded
+        - cursor_invalid
+        - cursor_expired
+        - export_expired
+        - original_not_allowed
+        - invalid_gtin
+        - gtin_conflict
+        - position_conflict
+        - checksum_mismatch
+        - blob_missing
+        - upload_incomplete
+        - unknown_parent
+        - files_missing
+        - import_invalid
+        - mass_unpublish_refused
+        - unsafe_url
+        - csrf_failed
+        - invalid_credentials
+        - account_blocked
+        - setup_required
+        - setup_completed
+        - invite_invalid
+        - not_implemented
+        - internal_error
+        - service_unavailable
+      description: Machine-readable OBX error code (see docs/protocol.md#errors). Clients MUST treat unknown codes by HTTP status.
+    Problem:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      $id: https://openbrandexchange.com/schemas/v0.1/Problem.json
+      type: object
+      title: Problem
+      description: "application/problem+json (RFC 9457) error body. Exception: the OAuth2 token endpoint uses RFC 6749 error JSON."
+      properties:
+        type:
+          type: string
+          description: "URI identifying the problem type: https://openbrandexchange.com/errors/<obx_error>."
+          format: uri
+        title:
+          type: string
+        status:
+          type: integer
+          minimum: 400
+          maximum: 599
+        detail:
+          type:
+            - string
+            - "null"
+        instance:
+          type:
+            - string
+            - "null"
+        obx_error:
+          $ref: "#/components/schemas/ErrorCode"
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              pointer:
+                type:
+                  - string
+                  - "null"
+                description: JSON Pointer (RFC 6901) into the request body, or a CSV locator like 'row:12/gtin'.
+              obx_error:
+                $ref: "#/components/schemas/ErrorCode"
+              detail:
+                type: string
+            required:
+              - obx_error
+              - detail
+            additionalProperties: false
+            patternProperties:
+              ^x-[a-z0-9]+-[a-z0-9_-]+$: true
+          description: Field-level errors (validation_failed).
+        retry_after:
+          type:
+            - integer
+            - "null"
+          description: Seconds; mirrors Retry-After.
+          minimum: 0
+      required:
+        - type
+        - title
+        - status
+        - obx_error
+      additionalProperties: false
+      patternProperties:
+        ^x-[a-z0-9]+-[a-z0-9_-]+$: true
+    Email:
+      type: string
+      description: E-mail address.
+      format: email
+      maxLength: 254
+    Id:
+      type: string
+      description: Opaque, node-assigned identifier. Stable for the life of the object. Consumers MUST treat it as opaque.
+      pattern: ^[A-Za-z0-9][A-Za-z0-9._~-]{0,127}$
+      examples:
+        - prd_01J9ZK3Q7T5W
+    DateTime:
+      type: string
+      description: RFC 3339 timestamp, UTC recommended.
+      format: date-time
+      examples:
+        - 2026-09-28T10:00:00Z
+    Channel:
+      type: string
+      enum:
+        - webshop
+        - marketplace
+        - social
+        - print
+      description: Sales/marketing channel a rights grant covers.
+    CountryCode:
+      type: string
+      description: ISO 3166-1 alpha-2 country code.
+      pattern: ^[A-Z]{2}$
+      examples:
+        - NL
+    Rights:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      $id: https://openbrandexchange.com/schemas/v0.1/Rights.json
+      type: object
+      title: Rights
+      properties:
+        license:
+          type: string
+          enum:
+            - retailer-use
+            - custom
+          description: "retailer-use: the standard OBX retailer licence (docs/protocol.md#rights): use to sell the brand's products in the listed channels and territories. custom: see license_text."
+        license_text:
+          type:
+            - string
+            - "null"
+          description: Required when license is custom.
+          maxLength: 20000
+        channels:
+          type: array
+          items:
+            $ref: "#/components/schemas/Channel"
+          description: Channels the retailer may use the asset in.
+          uniqueItems: true
+        territories:
+          type:
+            - array
+            - "null"
+          items:
+            $ref: "#/components/schemas/CountryCode"
+          description: Allowed territories; null means worldwide.
+          uniqueItems: true
+        embargo_until:
+          anyOf:
+            - $ref: "#/components/schemas/DateTime"
+              description: The asset is delivered ahead of time but MUST NOT be shown publicly before this moment.
+            - type: "null"
+        expires_at:
+          anyOf:
+            - $ref: "#/components/schemas/DateTime"
+              description: After this moment the asset MUST no longer be used (it is also removed from the feed).
+            - type: "null"
+        credit:
+          type:
+            - string
+            - "null"
+          description: Required credit line, if any (e.g. photographer).
+          maxLength: 500
+        model_release:
+          type:
+            - boolean
+            - "null"
+          description: True when a model release covering the listed channels exists; null when unknown or not applicable.
+      required:
+        - license
+        - channels
+      additionalProperties: false
+      patternProperties:
+        ^x-[a-z0-9]+-[a-z0-9_-]+$: true
+    PublicationStatus:
+      type: string
+      enum:
+        - published
+        - unpublished
+      description: Brand-side publication state. Only 'published' objects (with published parents) are visible through the OBX Protocol.
+    ExternalId:
+      type: string
+      description: The brand's own identifier for an object (from its PIM/ERP/spreadsheet). 1-200 characters, no control characters and no '/'. Leading/trailing whitespace is trimmed by nodes. Compared case-sensitively.
+      minLength: 1
+      maxLength: 200
+      pattern: ^[^\x00-\x1F\x7F/]+$
+      examples:
+        - KO-1001
+    RenditionName:
+      type: string
+      enum:
+        - original
+        - web
+        - square
+        - thumb
+      description: Rendition name.
+    IngestRecord:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      $id: https://openbrandexchange.com/schemas/v0.1/IngestRecord.json
+      type: object
+      title: IngestRecord
+      description: GET representation in the Ingest API (and the admin catalog).
+      properties:
+        kind:
+          type: string
+          enum:
+            - brand
+            - product
+            - variant
+            - asset
+        id:
+          $ref: "#/components/schemas/Id"
+        external_id:
+          $ref: "#/components/schemas/ExternalId"
+        status:
+          $ref: "#/components/schemas/PublicationStatus"
+        visibility:
+          type: string
+          enum:
+            - visible
+            - hidden
+            - pending_files
+        etag:
+          type: string
+        created_at:
+          $ref: "#/components/schemas/DateTime"
+        updated_at:
+          $ref: "#/components/schemas/DateTime"
+        data:
+          type: object
+          description: "The stored write model (BrandInput/ProductInput/VariantInput/AssetInput) with defaults applied. For assets: `rights` is the full effective Rights object (node default rights merged with the fields the brand sent), `provenance` the full Provenance with its defaults, and `files` lists every current blob (original and web/square/thumb, including renditions the node made itself) with sha256, width and height."
+        missing_files:
+          type:
+            - array
+            - "null"
+          items:
+            $ref: "#/components/schemas/RenditionName"
+          description: Present for assets only (an empty array when nothing is missing); omitted for brands, products and variants. Files still required before the asset becomes visible.
+      required:
+        - kind
+        - id
+        - external_id
+        - status
+        - visibility
+        - etag
+        - created_at
+        - updated_at
+        - data
+      additionalProperties: false
+      patternProperties:
+        ^x-[a-z0-9]+-[a-z0-9_-]+$: true
+    Url:
+      type: string
+      description: Absolute http(s) URL.
+      format: uri
+      pattern: ^https?://
+      maxLength: 2048
+    BrandInput:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      $id: https://openbrandexchange.com/schemas/v0.1/BrandInput.json
+      type: object
+      title: BrandInput
+      description: "Ingest write model for a brand. Key: the brand's external_id (path)."
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        logo_url:
+          anyOf:
+            - $ref: "#/components/schemas/Url"
+              description: Fetched by the node once (SSRF-protected) or null.
+            - type: "null"
+        website:
+          anyOf:
+            - $ref: "#/components/schemas/Url"
+            - type: "null"
+        description:
+          anyOf:
+            - $ref: "#/components/schemas/LocalizedText"
+            - type: "null"
+        status:
+          $ref: "#/components/schemas/PublicationStatus"
+      required:
+        - name
+      additionalProperties: false
+      patternProperties:
+        ^x-[a-z0-9]+-[a-z0-9_-]+$: true
+    IngestResult:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      $id: https://openbrandexchange.com/schemas/v0.1/IngestResult.json
+      type: object
+      title: IngestResult
+      properties:
+        index:
+          type:
+            - integer
+            - "null"
+          description: 0-based position in the batch (batch only).
+          minimum: 0
+        op:
+          type: string
+          enum:
+            - upsert
+            - patch
+            - delete
+            - publish
+            - unpublish
+        kind:
+          type: string
+          enum:
+            - brand
+            - product
+            - variant
+            - asset
+        external_id:
+          $ref: "#/components/schemas/ExternalId"
+        result:
+          type: string
+          enum:
+            - created
+            - updated
+            - unchanged
+            - deleted
+            - error
+          description: "unchanged: the stored representation is identical; no change entry was written."
+        id:
+          anyOf:
+            - $ref: "#/components/schemas/Id"
+              description: Protocol id of the object (null on error before creation).
+            - type: "null"
+        visibility:
+          type:
+            - string
+            - "null"
+          enum:
+            - visible
+            - hidden
+            - pending_files
+            - null
+          description: "visible: served by the protocol. hidden: unpublished or a parent is hidden/missing. pending_files: asset waiting for its original or required renditions."
+        etag:
+          type:
+            - string
+            - "null"
+        error:
+          anyOf:
+            - $ref: "#/components/schemas/Problem"
+            - type: "null"
+        warnings:
+          type: array
+          items:
+            type: string
+            maxLength: 1000
+      required:
+        - op
+        - kind
+        - external_id
+        - result
+      additionalProperties: false
+      patternProperties:
+        ^x-[a-z0-9]+-[a-z0-9_-]+$: true
+    Cursor:
+      type: string
+      description: Opaque pagination or feed cursor. Clients MUST NOT parse or construct it.
+      minLength: 1
+      maxLength: 4096
+    Sha256:
+      type: string
+      description: Lowercase hex SHA-256 of the exact bytes.
+      pattern: ^[a-f0-9]{64}$
+    Rendition:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      $id: https://openbrandexchange.com/schemas/v0.1/Rendition.json
+      type: object
+      title: Rendition
+      description: One downloadable form of an asset. original = uploaded bytes, unmodified; web = longest side <= 2000 px JPEG; square = web centred on a white square canvas; thumb = longest side <= 600 px JPEG.
+      properties:
+        name:
+          $ref: "#/components/schemas/RenditionName"
+        url:
+          $ref: "#/components/schemas/Url"
+          description: Download URL. Either short-lived signed (usable without Authorization until url_expires_at) or requiring the Bearer token. Never a permanent public URL. Clients MUST treat it as opaque.
+        url_expires_at:
+          anyOf:
+            - $ref: "#/components/schemas/DateTime"
+            - type: "null"
+        content_type:
+          type: string
+          description: Media type. 'original' keeps the uploaded type; web/square/thumb are image/jpeg.
+          examples:
+            - image/jpeg
+        width:
+          type: integer
+          minimum: 1
+        height:
+          type: integer
+          minimum: 1
+        bytes:
+          type: integer
+          minimum: 1
+        sha256:
+          $ref: "#/components/schemas/Sha256"
+      required:
+        - name
+        - url
+        - content_type
+        - width
+        - height
+        - bytes
+        - sha256
+      additionalProperties: false
+      patternProperties:
+        ^x-[a-z0-9]+-[a-z0-9_-]+$: true
+    Materials:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      $id: https://openbrandexchange.com/schemas/v0.1/Materials.json
+      type: array
+      items:
+        type: object
+        properties:
+          part:
+            type: string
+            description: "Garment part. Recommended keys: main, outer, lining, filling, trim, sole, upper, insole. 'main' when the product has one composition."
+            pattern: ^[a-z][a-z0-9_]{0,63}$
+            examples:
+              - main
+          fibers:
+            type: array
+            items:
+              type: object
+              properties:
+                fiber:
+                  type: string
+                  description: Fibre key, lowercase English (recommended list in docs/import-format.md#fibres), e.g. cotton, organic_cotton, elastane, wool, merino_wool, polyester, recycled_polyester, polyamide, viscose, linen, silk, leather.
+                  pattern: ^[a-z][a-z0-9_]{0,63}$
+                percentage:
+                  type: number
+                  exclusiveMinimum: 0
+                  maximum: 100
+              required:
+                - fiber
+                - percentage
+              additionalProperties: false
+              patternProperties:
+                ^x-[a-z0-9]+-[a-z0-9_-]+$: true
+            minItems: 1
+            description: Percentages of one part SHOULD sum to 100.
+        required:
+          - part
+          - fibers
+        additionalProperties: false
+        patternProperties:
+          ^x-[a-z0-9]+-[a-z0-9_-]+$: true
+      title: Materials
+      description: Fibre composition per part (textile labelling regulation / DPP ready).
+    Care:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      $id: https://openbrandexchange.com/schemas/v0.1/Care.json
+      type: array
+      items:
+        type: object
+        properties:
+          code:
+            type: string
+            description: Care instruction key, ISO 3758 aligned (recommended list in docs/import-format.md#care-codes), e.g. wash_30, do_not_bleach, tumble_dry_low, iron_low, dry_clean_p, do_not_dry_clean.
+            pattern: ^[a-z][a-z0-9_]{0,63}$
+          text:
+            anyOf:
+              - $ref: "#/components/schemas/LocalizedText"
+              - type: "null"
+        required:
+          - code
+        additionalProperties: false
+        patternProperties:
+          ^x-[a-z0-9]+-[a-z0-9_-]+$: true
+      title: Care
+      description: Ordered care instructions.
+    ProductInput:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      $id: https://openbrandexchange.com/schemas/v0.1/ProductInput.json
+      type: object
+      title: ProductInput
+      description: "Ingest write model for a product. Key: external_id (path); when a brand has no separate product id, use the style number."
+      properties:
+        brand_external_id:
+          anyOf:
+            - $ref: "#/components/schemas/ExternalId"
+              description: Required unless the node has exactly one brand.
+            - type: "null"
+        style_number:
+          type: string
+          minLength: 1
+          maxLength: 200
+        name:
+          $ref: "#/components/schemas/LocalizedText"
+        description:
+          anyOf:
+            - $ref: "#/components/schemas/LocalizedText"
+            - type: "null"
+        item_type:
+          type:
+            - string
+            - "null"
+          pattern: ^[a-z][a-z0-9_]{0,63}$
+        gpc_brick:
+          type:
+            - string
+            - "null"
+          pattern: ^[0-9]{8}$
+        target_group:
+          type:
+            - string
+            - "null"
+          pattern: ^[a-z][a-z0-9_]{0,63}$
+        season:
+          type:
+            - string
+            - "null"
+          maxLength: 64
+        collection:
+          type:
+            - string
+            - "null"
+          maxLength: 200
+        materials:
+          anyOf:
+            - $ref: "#/components/schemas/Materials"
+            - type: "null"
+        care:
+          anyOf:
+            - $ref: "#/components/schemas/Care"
+            - type: "null"
+        country_of_origin:
+          anyOf:
+            - $ref: "#/components/schemas/CountryCode"
+            - type: "null"
+        dpp_url:
+          anyOf:
+            - $ref: "#/components/schemas/Url"
+            - type: "null"
+        attributes:
+          type:
+            - object
+            - "null"
+          propertyNames:
+            pattern: ^[a-z][a-z0-9_]{0,63}$
+          additionalProperties:
+            anyOf:
+              - type:
+                  - string
+                  - number
+                  - boolean
+              - $ref: "#/components/schemas/LocalizedText"
+        status:
+          $ref: "#/components/schemas/PublicationStatus"
+      required:
+        - style_number
+        - name
+      additionalProperties: false
+      patternProperties:
+        ^x-[a-z0-9]+-[a-z0-9_-]+$: true
+    GtinInput:
+      type: string
+      description: "A GTIN as supplied: GTIN-8, UPC-A (12), EAN-13 or GTIN-14 digits."
+      pattern: ^([0-9]{8}|[0-9]{12,14})$
+      examples:
+        - "2000010010011"
+    Color:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      $id: https://openbrandexchange.com/schemas/v0.1/Color.json
+      type: object
+      title: Color
+      properties:
+        code:
+          type: string
+          description: The brand's colour code, stable key (e.g. 'NVY', '001').
+          minLength: 1
+          maxLength: 64
+        name:
+          anyOf:
+            - $ref: "#/components/schemas/LocalizedText"
+            - type: "null"
+        supplier_color:
+          type:
+            - string
+            - "null"
+          description: Colour name as used in the brand's own systems/labels.
+          maxLength: 200
+      required:
+        - code
+      additionalProperties: false
+      patternProperties:
+        ^x-[a-z0-9]+-[a-z0-9_-]+$: true
+    VariantInput:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      $id: https://openbrandexchange.com/schemas/v0.1/VariantInput.json
+      type: object
+      title: VariantInput
+      description: "Ingest write model for a variant. Key: external_id (path); default convention = the GTIN, else <style>-<color>-<size>."
+      properties:
+        product_external_id:
+          $ref: "#/components/schemas/ExternalId"
+        gtin:
+          anyOf:
+            - $ref: "#/components/schemas/GtinInput"
+              description: Check digit MUST be valid (invalid_gtin). Unique within the node (gtin_conflict).
+            - type: "null"
+        sku:
+          type:
+            - string
+            - "null"
+          maxLength: 200
+        color:
+          $ref: "#/components/schemas/Color"
+        size:
+          type:
+            - string
+            - "null"
+          maxLength: 64
+        size_system:
+          type:
+            - string
+            - "null"
+          maxLength: 16
+        status:
+          $ref: "#/components/schemas/PublicationStatus"
+      required:
+        - product_external_id
+        - color
+      additionalProperties: false
+      patternProperties:
+        ^x-[a-z0-9]+-[a-z0-9_-]+$: true
+    Role:
+      type: string
+      enum:
+        - packshot
+        - model
+        - detail
+        - ghost
+        - flatlay
+        - scene
+        - swatch
+        - size_chart
+        - other
+      description: What the image shows. Stable key; labels are presentation.
+    View:
+      type: string
+      enum:
+        - front
+        - back
+        - side
+        - left
+        - right
+        - top
+        - bottom
+        - tilted_left
+        - tilted_right
+        - inside
+        - detail
+        - other
+      description: Viewing angle. Aligned with Fashion Cloud product_view plus 'inside'.
+    AssetInput:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      $id: https://openbrandexchange.com/schemas/v0.1/AssetInput.json
+      type: object
+      title: AssetInput
+      description: "Ingest write model for an asset. Key: external_id (path); filename-pattern convention = <style>_<color>_<position>."
+      properties:
+        product_external_id:
+          $ref: "#/components/schemas/ExternalId"
+        color_code:
+          type:
+            - string
+            - "null"
+          maxLength: 64
+        variant_external_ids:
+          type:
+            - array
+            - "null"
+          items:
+            $ref: "#/components/schemas/ExternalId"
+        media_type:
+          type: string
+          enum:
+            - image
+        role:
+          $ref: "#/components/schemas/Role"
+        view:
+          anyOf:
+            - $ref: "#/components/schemas/View"
+            - type: "null"
+        position:
+          type: integer
+          minimum: 1
+          maximum: 999
+        filename:
+          type:
+            - string
+            - "null"
+          description: Download filename; default <external_id>.<ext>.
+          maxLength: 255
+        alt_text:
+          anyOf:
+            - $ref: "#/components/schemas/LocalizedText"
+            - type: "null"
+        rights:
+          type:
+            - object
+            - "null"
+          properties:
+            license:
+              type: string
+              enum:
+                - retailer-use
+                - custom
+            license_text:
+              type:
+                - string
+                - "null"
+              maxLength: 20000
+            channels:
+              type: array
+              items:
+                $ref: "#/components/schemas/Channel"
+              uniqueItems: true
+            territories:
+              type:
+                - array
+                - "null"
+              items:
+                $ref: "#/components/schemas/CountryCode"
+              uniqueItems: true
+            embargo_until:
+              anyOf:
+                - $ref: "#/components/schemas/DateTime"
+                - type: "null"
+            expires_at:
+              anyOf:
+                - $ref: "#/components/schemas/DateTime"
+                - type: "null"
+            credit:
+              type:
+                - string
+                - "null"
+              maxLength: 500
+            model_release:
+              type:
+                - boolean
+                - "null"
+          additionalProperties: false
+          patternProperties:
+            ^x-[a-z0-9]+-[a-z0-9_-]+$: true
+          description: Partial Rights; omitted fields take the node's default rights (Settings). null = all defaults.
+        provenance:
+          type:
+            - object
+            - "null"
+          properties:
+            ai_generated:
+              type: boolean
+            ai_edited:
+              type: boolean
+            source:
+              type: string
+              enum:
+                - photo
+                - generated
+                - composite
+            c2pa:
+              type: string
+              enum:
+                - embedded
+                - sidecar
+                - none
+            c2pa_manifest_url:
+              anyOf:
+                - $ref: "#/components/schemas/Url"
+                - type: "null"
+            generator:
+              type:
+                - string
+                - "null"
+              maxLength: 200
+          additionalProperties: false
+          patternProperties:
+            ^x-[a-z0-9]+-[a-z0-9_-]+$: true
+          description: Omitted fields default to ai_generated=false, ai_edited=false, source=photo (generated when ai_generated), c2pa=none (nodes MAY detect embedded C2PA).
+        files:
+          type:
+            - object
+            - "null"
+          description: Attach previously uploaded blobs atomically. Omit to keep current files (or upload via PUT .../files/{rendition}).
+          properties:
+            original:
+              type: object
+              description: Reference to an uploaded blob. width/height are required for client-generated renditions and for originals whose type the node cannot parse (e.g. TIFF).
+              properties:
+                sha256:
+                  $ref: "#/components/schemas/Sha256"
+                width:
+                  type:
+                    - integer
+                    - "null"
+                  minimum: 1
+                height:
+                  type:
+                    - integer
+                    - "null"
+                  minimum: 1
+              required:
+                - sha256
+              additionalProperties: false
+              patternProperties:
+                ^x-[a-z0-9]+-[a-z0-9_-]+$: true
+            web:
+              type: object
+              description: Reference to an uploaded blob. width/height are required for client-generated renditions and for originals whose type the node cannot parse (e.g. TIFF).
+              properties:
+                sha256:
+                  $ref: "#/components/schemas/Sha256"
+                width:
+                  type:
+                    - integer
+                    - "null"
+                  minimum: 1
+                height:
+                  type:
+                    - integer
+                    - "null"
+                  minimum: 1
+              required:
+                - sha256
+              additionalProperties: false
+              patternProperties:
+                ^x-[a-z0-9]+-[a-z0-9_-]+$: true
+            square:
+              type: object
+              description: Reference to an uploaded blob. width/height are required for client-generated renditions and for originals whose type the node cannot parse (e.g. TIFF).
+              properties:
+                sha256:
+                  $ref: "#/components/schemas/Sha256"
+                width:
+                  type:
+                    - integer
+                    - "null"
+                  minimum: 1
+                height:
+                  type:
+                    - integer
+                    - "null"
+                  minimum: 1
+              required:
+                - sha256
+              additionalProperties: false
+              patternProperties:
+                ^x-[a-z0-9]+-[a-z0-9_-]+$: true
+            thumb:
+              type: object
+              description: Reference to an uploaded blob. width/height are required for client-generated renditions and for originals whose type the node cannot parse (e.g. TIFF).
+              properties:
+                sha256:
+                  $ref: "#/components/schemas/Sha256"
+                width:
+                  type:
+                    - integer
+                    - "null"
+                  minimum: 1
+                height:
+                  type:
+                    - integer
+                    - "null"
+                  minimum: 1
+              required:
+                - sha256
+              additionalProperties: false
+              patternProperties:
+                ^x-[a-z0-9]+-[a-z0-9_-]+$: true
+          additionalProperties: false
+          patternProperties:
+            ^x-[a-z0-9]+-[a-z0-9_-]+$: true
+        status:
+          $ref: "#/components/schemas/PublicationStatus"
+      required:
+        - product_external_id
+        - role
+        - position
+      additionalProperties: false
+      patternProperties:
+        ^x-[a-z0-9]+-[a-z0-9_-]+$: true
+    Blob:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      $id: https://openbrandexchange.com/schemas/v0.1/Blob.json
+      type: object
+      title: Blob
+      properties:
+        sha256:
+          $ref: "#/components/schemas/Sha256"
+        bytes:
+          type: integer
+          minimum: 1
+        content_type:
+          type: string
+        width:
+          type:
+            - integer
+            - "null"
+          minimum: 1
+        height:
+          type:
+            - integer
+            - "null"
+          minimum: 1
+        created:
+          type: boolean
+          description: false when the node already had these bytes (dedupe).
+      required:
+        - sha256
+        - bytes
+        - content_type
+        - created
+      additionalProperties: false
+      patternProperties:
+        ^x-[a-z0-9]+-[a-z0-9_-]+$: true
+    ImportRowError:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      $id: https://openbrandexchange.com/schemas/v0.1/ImportRowError.json
+      type: object
+      title: ImportRowError
+      properties:
+        file:
+          type: string
+          description: products.csv, assets.csv or the image file name.
+          maxLength: 255
+        row:
+          type:
+            - integer
+            - "null"
+          description: 1-based data row; null for header, file-level and image-file problems.
+          minimum: 1
+        column:
+          type:
+            - string
+            - "null"
+          maxLength: 100
+        severity:
+          type: string
+          enum:
+            - error
+            - warning
+          description: "error: row/file skipped. warning: imported with a correction."
+        obx_error:
+          $ref: "#/components/schemas/ErrorCode"
+        detail:
+          type: string
+          maxLength: 2000
+        value:
+          type:
+            - string
+            - "null"
+          maxLength: 500
+      required:
+        - file
+        - row
+        - severity
+        - obx_error
+        - detail
+      additionalProperties: false
+      patternProperties:
+        ^x-[a-z0-9]+-[a-z0-9_-]+$: true
+    ImportRun:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      $id: https://openbrandexchange.com/schemas/v0.1/ImportRun.json
+      type: object
+      title: ImportRun
+      properties:
+        id:
+          $ref: "#/components/schemas/Id"
+        source_id:
+          anyOf:
+            - $ref: "#/components/schemas/Id"
+              description: ImportSource for scheduled/pull runs; null for uploads.
+            - type: "null"
+        trigger:
+          type: string
+          enum:
+            - upload
+            - api
+            - schedule
+            - manual_run
+            - cli
+        status:
+          type: string
+          enum:
+            - queued
+            - running
+            - succeeded
+            - failed
+          description: succeeded may still contain row errors (see counts.errors).
+        mode:
+          type: string
+          enum:
+            - upsert
+            - mirror
+        dry_run:
+          type: boolean
+        created_at:
+          $ref: "#/components/schemas/DateTime"
+        started_at:
+          anyOf:
+            - $ref: "#/components/schemas/DateTime"
+            - type: "null"
+        finished_at:
+          anyOf:
+            - $ref: "#/components/schemas/DateTime"
+            - type: "null"
+        files:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+                maxLength: 1024
+              bytes:
+                type: integer
+                minimum: 0
+              sha256:
+                anyOf:
+                  - $ref: "#/components/schemas/Sha256"
+                  - type: "null"
+            required:
+              - name
+              - bytes
+            additionalProperties: false
+            patternProperties:
+              ^x-[a-z0-9]+-[a-z0-9_-]+$: true
+        counts:
+          type: object
+          properties:
+            rows:
+              type: integer
+              minimum: 0
+            files:
+              type: integer
+              minimum: 0
+            created:
+              type: integer
+              minimum: 0
+            updated:
+              type: integer
+              minimum: 0
+            unchanged:
+              type: integer
+              minimum: 0
+            unpublished:
+              type: integer
+              minimum: 0
+            errors:
+              type: integer
+              minimum: 0
+            warnings:
+              type: integer
+              minimum: 0
+          required:
+            - rows
+            - files
+            - created
+            - updated
+            - unchanged
+            - unpublished
+            - errors
+            - warnings
+          additionalProperties: false
+          patternProperties:
+            ^x-[a-z0-9]+-[a-z0-9_-]+$: true
+        error:
+          anyOf:
+            - $ref: "#/components/schemas/Problem"
+            - type: "null"
+        errors_preview:
+          type: array
+          items:
+            $ref: "#/components/schemas/ImportRowError"
+          description: First <= 50 errors; page through the full list via the errors endpoint.
+          maxItems: 50
+      required:
+        - id
+        - source_id
+        - trigger
+        - status
+        - mode
+        - dry_run
+        - created_at
+        - counts
+      additionalProperties: false
+      patternProperties:
+        ^x-[a-z0-9]+-[a-z0-9_-]+$: true
+    ImportSource:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      $id: https://openbrandexchange.com/schemas/v0.1/ImportSource.json
+      type: object
+      title: ImportSource
+      description: A scheduled pull import configured in the node admin. Unchanged remote files (same ETag/size+mtime/sha256) are skipped.
+      properties:
+        id:
+          $ref: "#/components/schemas/Id"
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        kind:
+          type: string
+          enum:
+            - https_url
+            - sftp
+            - s3
+        enabled:
+          type: boolean
+        schedule:
+          type: object
+          properties:
+            frequency:
+              type: string
+              enum:
+                - manual
+                - hourly
+                - daily
+                - weekly
+            time:
+              type:
+                - string
+                - "null"
+              description: HH:MM (24 h) for daily/weekly.
+              pattern: ^([01][0-9]|2[0-3]):[0-5][0-9]$
+            weekday:
+              type:
+                - integer
+                - "null"
+              description: 1 = Monday ... 7 = Sunday, for weekly.
+              minimum: 1
+              maximum: 7
+            timezone:
+              type: string
+              description: IANA timezone, default UTC.
+              examples:
+                - Europe/Amsterdam
+          required:
+            - frequency
+          additionalProperties: false
+          patternProperties:
+            ^x-[a-z0-9]+-[a-z0-9_-]+$: true
+        mode:
+          type: string
+          enum:
+            - upsert
+            - mirror
+          description: mirror also unpublishes products (of the brands in the file) that are absent; refused when it would unpublish more than half of them (mass_unpublish_refused) unless allow_mass_unpublish.
+        allow_mass_unpublish:
+          type: boolean
+        config:
+          description: Non-secret settings per kind.
+          oneOf:
+            - type: object
+              properties:
+                kind:
+                  const: https_url
+                url:
+                  $ref: "#/components/schemas/Url"
+                  description: HTTPS URL of a canonical CSV or a package zip. Private, loopback and link-local addresses are refused (unsafe_url) unless the node runs with OBX_ALLOW_PRIVATE_URLS=true.
+                images_url:
+                  anyOf:
+                    - $ref: "#/components/schemas/Url"
+                      description: Optional separate images zip.
+                    - type: "null"
+              required:
+                - kind
+                - url
+              additionalProperties: false
+              patternProperties:
+                ^x-[a-z0-9]+-[a-z0-9_-]+$: true
+            - type: object
+              properties:
+                kind:
+                  const: sftp
+                host:
+                  type: string
+                  minLength: 1
+                  maxLength: 255
+                port:
+                  type: integer
+                  minimum: 1
+                  maximum: 65535
+                  default: 22
+                username:
+                  type: string
+                  minLength: 1
+                  maxLength: 200
+                path:
+                  type: string
+                  description: Folder containing products.csv (optional assets.csv) and images, or a package zip path.
+                  minLength: 1
+                  maxLength: 1024
+                host_key_fingerprint:
+                  type:
+                    - string
+                    - "null"
+                  description: SHA256:... ; when null the first key seen is pinned (trust on first use).
+                  maxLength: 200
+              required:
+                - kind
+                - host
+                - username
+                - path
+              additionalProperties: false
+              patternProperties:
+                ^x-[a-z0-9]+-[a-z0-9_-]+$: true
+            - type: object
+              properties:
+                kind:
+                  const: s3
+                endpoint:
+                  anyOf:
+                    - $ref: "#/components/schemas/Url"
+                      description: S3-compatible endpoint (R2, MinIO, ...); null = AWS.
+                    - type: "null"
+                region:
+                  type: string
+                  maxLength: 64
+                bucket:
+                  type: string
+                  minLength: 3
+                  maxLength: 63
+                prefix:
+                  type: string
+                  description: Key prefix acting as the folder.
+                  maxLength: 1024
+                path_style:
+                  type: boolean
+              required:
+                - kind
+                - region
+                - bucket
+                - prefix
+              additionalProperties: false
+              patternProperties:
+                ^x-[a-z0-9]+-[a-z0-9_-]+$: true
+        credentials:
+          type:
+            - object
+            - "null"
+          properties:
+            password:
+              type:
+                - string
+                - "null"
+              maxLength: 1000
+            private_key:
+              type:
+                - string
+                - "null"
+              description: PEM/OpenSSH private key.
+              maxLength: 20000
+            access_key_id:
+              type:
+                - string
+                - "null"
+              maxLength: 200
+            secret_access_key:
+              type:
+                - string
+                - "null"
+              maxLength: 1000
+            headers:
+              type:
+                - object
+                - "null"
+              description: Extra request headers for https_url (e.g. Authorization).
+              additionalProperties:
+                type: string
+                maxLength: 4000
+              maxProperties: 10
+          additionalProperties: false
+          patternProperties:
+            ^x-[a-z0-9]+-[a-z0-9_-]+$: true
+          description: WRITE-ONLY. Accepted on create/update, never returned. Omit to keep stored values; send null for a field to clear it.
+        credentials_set:
+          type: object
+          description: "Read-only: which credentials are stored."
+          properties:
+            password:
+              type: boolean
+            private_key:
+              type: boolean
+            access_key_id:
+              type: boolean
+            secret_access_key:
+              type: boolean
+            headers:
+              type: array
+              items:
+                type: string
+              description: Names of stored headers.
+          additionalProperties: false
+          patternProperties:
+            ^x-[a-z0-9]+-[a-z0-9_-]+$: true
+        last_run:
+          anyOf:
+            - $ref: "#/components/schemas/ImportRun"
+            - type: "null"
+        next_run_at:
+          anyOf:
+            - $ref: "#/components/schemas/DateTime"
+            - type: "null"
+        created_at:
+          $ref: "#/components/schemas/DateTime"
+        updated_at:
+          $ref: "#/components/schemas/DateTime"
+      required:
+        - id
+        - name
+        - kind
+        - enabled
+        - schedule
+        - mode
+        - config
+        - created_at
+        - updated_at
+      additionalProperties: false
+      patternProperties:
+        ^x-[a-z0-9]+-[a-z0-9_-]+$: true
+    Scope:
+      type: string
+      enum:
+        - catalog:read
+        - media:read
+        - media:original
+        - usage:write
+      description: OBX Protocol OAuth2 scope.
+    IngestScope:
+      type: string
+      enum:
+        - ingest:read
+        - ingest:write
+        - ingest:delete
+      description: OBX Ingest token scope.
+    WebhookSubscription:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      $id: https://openbrandexchange.com/schemas/v0.1/WebhookSubscription.json
+      type: object
+      title: WebhookSubscription
+      properties:
+        id:
+          $ref: "#/components/schemas/Id"
+        url:
+          $ref: "#/components/schemas/Url"
+          description: HTTPS endpoint receiving events (http only for localhost in dev mode).
+        events:
+          type: array
+          items:
+            type: string
+            pattern: ^[a-z_]+\.[a-z_]+$
+          description: Event types; ['*'] not allowed, list explicitly.
+          minItems: 1
+          uniqueItems: true
+        secret:
+          type:
+            - string
+            - "null"
+          description: Signing secret, 'whsec_' + random. Returned only on creation.
+        status:
+          type: string
+          enum:
+            - active
+            - disabled
+          description: disabled after 3 days of failed deliveries (re-enable by recreating).
+        created_at:
+          $ref: "#/components/schemas/DateTime"
+        last_delivery_at:
+          anyOf:
+            - $ref: "#/components/schemas/DateTime"
+            - type: "null"
+        last_status:
+          type:
+            - integer
+            - "null"
+      required:
+        - id
+        - url
+        - events
+        - status
+        - created_at
+      additionalProperties: false
+      patternProperties:
+        ^x-[a-z0-9]+-[a-z0-9_-]+$: true
+    Brand:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      $id: https://openbrandexchange.com/schemas/v0.1/Brand.json
+      type: object
+      title: Brand
+      description: A brand (label) published by this node. One node (one brand company) may publish several brands.
+      properties:
+        id:
+          $ref: "#/components/schemas/Id"
+        external_id:
+          $ref: "#/components/schemas/ExternalId"
+        name:
+          type: string
+          description: Brand name as shown to retailers.
+          minLength: 1
+          maxLength: 200
+        logo_url:
+          anyOf:
+            - $ref: "#/components/schemas/Url"
+              description: Public logo URL (PNG/JPEG/WebP/SVG). Logos are public branding.
+            - type: "null"
+        website:
+          anyOf:
+            - $ref: "#/components/schemas/Url"
+            - type: "null"
+        description:
+          anyOf:
+            - $ref: "#/components/schemas/LocalizedText"
+            - type: "null"
+        updated_at:
+          $ref: "#/components/schemas/DateTime"
+      required:
+        - id
+        - external_id
+        - name
+        - updated_at
+      additionalProperties: false
+      patternProperties:
+        ^x-[a-z0-9]+-[a-z0-9_-]+$: true
+    Gtin14:
+      type: string
+      description: GTIN normalised to 14 digits (left-padded with zeros).
+      pattern: ^[0-9]{14}$
+      examples:
+        - "02000010010011"
+    Variant:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      $id: https://openbrandexchange.com/schemas/v0.1/Variant.json
+      type: object
+      title: Variant
+      description: A sellable colour/size combination of a product.
+      properties:
+        id:
+          $ref: "#/components/schemas/Id"
+        external_id:
+          $ref: "#/components/schemas/ExternalId"
+        product_id:
+          $ref: "#/components/schemas/Id"
+        brand_id:
+          $ref: "#/components/schemas/Id"
+        gtin:
+          anyOf:
+            - $ref: "#/components/schemas/Gtin14"
+              description: Normalised GTIN-14. The consumer's match key.
+            - type: "null"
+        gtin_original:
+          anyOf:
+            - $ref: "#/components/schemas/GtinInput"
+              description: GTIN exactly as the brand supplied it (e.g. 13-digit EAN).
+            - type: "null"
+        sku:
+          type:
+            - string
+            - "null"
+          description: The brand's article/SKU number for this variant.
+          maxLength: 200
+        color:
+          $ref: "#/components/schemas/Color"
+        size:
+          type:
+            - string
+            - "null"
+          description: Size label, e.g. 'M', '42', '32/34', 'ONE SIZE'.
+          maxLength: 64
+        size_system:
+          type:
+            - string
+            - "null"
+          description: Optional size system, e.g. EU, UK, US, INT, FR, IT.
+          maxLength: 16
+        updated_at:
+          $ref: "#/components/schemas/DateTime"
+      required:
+        - id
+        - external_id
+        - product_id
+        - brand_id
+        - color
+        - updated_at
+      additionalProperties: false
+      patternProperties:
+        ^x-[a-z0-9]+-[a-z0-9_-]+$: true
+    Provenance:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      $id: https://openbrandexchange.com/schemas/v0.1/Provenance.json
+      type: object
+      title: Provenance
+      description: Origin of the image, required so AI provenance (EU AI Act art. 50) survives the brand -> retailer -> shop chain.
+      properties:
+        ai_generated:
+          type: boolean
+          description: True when the image is (mostly) generated by AI. A publisher that knows this MUST say so.
+        ai_edited:
+          type: boolean
+          description: True when a real photo was materially edited with generative AI (e.g. background, model, garment fit).
+        source:
+          type: string
+          enum:
+            - photo
+            - generated
+            - composite
+          description: "photo: camera original (possibly retouched); generated: synthesised; composite: photo combined with generated parts."
+        c2pa:
+          type: string
+          enum:
+            - embedded
+            - sidecar
+            - none
+          description: "Where C2PA Content Credentials live. embedded: inside the original bytes (preserved: originals are served unmodified)."
+        c2pa_manifest_url:
+          anyOf:
+            - $ref: "#/components/schemas/Url"
+              description: Sidecar manifest URL (when c2pa is sidecar).
+            - type: "null"
+        generator:
+          type:
+            - string
+            - "null"
+          description: Optional free-text tool/model name.
+          maxLength: 200
+      required:
+        - ai_generated
+        - ai_edited
+        - source
+        - c2pa
+      additionalProperties: false
+      patternProperties:
+        ^x-[a-z0-9]+-[a-z0-9_-]+$: true
+    Asset:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      $id: https://openbrandexchange.com/schemas/v0.1/Asset.json
+      type: object
+      title: Asset
+      description: A final, published product image with order, rights and provenance.
+      properties:
+        id:
+          $ref: "#/components/schemas/Id"
+        external_id:
+          $ref: "#/components/schemas/ExternalId"
+        product_id:
+          $ref: "#/components/schemas/Id"
+        brand_id:
+          $ref: "#/components/schemas/Id"
+        media_type:
+          type: string
+          enum:
+            - image
+          description: Kind of media. v0.1 only defines image; consumers MUST ignore unknown values.
+        color_code:
+          type:
+            - string
+            - "null"
+          description: The colour this asset belongs to (Variant.color.code); null = all colours of the product.
+          maxLength: 64
+        variant_ids:
+          type:
+            - array
+            - "null"
+          items:
+            $ref: "#/components/schemas/Id"
+          description: "Optional: restrict the asset to specific variants (rare)."
+        role:
+          $ref: "#/components/schemas/Role"
+        view:
+          anyOf:
+            - $ref: "#/components/schemas/View"
+            - type: "null"
+        position:
+          type: integer
+          description: Order within (product, color_code), 1-based. Unique among visible assets of that product+colour.
+          minimum: 1
+          maximum: 999
+        filename:
+          type: string
+          description: Suggested download filename for the original, e.g. KO-1001_NVY_1.jpg.
+          minLength: 1
+          maxLength: 255
+        alt_text:
+          anyOf:
+            - $ref: "#/components/schemas/LocalizedText"
+            - type: "null"
+        content_type:
+          type: string
+          description: Media type of the original.
+          examples:
+            - image/jpeg
+        width:
+          type: integer
+          description: Original width in px.
+          minimum: 1
+        height:
+          type: integer
+          description: Original height in px.
+          minimum: 1
+        bytes:
+          type: integer
+          description: Original size in bytes.
+          minimum: 1
+        sha256:
+          $ref: "#/components/schemas/Sha256"
+          description: SHA-256 of the original bytes (always present, even when the original rendition is not offered to this consumer).
+        rights:
+          $ref: "#/components/schemas/Rights"
+        provenance:
+          $ref: "#/components/schemas/Provenance"
+        renditions:
+          type: object
+          description: "Renditions by name. 'original' is present only when the brand allows original downloads AND the caller has media:original (portal: the retailer is allowed originals)."
+          properties:
+            original:
+              $ref: "#/components/schemas/Rendition"
+            web:
+              $ref: "#/components/schemas/Rendition"
+            square:
+              $ref: "#/components/schemas/Rendition"
+            thumb:
+              $ref: "#/components/schemas/Rendition"
+          required:
+            - web
+            - square
+            - thumb
+          additionalProperties: false
+          patternProperties:
+            ^x-[a-z0-9]+-[a-z0-9_-]+$: true
+        updated_at:
+          $ref: "#/components/schemas/DateTime"
+      required:
+        - id
+        - external_id
+        - product_id
+        - brand_id
+        - media_type
+        - color_code
+        - role
+        - view
+        - position
+        - filename
+        - content_type
+        - width
+        - height
+        - bytes
+        - sha256
+        - rights
+        - provenance
+        - renditions
+        - updated_at
+      additionalProperties: false
+      patternProperties:
+        ^x-[a-z0-9]+-[a-z0-9_-]+$: true
+    Product:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      $id: https://openbrandexchange.com/schemas/v0.1/Product.json
+      type: object
+      title: Product
+      description: A style/model. In /changes entries 'data' holds the product without 'variants' and 'assets'; product endpoints return ProductDetail (with both arrays).
+      properties:
+        id:
+          $ref: "#/components/schemas/Id"
+        external_id:
+          $ref: "#/components/schemas/ExternalId"
+        brand_id:
+          $ref: "#/components/schemas/Id"
+        style_number:
+          type: string
+          description: The brand's style/model number.
+          minLength: 1
+          maxLength: 200
+        name:
+          $ref: "#/components/schemas/LocalizedText"
+        description:
+          anyOf:
+            - $ref: "#/components/schemas/LocalizedText"
+            - type: "null"
+        item_type:
+          type:
+            - string
+            - "null"
+          description: Open vocabulary; recommended keys in docs/protocol.md#item-types (e.g. t_shirt, sweater, jacket, jeans, bag).
+          pattern: ^[a-z][a-z0-9_]{0,63}$
+        gpc_brick:
+          type:
+            - string
+            - "null"
+          description: Optional GS1 GPC brick code.
+          pattern: ^[0-9]{8}$
+        target_group:
+          type:
+            - string
+            - "null"
+          description: "Open vocabulary; recommended: women, men, unisex, girls, boys, kids, baby."
+          pattern: ^[a-z][a-z0-9_]{0,63}$
+        season:
+          type:
+            - string
+            - "null"
+          description: Season label as used by the brand, e.g. SS26, AW26, NOS.
+          maxLength: 64
+        collection:
+          type:
+            - string
+            - "null"
+          description: Collection name.
+          maxLength: 200
+        materials:
+          anyOf:
+            - $ref: "#/components/schemas/Materials"
+            - type: "null"
+        care:
+          anyOf:
+            - $ref: "#/components/schemas/Care"
+            - type: "null"
+        country_of_origin:
+          anyOf:
+            - $ref: "#/components/schemas/CountryCode"
+            - type: "null"
+        dpp_url:
+          anyOf:
+            - $ref: "#/components/schemas/Url"
+              description: Link to the product's Digital Product Passport, when one exists.
+            - type: "null"
+        attributes:
+          type:
+            - object
+            - "null"
+          description: Additional brand attributes. Keys lower_snake_case; values string, number, boolean or LocalizedText.
+          propertyNames:
+            pattern: ^[a-z][a-z0-9_]{0,63}$
+          additionalProperties:
+            anyOf:
+              - type:
+                  - string
+                  - number
+                  - boolean
+              - $ref: "#/components/schemas/LocalizedText"
+        created_at:
+          $ref: "#/components/schemas/DateTime"
+        updated_at:
+          $ref: "#/components/schemas/DateTime"
+          description: Changes whenever the protocol representation of this product (own fields only) changes.
+        variants:
+          type: array
+          items:
+            $ref: "#/components/schemas/Variant"
+          description: Present in product responses (GET /products...), absent in /changes data. Only published variants.
+        assets:
+          type: array
+          items:
+            $ref: "#/components/schemas/Asset"
+          description: Present in product responses (GET /products...), absent in /changes data. Only visible assets, ordered by color_code then position.
+      required:
+        - id
+        - external_id
+        - brand_id
+        - style_number
+        - name
+        - updated_at
+      additionalProperties: false
+      patternProperties:
+        ^x-[a-z0-9]+-[a-z0-9_-]+$: true
+    ProductDetail:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      $id: https://openbrandexchange.com/schemas/v0.1/ProductDetail.json
+      title: ProductDetail
+      description: A Product with its published variants and visible assets embedded. Returned by GET /products, /products/{id} and by-GTIN lookups.
+      type: object
+      $ref: "#/components/schemas/Product"
+      required:
+        - variants
+        - assets
+      properties:
+        variants:
+          type: array
+          items:
+            $ref: "#/components/schemas/Variant"
+        assets:
+          type: array
+          items:
+            $ref: "#/components/schemas/Asset"
+    GtinLookupResult:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      $id: https://openbrandexchange.com/schemas/v0.1/GtinLookupResult.json
+      type: object
+      title: GtinLookupResult
+      properties:
+        results:
+          type: array
+          items:
+            type: object
+            properties:
+              input:
+                type: string
+                description: The code as submitted (trimmed).
+                maxLength: 64
+              gtin:
+                anyOf:
+                  - $ref: "#/components/schemas/Gtin14"
+                  - type: "null"
+              status:
+                type: string
+                enum:
+                  - matched
+                  - unmatched
+                  - invalid
+                description: "invalid: not 8, 12, 13 or 14 digits after removing spaces."
+              product_id:
+                anyOf:
+                  - $ref: "#/components/schemas/Id"
+                  - type: "null"
+              variant_id:
+                anyOf:
+                  - $ref: "#/components/schemas/Id"
+                  - type: "null"
+            required:
+              - input
+              - gtin
+              - status
+              - product_id
+              - variant_id
+            additionalProperties: false
+            patternProperties:
+              ^x-[a-z0-9]+-[a-z0-9_-]+$: true
+          description: One result per distinct normalised input, in input order.
+        products:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProductDetail"
+          description: Each matched product once.
+      required:
+        - results
+        - products
+      additionalProperties: false
+      patternProperties:
+        ^x-[a-z0-9]+-[a-z0-9_-]+$: true
+  responses:
+    IngestResult:
+      description: Operation result.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/IngestResult"
+    BadRequest:
+      description: "`invalid_request` or `limit_exceeded`."
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    Unauthorized:
+      description: "`unauthorized` (not logged in / session expired) or `invalid_credentials`."
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    Forbidden:
+      description: "`forbidden` (wrong role), `csrf_failed`, `account_blocked`, `original_not_allowed`."
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    NotFound:
+      description: "`not_found`."
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    Conflict:
+      description: "`conflict`, `setup_required`, `setup_completed`, `gtin_conflict`, `position_conflict`."
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    InviteInvalid:
+      description: "`invite_invalid` (unknown, used or expired token)."
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    ValidationFailed:
+      description: "`validation_failed` with field errors (or `unsafe_url`)."
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    PayloadTooLarge:
+      description: "`payload_too_large`."
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    UnsupportedMediaType:
+      description: "`unsupported_media_type`."
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    TooManyRequests:
+      description: "`rate_limited`."
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
