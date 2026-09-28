@@ -2,11 +2,6 @@
 
 All notable changes to the Open Brand Exchange specification. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [docs/versioning.md](docs/versioning.md).
 
-## [Unreleased]
-
-### Added
-- Node Admin API: optional read-only `Settings.node.cron` (`url`, `command`, `last_run_at`) for nodes that need an outside scheduler, so the admin can show the cron address again after installation.
-
 ## [0.1.0] - 2026-09-28
 
 The first release. Implemented by three portals in three runtimes (Cloudflare, Google Cloud & Docker, web hosting), the Go SDK and CLI, and the conformance suite; see [docs/implementations.md](docs/implementations.md).
@@ -24,6 +19,8 @@ The first release. Implemented by three portals in three runtimes (Cloudflare, G
 - Documentation: protocol, ingest, import format, automation recipes, security, conformance, directory, versioning, implementations.
 - Fixtures: fictional "Kestrel Outfitters" catalog with generated images, expected protocol objects, ingest replay script with expected results and change entries, example documents (referenced as examples from the OpenAPI files), webhook signature test vector.
 - Rendered HTML reference, single-file OpenAPI bundles and the schemas at their `$id` paths in `site/`, for the website. The pages carry their own Content-Security-Policy, load nothing from other hosts, and pass axe (WCAG 2.1 AA) on desktop and phone.
+- Node Admin API: optional read-only `Settings.node.cron` (`url`, `command`, `last_run_at`) for nodes that need an outside scheduler, so the admin can show the cron address again after installation.
+- Test vectors for the image filename rule in `fixtures/expected/image-filenames.json`, which every implementation runs.
 - Tooling: `npm run check` (Redocly lint, Ajv validation of schemas, fixtures and OpenAPI examples, glossary, links, versions, licences, `site/` freshness), `npm run build:site`, `npm run test:site` (Playwright + axe), `npm run package`; CI and a tag-triggered release workflow.
 - Project files: SECURITY.md (security@openbrandexchange.com), CONTRIBUTING.md (DCO sign-off), CODE_OF_CONDUCT.md (Contributor Covenant 2.1), NOTICE, issue and pull request templates.
 
@@ -33,6 +30,7 @@ The first release. Implemented by three portals in three runtimes (Cloudflare, G
 - `ImportRowError.row` is `null` for header and file-level problems.
 - Import counts count a brand only when the import created it.
 - Image file names: two-part qualifiers (`size_chart`, `tilted_left`, `tilted_right`) are matched first; the rightmost role and view win; `other` is the view next to another role; `ALL` as colour means all colours (external id `{style}_ALL_{position}`).
+- Imports never take away what they do not state about an image the node already has ([import-format.md rule 8](docs/import-format.md#4-processing-rules)): alt text, rights, provenance and status change only where the image's `assets.csv` row has a value, so an import of the images alone keeps embargoes, credits and AI labels, including those set in the admin.
 - GTIN lookup echoes the input trimmed of leading and trailing whitespace.
 - Conformance I-REPLAY-2 compares with the expected entries minus upserts of objects that are no longer visible after the batch ([protocol.md §6.2](docs/protocol.md#62-what-a-consumer-sees)).
 - `405 method_not_allowed` is a SHOULD; a node MAY answer `404`.

@@ -117,7 +117,7 @@ These and more edge cases are test vectors in [`fixtures/expected/image-filename
 Images whose style/colour is not in the catalog (this import or already on the node) are errors `unknown_parent` (`ALL` always matches). Images that match neither the pattern nor an `assets.csv` row are errors (`validation_failed`). Two files resolving to the same external id in one import are an error for both.
 
 ### 2.2 assets.csv (optional)
-Same file rules as `products.csv`. One row per image file; empty cells keep the value from the filename or the defaults.
+Same file rules as `products.csv`. One row per image file; an empty cell (or a column the file does not have) keeps the value from the file name, the value the image already has on the node, or, for a new image, the node default ([rule 8](#4-processing-rules)).
 
 | Column | Notes |
 |---|---|
@@ -126,7 +126,7 @@ Same file rules as `products.csv`. One row per image file; empty cells keep the 
 | `product_id` / `style_number`, `color_code`, `position` | needed only when the file name does not follow the pattern; `color_code` empty = all colours (and `ALL` here is an ordinary colour code) |
 | `role`, `view` | override the qualifiers |
 | `alt_text`, `alt_text:<lang>` | |
-| `license`, `license_text`, `channels` (`\|`-separated), `territories` (`\|`-separated), `embargo_until`, `expires_at`, `credit`, `model_release` | rights; empty = node default |
+| `license`, `license_text`, `channels` (`\|`-separated), `territories` (`\|`-separated), `embargo_until`, `expires_at`, `credit`, `model_release` | rights; empty = keep (a new image: node default) |
 | `ai_generated`, `ai_edited`, `source`, `c2pa`, `c2pa_manifest_url`, `generator` | provenance |
 | `status` | `published` / `unpublished` |
 
@@ -155,3 +155,4 @@ Scheduled pull imports (SFTP folder, S3 prefix) treat the folder like an unpacke
 5. `dry_run` validates and reports counts and errors without writing.
 6. Images are deduplicated by sha256: an unchanged image costs no upload (CLI/UI send a manifest) and no change entry.
 7. **Counts** (`ImportRun.counts`) count the objects the import wrote or compared: products, variants and assets from the files, and brands the import created. A brand the import only refers to (it already exists) is counted neither as `created` nor as `unchanged`, so a second import of the same file reports one object fewer as `unchanged` than the first reported as `created` when that first import created the brand.
+8. **An import never takes away what it does not state about an image.** For an image the node already has (same external id), the file, product, colour, position, role and view come from the file name or its `assets.csv` row as usual, but alt text (per language), each rights field, each provenance field and `status` change only where that row has a non-empty cell. Everything else keeps its stored value, whether it came from an earlier import, the admin or the Ingest API; with no row, or no `assets.csv` at all, nothing of it changes. A new image gets the node defaults for what the import does not state. So a nightly import of the images alone never lifts an embargo, removes a credit or clears an AI label. To change one of them, send a cell with the new value (for example a past `embargo_until` to lift an embargo) or change it in the admin or through the Ingest API. The Ingest API's `PUT` keeps its replace semantics ([ingest.md](ingest.md)); this rule is for imports only.

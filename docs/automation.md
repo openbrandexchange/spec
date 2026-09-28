@@ -35,7 +35,7 @@ obx status [--job <id>]                            # recent uploads and their pr
 obx logout                                         # forget the stored key
 ```
 
-`--csv products.csv` also sends an `assets.csv` found in the same folder (an import without it resets image rights, embargo dates and AI labels to the node's defaults). Other `push` options: `--assets-csv <file>` (another assets file), `--language nl` (language of the plain `name`/`description` columns), `--no-wait` (start the job and exit), `--json` (machine-readable output). `obx <command> --help` lists everything.
+`--csv products.csv` also sends an `assets.csv` found in the same folder, so the rights, embargo dates and AI labels in it arrive with the images (an import without it keeps what the images already have: [import-format.md rule 8](import-format.md#4-processing-rules)). Other `push` options: `--assets-csv <file>` (another assets file), `--language nl` (language of the plain `name`/`description` columns), `--no-wait` (start the job and exit), `--json` (machine-readable output). `obx <command> --help` lists everything.
 
 For **retailers**, `obx pull https://brands.kestrel.example --out ./kestrel` mirrors a brand's catalog with an API key (`--client-id`/`--client-secret` or `OBX_CLIENT_ID`/`OBX_CLIENT_SECRET`): article data plus, by default, the `web` version of every image. `--renditions original,web,square,thumb` picks other versions (originals only when the brand allows them), and `--follow` keeps it up to date from the change feed.
 
