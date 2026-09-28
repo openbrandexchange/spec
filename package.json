@@ -1,0 +1,19 @@
+{
+  "name": "@openbrandexchange/spec",
+  "private": true,
+  "version": "0.1.0-draft",
+  "description": "Open Brand Exchange specification: OpenAPI, JSON Schemas, docs and fixtures.",
+  "license": "CC-BY-4.0",
+  "type": "module",
+  "scripts": {
+    "lint": "redocly lint",
+    "validate": "node tools/validate.mjs",
+    "fixtures": "python3 fixtures/generate.py",
+    "check": "npm run lint && npm run validate"
+  },
+  "devDependencies": {
+    "@redocly/cli": "2.54.3",
+    "ajv": "8.20.0",
+    "ajv-formats": "3.0.1"
+  }
+}

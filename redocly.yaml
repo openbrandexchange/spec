@@ -1,0 +1,14 @@
+extends:
+  - recommended
+apis:
+  protocol:
+    root: openapi/obx-protocol.yaml
+  ingest:
+    root: openapi/obx-ingest.yaml
+  admin:
+    root: openapi/node-admin.yaml
+rules:
+  # Tokens and signed URLs are documented per operation; a security requirement per operation is intended.
+  operation-4xx-response: error
+  info-license-strict: error
+  no-server-example.com: warn
