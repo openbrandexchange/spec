@@ -35,7 +35,7 @@ obx status [--job <id>]                            # recent uploads and their pr
 obx logout                                         # forget the stored key
 ```
 
-Other `push` options: `--assets-csv assets.csv`, `--language nl` (language of the plain `name`/`description` columns), `--no-wait` (start the job and exit), `--json` (machine-readable output). `obx <command> --help` lists everything.
+`--csv products.csv` also sends an `assets.csv` found in the same folder (an import without it resets image rights, embargo dates and AI labels to the node's defaults). Other `push` options: `--assets-csv <file>` (another assets file), `--language nl` (language of the plain `name`/`description` columns), `--no-wait` (start the job and exit), `--json` (machine-readable output). `obx <command> --help` lists everything.
 
 For **retailers**, `obx pull https://brands.kestrel.example --out ./kestrel` mirrors a brand's catalog with an API key (`--client-id`/`--client-secret` or `OBX_CLIENT_ID`/`OBX_CLIENT_SECRET`): article data plus, by default, the `web` version of every image. `--renditions original,web,square,thumb` picks other versions (originals only when the brand allows them), and `--follow` keeps it up to date from the change feed.
 
@@ -127,7 +127,7 @@ Use a plain **HTTP Request** step. Authentication: header `Authorization` = `Bea
     "item_type": "sweater", "season": "AW26", "materials": [{"part": "main", "fibers": [{"fiber": "merino_wool", "percentage": 100}]}]}
    ```
 2. **Size / colour**: `PUT {OBX_URL}/obx/v1/ingest/variants/{GTIN}` with `{"product_external_id": "KO-1001", "gtin": "2000100101025", "color": {"code": "NVY", "name": {"en": "Navy"}}, "size": "M"}`.
-3. **Image**: first `PUT {OBX_URL}/obx/v1/ingest/assets/KO-1001_NVY_1` with `{"product_external_id": "KO-1001", "color_code": "NVY", "role": "packshot", "view": "front", "position": 1}`, then `PUT {OBX_URL}/obx/v1/ingest/assets/KO-1001_NVY_1/files/original` with the **binary** file as body (n8n: "Send Binary Data"; Make: "Request content" = the file data; Zapier: Webhooks "Custom Request" with the file). On nodes that do not render images themselves (`GET {OBX_URL}/obx/v1/ingest` shows `"server_generated": false`) use a scheduled import or `obx` instead, since those make the web versions for you.
+3. **Image**: first `PUT {OBX_URL}/obx/v1/ingest/assets/KO-1001_NVY_1` with `{"product_external_id": "KO-1001", "color_code": "NVY", "role": "packshot", "view": "front", "position": 1}`, then `PUT {OBX_URL}/obx/v1/ingest/assets/KO-1001_NVY_1/files/original` with the **binary** file as body (n8n: "Send Binary Data"; Make: "Request content" = the file data; Zapier: Webhooks "Custom Request" with the file). On nodes that do not render images themselves (`GET {OBX_URL}/obx/v1/ingest` shows `"server_generated": false`) use `obx` (or the admin's Imports screen) instead: they make the web versions on your computer and upload them with the original. A scheduled import delivers originals only, so on such a node its images are served in their original size until the web versions are added.
 4. **Take something offline**: `PATCH {OBX_URL}/obx/v1/ingest/products/KO-1001`, header `Content-Type: application/merge-patch+json`, body `{"status": "unpublished"}`.
 
 Every call is safe to repeat: the same data twice changes nothing.
