@@ -32,6 +32,7 @@ The first release. Implemented by three portals in three runtimes (Cloudflare, G
 - Import counts count a brand only when the import created it.
 - Image file names: two-part qualifiers (`size_chart`, `tilted_left`, `tilted_right`) are matched first; the rightmost role and view win; `other` is the view next to another role; `ALL` as colour means all colours (external id `{style}_ALL_{position}`).
 - Imports never take away what they do not state about an image the node already has ([import-format.md rule 8](docs/import-format.md#4-processing-rules)): alt text, rights, provenance and status change only where the image's `assets.csv` row has a value, so an import of the images alone keeps embargoes, credits and AI labels, including those set in the admin.
+- A column that an import file does not have leaves that field of an existing product or variant as it is, per language for texts ([import-format.md rule 9](docs/import-format.md#4-processing-rules)); an empty cell in a column the file has still removes the value.
 - GTIN lookup echoes the input trimmed of leading and trailing whitespace.
 - Conformance I-REPLAY-2 compares with the expected entries minus upserts of objects that are no longer visible after the batch ([protocol.md §6.2](docs/protocol.md#62-what-a-consumer-sees)).
 - `405 method_not_allowed` is a SHOULD; a node MAY answer `404`.

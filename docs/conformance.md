@@ -77,6 +77,7 @@ obx-conformance mock --addr :8080                                               
 | I-IMP-3 | mirror import of a CSV missing one product unpublishes exactly that product; a mirror CSV with only one of the six Kestrel products → `mass_unpublish_refused`; zip with `../evil.jpg` → `import_invalid` and nothing written |
 | I-IMP-4 | row errors carry file, row, column and code; the job still succeeds |
 | I-IMP-5 | an import of `products.csv` and the images without `assets.csv` keeps what the images already have ([import-format.md rule 8](import-format.md#4-processing-rules)): `KO-1002_BLK_2` stays embargoed until 2030, `KO-1003_RST_3` stays AI-generated, a credit set through the Ingest API survives, and the import is all unchanged with no change entries |
+| I-IMP-6 | a `products.csv` with only `brand`, `style_number` and `name:en` (the fixture's values) keeps every other field ([import-format.md rule 9](import-format.md#4-processing-rules)): all unchanged, no change entries, `name:nl`, descriptions, materials and care still there; an empty `season` cell in a file that has the column removes the season |
 
 ## Portal profile
 
