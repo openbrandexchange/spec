@@ -2143,6 +2143,11 @@ components:
           oneOf:
             - {$ref: '../schemas/LocalizedText.json'}
             - {type: 'null'}
+        portal_name:
+          description: The brand's own word for its portal, per language (e.g. {"nl":"Merkbeeldbank"}). The UI shows "<name> · <word>"; without a text for the reader's language it uses the brand's en text, then its first text, then the glossary word for that language.
+          oneOf:
+            - {$ref: '../schemas/LocalizedText.json'}
+            - {type: 'null'}
         languages:
           type: array
           items: {$ref: '../schemas/Common.json#/$defs/LanguageTag'}
@@ -2240,6 +2245,11 @@ components:
             logo_url: {type: [string, 'null'], readOnly: true, description: 'Set via PUT /admin/api/settings/logo.'}
             accent_color: {type: [string, 'null'], pattern: '^#[0-9a-fA-F]{6}$'}
             welcome_text:
+              oneOf:
+                - {$ref: '../schemas/LocalizedText.json'}
+                - {type: 'null'}
+            portal_name:
+              description: Overrides the local portal word ("Beeldbank", "Händlerportal" ...) per language; null uses the glossary word. See PublicBranding.portal_name.
               oneOf:
                 - {$ref: '../schemas/LocalizedText.json'}
                 - {type: 'null'}
