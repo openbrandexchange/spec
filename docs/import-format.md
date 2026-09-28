@@ -15,7 +15,7 @@ A brand needs at most three things:
 - Delimiter: `,` or `;`, detected from the header row (whichever occurs more often outside quotes; tie → `,`). Nodes MAY also accept tab.
 - First row is the header. Header names are matched case-insensitively after trimming; spaces and `-` count as `_` (`Style Number` = `style_number`). Unknown columns are ignored with one warning per column.
 - Empty cells mean "no value". Leading/trailing whitespace in cells is trimmed.
-- Rows that are completely empty are skipped. Row numbers in errors are 1-based data rows (header = row 0).
+- Rows that are completely empty are skipped. Row numbers in errors are 1-based data rows; problems with the header row or the file as a whole have `row: null`.
 
 ### 1.2 Columns
 
