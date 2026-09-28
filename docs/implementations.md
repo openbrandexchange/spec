@@ -1,6 +1,6 @@
 # Implementations
 
-The known implementations of Open Brand Exchange, what they pass, where they run and what is still missing. Non-normative; updated by hand.
+The known implementations of Open Brand Exchange, what they pass, where they run and what is still missing. Non-normative; updated by hand. What is left before the first release, and who does it: [go-live](go-live.md).
 
 Status of **2026-09-28** (evening), spec **0.1.0**. The results below come from runs against spec `09f4314`, [obx-go](https://github.com/openbrandexchange/obx-go) `8a59644` (conformance suite, CLI, interop tool), [admin-ui](https://github.com/openbrandexchange/admin-ui) `v0.1.1` (`dabdcd0`, vendored by all three portals), node-go `89f9a2b`, node-php `0fecff2` and node-ts `1fda87c`. They include the 0.1.0 clarifications and the three import and download rules added last ([import-format.md](import-format.md) rules 8 and 9 and §2.3; conformance I-IMP-5, I-IMP-6 and the `assets.csv` checks in A-PORT-1).
 

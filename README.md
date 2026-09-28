@@ -19,7 +19,7 @@ This repository is the **source of truth** that every implementation follows.
 | [`docs/protocol.md`](docs/protocol.md) | the readable specification (start here) |
 | [`docs/ingest.md`](docs/ingest.md) · [`docs/import-format.md`](docs/import-format.md) · [`docs/automation.md`](docs/automation.md) | publishing and automating |
 | [`docs/security.md`](docs/security.md) · [`docs/conformance.md`](docs/conformance.md) | requirements and tests |
-| [`docs/implementations.md`](docs/implementations.md) | the portals that implement it, what they pass, where they run, known gaps |
+| [`docs/implementations.md`](docs/implementations.md) · [`docs/go-live.md`](docs/go-live.md) | the portals that implement it, what they pass, where they run, known gaps; what is left before the first release |
 | [`docs/directory.md`](docs/directory.md) · [`docs/versioning.md`](docs/versioning.md) · [`docs/governance.md`](docs/governance.md) | ecosystem |
 | [`fixtures/`](fixtures) | the fictional "Kestrel Outfitters" catalog, expected API output and an ingest replay script |
 | [`site/`](site) | the rendered HTML reference of the three APIs, single-file OpenAPI bundles and the schemas at their `$id` paths (generated; the website includes it) |
