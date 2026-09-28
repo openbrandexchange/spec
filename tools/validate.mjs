@@ -4,10 +4,11 @@
 // codes as the schema. Exit code 1 on any failure. Run: npm run validate (or bun tools/validate.mjs).
 import Ajv2020 from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
-import { readFileSync, readdirSync, existsSync } from "node:fs";
+import { readFileSync, readdirSync, existsSync, statSync } from "node:fs";
 import { join, dirname, basename } from "node:path";
 import { fileURLToPath } from "node:url";
 import { checkGlossary } from "./glossary.mjs";
+import { parse as parseYAML } from "yaml";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const failures = [];
@@ -276,12 +277,112 @@ if (existsSync(protocolDoc)) {
   for (const code of codes) { checked++; if (!doc.includes(`\`${code}\``)) fail("docs/protocol.md", `error code ${code} is not documented`); }
 } else fail("docs/protocol.md", "missing");
 
+// ---------------------------------------------------------------- OpenAPI examples
+// Every example in the OpenAPI files references a fixture file; it must exist and validate
+// against the media type's schema. Every fixture example must be used or validated above.
+let openapiExamples = 0;
+function walkExamples(node, file, path) {
+  if (Array.isArray(node)) return node.forEach((v, i) => walkExamples(v, file, `${path}/${i}`));
+  if (!node || typeof node !== "object") return;
+  if (node.examples && node.schema) {
+    const ref = node.schema.$ref;
+    const schema = /^\.\.\/schemas\/([A-Za-z]+)\.json$/.exec(ref ?? "")?.[1];
+    for (const [name, ex] of Object.entries(node.examples)) {
+      const where = `${file} ${path}/examples/${name}`;
+      const target = ex?.value?.$ref;
+      if (!target) { fail(where, "examples must reference a fixture file (value: {$ref: ../fixtures/examples/…})"); continue; }
+      const fixture = join(root, "openapi", target);
+      if (!existsSync(fixture)) { fail(where, `missing ${target}`); continue; }
+      if (!schema) { fail(where, `media type schema ${ref} is not a ../schemas/*.json reference`); continue; }
+      openapiExamples++;
+      check(schema, readJSON(fixture), where);
+    }
+  }
+  for (const [k, v] of Object.entries(node)) if (k !== "examples") walkExamples(v, file, `${path}/${k.replace(/\//g, "~1")}`);
+}
+for (const file of ["obx-protocol.yaml", "obx-ingest.yaml", "node-admin.yaml"]) {
+  walkExamples(parseYAML(readFileSync(join(root, "openapi", file), "utf8")), `openapi/${file}`, "#");
+}
+checked++;
+if (openapiExamples < 20) fail("openapi", `only ${openapiExamples} examples found; expected the fixture examples to be referenced`);
+
 // ---------------------------------------------------------------- glossary: 25 languages, no gaps
 checked++;
 for (const p of checkGlossary(readFileSync(join(root, "docs", "glossary.md"), "utf8"))) fail("docs/glossary.md", p);
+
+// ---------------------------------------------------------------- links between documents
+// Every relative link in a Markdown file must point at an existing file, and every #anchor
+// at a heading (GitHub slug) or an explicit <a id> in the target.
+export function slug(heading) {
+  return heading.trim().toLowerCase().replace(/<[^>]+>/g, "").replace(/[`*~]/g, "")
+    .replace(/[^\p{L}\p{N} _-]/gu, "").replace(/ /g, "-");
+}
+function anchorsOf(file) {
+  const text = readFileSync(file, "utf8").replace(/```[\s\S]*?```/g, "");
+  const seen = new Map(), out = new Set();
+  for (const m of text.matchAll(/^#{1,6}\s+(.+)$/gm)) {
+    const s = slug(m[1]);
+    const n = seen.get(s) ?? 0;
+    seen.set(s, n + 1);
+    out.add(n ? `${s}-${n}` : s);
+  }
+  for (const m of text.matchAll(/<a id="([^"]+)"/g)) out.add(m[1]);
+  return out;
+}
+function markdownFiles(dir) {
+  const out = [];
+  for (const f of readdirSync(dir)) {
+    if (["node_modules", ".git", "dist"].includes(f)) continue;
+    const p = join(dir, f);
+    if (statSync(p).isDirectory()) out.push(...markdownFiles(p));
+    else if (f.endsWith(".md")) out.push(p);
+  }
+  return out;
+}
+const mdFiles = markdownFiles(root);
+for (const file of mdFiles) {
+  const text = readFileSync(file, "utf8").replace(/```[\s\S]*?```/g, "").replace(/`[^`\n]*`/g, "");
+  for (const m of text.matchAll(/\[[^\]]*\]\(([^)\s]+)\)/g)) {
+    const target = m[1];
+    if (/^(https?:|mailto:)/.test(target)) continue;
+    checked++;
+    const [path, anchor] = target.split("#");
+    const dest = path ? join(dirname(file), decodeURIComponent(path)) : file;
+    const where = file.slice(root.length + 1);
+    if (!existsSync(dest)) { fail(where, `broken link ${target}`); continue; }
+    if (anchor && dest.endsWith(".md") && !anchorsOf(dest).has(anchor)) fail(where, `link ${target}: no heading or anchor "${anchor}"`);
+  }
+  // Nothing a reader could hit is left unfinished.
+  checked++;
+  const open = /\b(TODO|FIXME|TBD|XXX)\b/.exec(readFileSync(file, "utf8"));
+  if (open) fail(file.slice(root.length + 1), `contains "${open[1]}"; finish it or track it in NOTES.md`);
+}
+for (const file of ["openapi/obx-protocol.yaml", "openapi/obx-ingest.yaml", "openapi/node-admin.yaml"]) {
+  checked++;
+  const open = /\b(TODO|FIXME|TBD|XXX)\b/.exec(readFileSync(join(root, file), "utf8"));
+  if (open) fail(file, `contains "${open[1]}"`);
+}
+
+// ---------------------------------------------------------------- one version everywhere
+{
+  const version = readJSON(join(root, "package.json")).version;
+  const expect = (where, got) => { checked++; if (got !== version) fail(where, `version ${got}, package.json says ${version}`); };
+  for (const file of ["obx-protocol.yaml", "obx-ingest.yaml", "node-admin.yaml"]) {
+    expect(`openapi/${file} info.version`, parseYAML(readFileSync(join(root, "openapi", file), "utf8")).info.version);
+  }
+  expect("fixtures/examples/DiscoveryDocument.kestrel.json spec_version", readJSON(join(exDir, "DiscoveryDocument.kestrel.json")).spec_version);
+  const released = /^## \[(\d+\.\d+\.\d+[^\]]*)\]/m.exec(readFileSync(join(root, "CHANGELOG.md"), "utf8").replace(/^## \[Unreleased\][\s\S]*?(?=^## \[)/m, ""));
+  expect("CHANGELOG.md latest release", released?.[1]);
+  for (const doc of ["protocol.md", "ingest.md"]) {
+    checked++;
+    if (!readFileSync(join(root, "docs", doc), "utf8").includes(`**Status:** v${version}.`)) fail(`docs/${doc}`, `status line does not say v${version}`);
+  }
+  checked++;
+  if (!/^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$/.test(version)) fail("package.json", `version ${version} is not semantic versioning`);
+}
 
 if (failures.length) {
   console.error(`✗ ${failures.length} problem(s) in ${checked} checks:\n  ` + failures.join("\n  "));
   process.exit(1);
 }
-console.log(`✓ ${checked} checks passed (${schemaNames.length} schemas, fixtures, CSV, docs).`);
+console.log(`✓ ${checked} checks passed (${schemaNames.length} schemas, ${openapiExamples} OpenAPI examples, fixtures, CSV, docs, glossary).`);

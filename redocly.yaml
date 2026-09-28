@@ -12,3 +12,6 @@ rules:
   operation-4xx-response: error
   info-license-strict: error
   no-server-example.com: warn
+  # Redocly cannot resolve the $id-relative refs of our JSON Schemas when it checks
+  # examples; tools/validate.mjs validates every OpenAPI example with Ajv instead.
+  no-invalid-media-type-examples: off

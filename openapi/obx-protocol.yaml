@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: OBX Protocol (read side)
-  version: 0.1.0-draft
+  version: 0.1.0
   summary: How retailers' software discovers a brand node, gets access and pulls product content.
   description: |
     **Normative.** The Open Brand Exchange (OBX) Protocol is the read side of a brand node:
@@ -70,6 +70,10 @@ paths:
           content:
             application/json:
               schema: {$ref: '../schemas/DiscoveryDocument.json'}
+              examples:
+                kestrel:
+                  summary: Kestrel Outfitters
+                  value: {$ref: '../fixtures/examples/DiscoveryDocument.kestrel.json'}
         '429': {$ref: '#/components/responses/TooManyRequests'}
         '503':
           description: '`setup_required`: the node has not completed first-run setup.'
@@ -93,12 +97,20 @@ paths:
         content:
           application/json:
             schema: {$ref: '../schemas/AccessRequestInput.json'}
+            examples:
+              request:
+                summary: A retailer asks for portal and API access
+                value: {$ref: '../fixtures/examples/AccessRequestInput.example.json'}
       responses:
         '202':
           description: Request stored. Keep `request_token` to poll the status.
           content:
             application/json:
               schema: {$ref: '../schemas/AccessRequest.json'}
+              examples:
+                created:
+                  summary: Just created (token shown once)
+                  value: {$ref: '../fixtures/examples/AccessRequest.created.json'}
         '403': {$ref: '#/components/responses/Forbidden'}
         '422': {$ref: '#/components/responses/ValidationFailed'}
         '429': {$ref: '#/components/responses/TooManyRequests'}
@@ -122,6 +134,13 @@ paths:
           content:
             application/json:
               schema: {$ref: '../schemas/AccessRequest.json'}
+              examples:
+                created:
+                  summary: Just created (token shown once)
+                  value: {$ref: '../fixtures/examples/AccessRequest.created.json'}
+                approved:
+                  summary: Approved; credentials on the first read
+                  value: {$ref: '../fixtures/examples/AccessRequest.approved.json'}
         '401': {$ref: '#/components/responses/Unauthorized'}
         '404': {$ref: '#/components/responses/NotFound'}
         '429': {$ref: '#/components/responses/TooManyRequests'}
@@ -168,6 +187,10 @@ paths:
           content:
             application/json:
               schema: {$ref: '../schemas/TokenResponse.json'}
+              examples:
+                token:
+                  summary: Access token
+                  value: {$ref: '../fixtures/examples/TokenResponse.example.json'}
         '400':
           description: RFC 6749 error (invalid_request, unsupported_grant_type, invalid_scope).
           content:
@@ -194,6 +217,10 @@ paths:
           content:
             application/json:
               schema: {$ref: '../schemas/Grant.json'}
+              examples:
+                grant:
+                  summary: A retailer restricted to one brand
+                  value: {$ref: '../fixtures/examples/Grant.example.json'}
         '401': {$ref: '#/components/responses/Unauthorized'}
         '429': {$ref: '#/components/responses/TooManyRequests'}
 
@@ -236,6 +263,10 @@ paths:
           content:
             application/json:
               schema: {$ref: '../schemas/ChangesPage.json'}
+              examples:
+                live:
+                  summary: A live page
+                  value: {$ref: '../fixtures/examples/ChangesPage.live.json'}
         '400': {$ref: '#/components/responses/CursorInvalid'}
         '401': {$ref: '#/components/responses/Unauthorized'}
         '403': {$ref: '#/components/responses/Forbidden'}
@@ -503,6 +534,10 @@ paths:
         content:
           application/json:
             schema: {$ref: '../schemas/ExportRequest.json'}
+            examples:
+              web:
+                summary: Web images of one brand
+                value: {$ref: '../fixtures/examples/ExportRequest.example.json'}
       responses:
         '202':
           description: Export queued.
@@ -531,6 +566,10 @@ paths:
           content:
             application/json:
               schema: {$ref: '../schemas/Export.json'}
+              examples:
+                succeeded:
+                  summary: Finished export
+                  value: {$ref: '../fixtures/examples/Export.succeeded.json'}
         '401': {$ref: '#/components/responses/Unauthorized'}
         '404': {$ref: '#/components/responses/NotFound'}
         '429': {$ref: '#/components/responses/TooManyRequests'}
@@ -600,6 +639,10 @@ paths:
         content:
           application/json:
             schema: {$ref: '../schemas/Usage.json'}
+            examples:
+              usage:
+                summary: Usage events
+                value: {$ref: '../fixtures/examples/Usage.example.json'}
       responses:
         '202':
           description: Accepted.
@@ -664,6 +707,10 @@ paths:
           content:
             application/json:
               schema: {$ref: '../schemas/WebhookSubscription.json'}
+              examples:
+                created:
+                  summary: Subscription
+                  value: {$ref: '../fixtures/examples/WebhookSubscription.created.json'}
         '401': {$ref: '#/components/responses/Unauthorized'}
         '409': {$ref: '#/components/responses/Conflict'}
         '422': {$ref: '#/components/responses/ValidationFailed'}
@@ -856,6 +903,10 @@ components:
       content:
         application/problem+json:
           schema: {$ref: '../schemas/Problem.json'}
+          examples:
+            expired:
+              summary: Cursor too old
+              value: {$ref: '../fixtures/examples/Problem.cursor-expired.json'}
     ExportExpired:
       description: '`export_expired`.'
       content:

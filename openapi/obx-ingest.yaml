@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: OBX Ingest API (write side)
-  version: 0.1.0-draft
+  version: 0.1.0
   summary: How a brand's own systems publish content to any OBX node.
   description: |
     **Normative.** The OBX Ingest API lets a brand's automation (PIM/ERP/DAM connector,
@@ -59,6 +59,10 @@ paths:
           content:
             application/json:
               schema: {$ref: '../schemas/IngestInfo.json'}
+              examples:
+                info:
+                  summary: Node that needs client-made versions
+                  value: {$ref: '../fixtures/examples/IngestInfo.example.json'}
         '401': {$ref: '#/components/responses/Unauthorized'}
 
   /brands/{external_id}:
@@ -83,6 +87,10 @@ paths:
         content:
           application/json:
             schema: {$ref: '../schemas/BrandInput.json'}
+            examples:
+              brand:
+                summary: A brand
+                value: {$ref: '../fixtures/examples/BrandInput.example.json'}
       responses:
         '200': {$ref: '#/components/responses/Result'}
         '201': {$ref: '#/components/responses/ResultCreated'}
@@ -146,6 +154,10 @@ paths:
         content:
           application/json:
             schema: {$ref: '../schemas/ProductInput.json'}
+            examples:
+              minimal:
+                summary: A minimal product
+                value: {$ref: '../fixtures/examples/ProductInput.minimal.json'}
       responses:
         '200': {$ref: '#/components/responses/Result'}
         '201': {$ref: '#/components/responses/ResultCreated'}
@@ -246,6 +258,10 @@ paths:
         content:
           application/json:
             schema: {$ref: '../schemas/VariantInput.json'}
+            examples:
+              variant:
+                summary: A size with EAN
+                value: {$ref: '../fixtures/examples/VariantInput.example.json'}
       responses:
         '200': {$ref: '#/components/responses/Result'}
         '201': {$ref: '#/components/responses/ResultCreated'}
@@ -310,6 +326,10 @@ paths:
         content:
           application/json:
             schema: {$ref: '../schemas/AssetInput.json'}
+            examples:
+              client:
+                summary: Image with client-made versions
+                value: {$ref: '../fixtures/examples/AssetInput.client-renditions.json'}
       responses:
         '200': {$ref: '#/components/responses/Result'}
         '201': {$ref: '#/components/responses/ResultCreated'}
@@ -414,11 +434,19 @@ paths:
           content:
             application/json:
               schema: {$ref: '../schemas/Blob.json'}
+              examples:
+                blob:
+                  summary: Stored blob
+                  value: {$ref: '../fixtures/examples/Blob.example.json'}
         '201':
           description: Stored.
           content:
             application/json:
               schema: {$ref: '../schemas/Blob.json'}
+              examples:
+                blob:
+                  summary: Stored blob
+                  value: {$ref: '../fixtures/examples/Blob.example.json'}
         '401': {$ref: '#/components/responses/Unauthorized'}
         '413': {$ref: '#/components/responses/PayloadTooLarge'}
         '415': {$ref: '#/components/responses/UnsupportedMediaType'}
@@ -447,11 +475,19 @@ paths:
           content:
             application/json:
               schema: {$ref: '../schemas/Blob.json'}
+              examples:
+                blob:
+                  summary: Stored blob
+                  value: {$ref: '../fixtures/examples/Blob.example.json'}
         '201':
           description: Upload session created.
           content:
             application/json:
               schema: {$ref: '../schemas/Upload.json'}
+              examples:
+                upload:
+                  summary: Multipart upload in progress
+                  value: {$ref: '../fixtures/examples/Upload.example.json'}
         '401': {$ref: '#/components/responses/Unauthorized'}
         '413': {$ref: '#/components/responses/PayloadTooLarge'}
         '415': {$ref: '#/components/responses/UnsupportedMediaType'}
@@ -468,6 +504,10 @@ paths:
           content:
             application/json:
               schema: {$ref: '../schemas/Upload.json'}
+              examples:
+                upload:
+                  summary: Multipart upload in progress
+                  value: {$ref: '../fixtures/examples/Upload.example.json'}
         '401': {$ref: '#/components/responses/Unauthorized'}
         '404': {$ref: '#/components/responses/NotFound'}
     delete:
@@ -502,6 +542,10 @@ paths:
           content:
             application/json:
               schema: {$ref: '../schemas/Upload.json'}
+              examples:
+                upload:
+                  summary: Multipart upload in progress
+                  value: {$ref: '../fixtures/examples/Upload.example.json'}
         '401': {$ref: '#/components/responses/Unauthorized'}
         '404': {$ref: '#/components/responses/NotFound'}
         '413': {$ref: '#/components/responses/PayloadTooLarge'}
@@ -520,6 +564,10 @@ paths:
           content:
             application/json:
               schema: {$ref: '../schemas/Blob.json'}
+              examples:
+                blob:
+                  summary: Stored blob
+                  value: {$ref: '../fixtures/examples/Blob.example.json'}
         '401': {$ref: '#/components/responses/Unauthorized'}
         '404': {$ref: '#/components/responses/NotFound'}
         '409': {$ref: '#/components/responses/Conflict'}
@@ -627,6 +675,10 @@ paths:
           content:
             application/json:
               schema: {$ref: '../schemas/IngestJob.json'}
+              examples:
+                import:
+                  summary: Import job
+                  value: {$ref: '../fixtures/examples/IngestJob.import.json'}
         '400': {$ref: '#/components/responses/BadRequest'}
         '401': {$ref: '#/components/responses/Unauthorized'}
         '403': {$ref: '#/components/responses/Forbidden'}
@@ -676,6 +728,10 @@ paths:
           content:
             application/json:
               schema: {$ref: '../schemas/IngestJob.json'}
+              examples:
+                import:
+                  summary: Import job
+                  value: {$ref: '../fixtures/examples/IngestJob.import.json'}
         '401': {$ref: '#/components/responses/Unauthorized'}
         '404': {$ref: '#/components/responses/NotFound'}
   /jobs/{id}/results:
@@ -829,6 +885,10 @@ components:
       content:
         application/json:
           schema: {$ref: '../schemas/IngestRecord.json'}
+          examples:
+            asset:
+              summary: An image record with defaults applied
+              value: {$ref: '../fixtures/examples/IngestRecord.asset.json'}
     Result:
       description: Operation result (updated, unchanged or deleted).
       headers:
@@ -837,6 +897,10 @@ components:
       content:
         application/json:
           schema: {$ref: '../schemas/IngestResult.json'}
+          examples:
+            unchanged:
+              summary: Unchanged (no change entry is written)
+              value: {$ref: '../fixtures/examples/IngestResult.unchanged.json'}
     ResultCreated:
       description: Created.
       headers:
@@ -847,6 +911,10 @@ components:
       content:
         application/json:
           schema: {$ref: '../schemas/IngestResult.json'}
+          examples:
+            created:
+              summary: Created
+              value: {$ref: '../fixtures/examples/IngestResult.created.json'}
     BadRequest:
       description: '`invalid_request` (malformed JSON/NDJSON/multipart) or `limit_exceeded`.'
       content:
@@ -892,6 +960,10 @@ components:
       content:
         application/problem+json:
           schema: {$ref: '../schemas/Problem.json'}
+          examples:
+            validation:
+              summary: Field errors
+              value: {$ref: '../fixtures/examples/Problem.validation.json'}
     TooManyRequests:
       description: '`rate_limited`.'
       headers:
