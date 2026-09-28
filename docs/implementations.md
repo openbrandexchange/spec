@@ -2,7 +2,7 @@
 
 The known implementations of Open Brand Exchange, what they pass, where they run and what is still missing. Non-normative; updated by hand.
 
-Status of **2026-09-28**: spec `d089aee` + this page, [obx-go](https://github.com/openbrandexchange/obx-go) `b356330` (conformance suite, CLI, interop tool), [admin-ui](https://github.com/openbrandexchange/admin-ui) `5c948c2` (vendored by all three portals).
+Status of **2026-09-28**, spec **0.1.0**. The conformance, interop and security results below come from the full run against spec `2053882`, [obx-go](https://github.com/openbrandexchange/obx-go) `b356330` (conformance suite, CLI, interop tool) and [admin-ui](https://github.com/openbrandexchange/admin-ui) `5c948c2` (vendored by all three portals). Since then the 0.1.0 clarifications (colourless images, filename qualifiers, SSRF, CORS, default API-key scopes; see the [changelog](../CHANGELOG.md)) were made in the spec, and the portals and the suite are following them (obx-go `4dee222`, node-go `0d552e9`, node-php `f4805a5`, node-ts `18ee22b` at the time of writing); the tables are refreshed by the next full run.
 
 ## The pieces
 
@@ -59,7 +59,9 @@ Reviewed on 2026-09-28 against [security.md](security.md): the conformance `secu
 | no secrets in logs (checked after a full run) | pass | pass | pass |
 | sessions: CSRF, logout, password change, no fixation, retailer kept out of admin | pass | pass | pass |
 | SSRF: every spelling refused; redirects re-checked | pass | pass | pass |
-| SSRF: resolved address pinned for the connection (DNS rebinding) | Workers: n/a (no private network); **Bun: not pinned** (see gaps) | pass (dialer control) | pass (`CURLOPT_RESOLVE`) |
+| SSRF: resolved address pinned for the connection (DNS rebinding) | Workers: n/a (no private network); Bun: **fixed** in `ec9f166` (was not pinned), to be re-reviewed | pass (dialer control) | pass (`CURLOPT_RESOLVE`) |
+| SSRF: link-local and cloud metadata refused also with `OBX_ALLOW_PRIVATE_URLS=true` | pass | pass (`773d336`) | pass |
+| CORS only on the discovery document (and the public logo) | pass | pass | **fixed** (sent `*` on the whole protocol API before) |
 | e-mail links never built from the request's Host (password-reset poisoning) | **fixed** (was vulnerable without `OBX_PUBLIC_URL`) | pass (fixed public URL) | pass (setup address) |
 | uploads: size limits, magic bytes, no SVG, zip slip, zip size and entry caps, pixel limits | pass | pass | pass |
 | CSV formula injection, `javascript:` links refused | pass | pass | pass |
@@ -96,12 +98,12 @@ For retailers: the portal in the browser, `obx pull` to mirror a catalog, or the
 
 ## Known gaps
 
-- **node-ts on Bun/Docker does not pin the resolved address** of an outbound request (scheduled imports, webhooks): it checks the resolved addresses, then `fetch()` resolves again. A DNS name that answers a public address first and a private one a moment later could reach the private network. On Cloudflare Workers this does not apply (Workers cannot reach private networks). Mitigation on Bun: keep `OBX_ALLOW_PRIVATE_URLS` off and run the container without access to internal services.
 - **Rendition bytes differ between portals that make them themselves** (Go's JPEG encoder, PHP GD). Dimensions and quality rules are the same; consumers compare by sha256 per portal, which the protocol already requires.
-- **node-php sends `Access-Control-Allow-Origin: *` on the protocol API**, the others only on discovery (all the spec asks). Harmless (bearer tokens are never sent by browsers on their own) but a browser-based tool would only work against node-php.
+- **Filename qualifier edge cases** settled in 0.1.0 ([import-format.md §2.1](import-format.md#21-filename-pattern)) are not yet followed everywhere: on node-go a second role or view qualifier (`…_5_back_front.jpg`, and so also `…_6_model_other.jpg`) makes the file an error instead of the rightmost one winning, and node-php reads `…_6_model_other.jpg` as role `other` instead of role `model` with view `other`. node-ts follows the rule. No fixture uses these names, so conformance does not see it.
+- The portals still report `spec_version: "0.1.0-draft"` in their discovery document; clients only use `obx_version` (`0.1`), so nothing breaks, but it should say `0.1.0`.
 - An admin who edits an image's rights in the admin UI saves the rights as shown; fields equal to the defaults are not pinned, so the image keeps following the default rights.
 - Not run for real (no cloud accounts): Cloud Run, Fly, Render, Railway and Cloudflare deploys, `install-linux.sh`, FTP hosting on a shared host. The Docker images, `wrangler dev` and the release zip on `php:8.3-apache` were tested locally.
 - The Deploy to Cloudflare button, the README quickstarts that `git clone` and the `obx` release downloads only work once the repositories are public and packages published.
 - The `obx` command is English only; the portals are in 25 languages. E-mail dates are ISO dates (`2026-10-05`) on node-go.
 - node-go's e2e browser walk (`e2e/run.sh`) is not in its CI yet (needs Node and a Playwright browser on the runner).
-- admin-ui tag `v0.1.0` predates two fixes that `main` (vendored everywhere) contains; a `v0.1.1` tag is still to be made.
+- admin-ui tag `v0.1.0` predates fixes that `main` (vendored everywhere) contains; `v0.1.1` is to be tagged (locally first; no release tag is pushed before the repositories are public).

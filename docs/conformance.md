@@ -35,7 +35,7 @@ obx-conformance mock --addr :8080                                               
 
 | Id | Test |
 |---|---|
-| P-DISC-1 | `/.well-known/obx` is public, valid DiscoveryDocument, CORS `*`, `api_base` ends in `/obx/v1`; the other protocol endpoints send no `Access-Control-Allow-Origin` |
+| P-DISC-1 | `/.well-known/obx` is public, valid DiscoveryDocument, CORS `*`, `api_base` ends in `/obx/v1` |
 | P-DISC-2 | capabilities include `changes`, `products`, `by_gtin`, `renditions`; each advertised optional capability works and each missing one answers `501 not_implemented` |
 | P-AUTH-1 | token endpoint: `client_secret_basic` works; wrong secret → 401 `invalid_client`; unknown scope → 400 `invalid_scope` |
 | P-AUTH-2 | no/invalid token → 401 problem+json with `unauthorized` / `invalid_token`; revoked client → `access_revoked` on the next call |
@@ -99,7 +99,7 @@ Runs last (it creates extra retailers and changes settings back and forth). REQU
 
 | Id | Test |
 |---|---|
-| S-HDR-1 (optional) | admin UI: `Content-Security-Policy` without inline or eval'd script, `frame-ancestors 'none'` (or `X-Frame-Options: DENY`), `Referrer-Policy`, `nosniff`; file downloads: `Cache-Control: private`, `nosniff`, portal downloads `Content-Disposition: attachment` |
+| S-HDR-1 (optional) | admin UI: `Content-Security-Policy` without inline or eval'd script, `frame-ancestors 'none'` (or `X-Frame-Options: DENY`), `Referrer-Policy`, `nosniff`; file downloads: `Cache-Control: private`, `nosniff`, portal downloads `Content-Disposition: attachment`; the protocol, ingest and admin APIs send no `Access-Control-Allow-Origin` (only discovery does) |
 | S-TOK-1 | upload keys are refused on the protocol, access tokens on ingest and admin, a client secret is no bearer token |
 | S-SESS-1 | a retailer user gets 403 on every admin endpoint; a session cookie is dead after logout; login does not keep a pre-login session id; changing the password ends the user's other sessions |
 | S-ISO-1 | exports, retailer webhooks, access-request status, download jobs, selections and self-service API keys answer 404 to anyone but their owner; a brand-restricted key's export and GTIN lookup stay in its grant |
