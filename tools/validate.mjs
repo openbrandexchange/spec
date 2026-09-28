@@ -269,6 +269,27 @@ for (const [name, want] of [
   if (JSON.stringify(got) !== JSON.stringify(want)) fail("filename rule", `${name}: ${JSON.stringify(got)}, want ${JSON.stringify(want)}`);
 }
 
+// The shared test vectors every implementation runs (fixtures/expected/image-filenames.json).
+{
+  const vectors = readJSON(join(root, "fixtures", "expected", "image-filenames.json")).cases;
+  if (vectors.length < 20) fail("image-filenames.json", `only ${vectors.length} cases`);
+  const names = new Set();
+  for (const v of vectors) {
+    checked++;
+    if (names.has(v.name)) fail("image-filenames.json", `duplicate case ${v.name}`);
+    names.add(v.name);
+    const p = parseImageFilename(v.name);
+    if (v.error) {
+      if (p) fail("image-filenames.json", `${v.name} should be an error, parses as ${JSON.stringify(p)}`);
+      continue;
+    }
+    if (!p) { fail("image-filenames.json", `${v.name} does not parse`); continue; }
+    const got = { style: p.style, color: colorCodeOf(p), position: p.position, ...roleAndView(p.qualifiers), external_id: assetExternalId(p.style, colorCodeOf(p), p.position) };
+    const want = { style: v.style, color: v.color, position: v.position, role: v.role, view: v.view, external_id: v.external_id };
+    if (JSON.stringify(got) !== JSON.stringify(want)) fail("image-filenames.json", `${v.name}: ${JSON.stringify(got)}, want ${JSON.stringify(want)}`);
+  }
+}
+
 // ---------------------------------------------------------------- docs consistency
 const codes = readJSON(join(schemaDir, "Common.json")).$defs.ErrorCode.enum;
 const protocolDoc = join(root, "docs", "protocol.md");

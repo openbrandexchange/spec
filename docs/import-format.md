@@ -108,7 +108,11 @@ Codes separated by `|`, in label order. Aligned with ISO 3758 (GINETEX symbols).
 | `KO-1002_BLK_4_model_tilted_left.jpg` | KO-1002 | BLK | 4 | model | tilted_left |
 | `KO-1001_NVY_5_back_front.jpg` | KO-1001 | NVY | 5 | packshot | front (rightmost wins) |
 | `KO-1005_all_4_size_chart.png` | KO-1005 | `null` (all colours; external id `KO-1005_ALL_4`) | 4 | size_chart | null |
+| `KO-1001_NVY_6_model_other.jpg` | KO-1001 | NVY | 6 | model | other |
+| `KO-1001_NVY_7_other.jpg` | KO-1001 | NVY | 7 | other | null |
 | `KO-1001_NVY_front.jpg` | — | — | — | error `validation_failed`: no position | |
+
+These and more edge cases are test vectors in [`fixtures/expected/image-filenames.json`](../fixtures/expected/image-filenames.json); every implementation should parse each name exactly as listed there.
 
 Images whose style/colour is not in the catalog (this import or already on the node) are errors `unknown_parent` (`ALL` always matches). Images that match neither the pattern nor an `assets.csv` row are errors (`validation_failed`). Two files resolving to the same external id in one import are an error for both.
 

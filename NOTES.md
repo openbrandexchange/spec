@@ -4,7 +4,7 @@ Decisions taken while writing v0.1.0 where the plan was silent or ambiguous. Eac
 
 ## Interpretation decisions
 
-1. **Change types include `brand`.** The brief listed `product|variant|asset|grant`; brand unpublishing needs a tombstone too, and clients must ignore unknown types anyway.
+1. **Change types include `brand`.** The plan listed `product|variant|asset|grant`; brand unpublishing needs a tombstone too, and clients must ignore unknown types anyway.
 2. **`/changes` entries embed the current object** (`data` on upserts) so a consumer syncs in one pass. Upsert entries of objects that are not visible at read time are omitted (a delete entry always follows a visible → invisible transition).
 3. **Grant changes trigger a resync** (`grant` entry with `resync: true`) instead of per-retailer synthetic upserts/deletes. Consumers restart without a cursor and mark-and-sweep after the snapshot (first `phase: live` page).
 4. **Product responses embed variants and assets** (`ProductDetail`); feed entries do not (separate entries).
