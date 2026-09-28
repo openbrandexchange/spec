@@ -2,6 +2,15 @@
 
 All notable changes to the Open Brand Exchange specification. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [docs/versioning.md](docs/versioning.md).
 
+## [Unreleased]
+
+### Clarified
+- `IngestRecord` (GET in the Ingest API and the admin catalog): for assets, `data.rights` is the full effective Rights object and `data.provenance` the full Provenance, both with defaults applied; `data.files` lists every current blob, renditions made by the node included, with `sha256`, `width` and `height`; `missing_files` is present (possibly `[]`) for assets only and omitted for other kinds. Found by the cross-implementation interop run: the three nodes answered this in three different ways.
+- `ImportRowError.row` is `null` for header and file-level problems.
+
+### Added
+- Node Admin API: `branding.portal_name`, the brand's own word for its portal per language.
+
 ## [0.1.0-draft] - 2026-09-28
 
 ### Added
