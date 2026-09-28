@@ -2283,6 +2283,12 @@ components:
             email_configured: {type: boolean}
             renditions_server_generated: {type: boolean}
             max_upload_bytes: {type: integer}
+            source_kinds:
+              type: array
+              description: |
+                The kinds of scheduled import this node can run. Absent means all of them; the admin
+                UI offers only these (for example, a node on Cloudflare Workers cannot open SFTP).
+              items: {type: string, enum: [https_url, sftp, s3]}
             custom_domain_help:
               type: string
               description: Short hosting-specific instructions for pointing a custom domain at this node (Markdown).
