@@ -91,7 +91,7 @@ obx-conformance mock --addr :8080                                               
 | A-KEY-1 | API client and ingest token: secret shown once, rotate invalidates the old one, revoke works |
 | A-CAT-1 | admin catalog writes behave like ingest (same results and change entries) |
 | A-SRC-1 | import source with `https://127.0.0.1/…` → 422 `unsafe_url`; credentials never returned |
-| A-PORT-1 | retailer: product list, facets, detail, GTIN paste, selection, product zip, selection zip (entries and names), CSV (canonical columns, formula-escaped), download job with file |
+| A-PORT-1 | retailer: product list, facets, detail, GTIN paste, selection, product zip, selection zip (entries and names, `assets.csv` with a row per image), CSV (canonical columns, formula-escaped), download job with file (`assets.csv` carries the embargo of `KO-1002_BLK_2`) |
 | A-PORT-2 | retailer restricted to `kestrel` never sees `kestrel-trail` anywhere; originals hidden when not allowed |
 | A-STAT-1 | downloads by retailers appear in stats; admin preview downloads do not |
 
