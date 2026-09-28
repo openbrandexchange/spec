@@ -38,6 +38,8 @@ Decisions taken while writing v0.1.0-draft where the plan was silent or ambiguou
 - The node serves the admin-ui build at `/` with SPA fallback (any GET outside `/admin/api`, `/obx/`, `/.well-known/` that accepts `text/html` returns `index.html`). Links the node e-mails: `/invite/{token}`, `/reset-password/{token}`; public pages `/login`, `/request-access`.
 - The admin UI generates `web`/`square`/`thumb` in the browser when `Settings.node.renditions_server_generated` is false, uploads them as blobs and imports with an `images_manifest`.
 - The UI shows enum keys (roles, views, care codes, item types) with its own en/nl labels.
+- E-mails (as built in node-go; the other nodes should match): texts are the `email.*` groups in the vendored admin-ui `dist/locales/<lang>.json` (`invite`, `accessRequestReceived`, `accessRequestNew`, `accessApproved`, `accessRejected`, `zipReady`, `passwordReset`), in the recipient's language with `en` fallback. Plain text in this order: `greeting` (or `greetingNoName`), `body`, `reason`, `apiNote` (only when an API key was created), `button` + `:` + newline + link, `expiry`, `ignore`, `contact`, `signoff`, then `-- ` and `footer`. A line with an unfilled `{{placeholder}}` is left out. `{{portal}}` is "<brand> · <word>", the word being the brand's `portal_name` for that language or `glossary.portal`; `{{expires}}` is written `YYYY-MM-DD`. Links: invite `/invite/{token}`, reset `/reset-password/{token}`, admin review `/admin/requests`, approved `/login`, zip `/downloads`.
+- `branding.portal_name` (Settings and PublicBranding, not yet in node-admin.yaml): optional LocalizedText that replaces the portal word.
 
 ## Open questions
 
