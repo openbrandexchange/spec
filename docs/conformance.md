@@ -7,6 +7,7 @@ An implementation is **OBX-conformant** for a profile when `obx-conformance` (in
 | **protocol** | the read side ([protocol.md](protocol.md)) | every node; normative |
 | **ingest** | the write side ([ingest.md](ingest.md), [import-format.md](import-format.md)) | every node that accepts automation; normative |
 | **portal** | the Node Admin + Portal API ([node-admin.yaml](../openapi/node-admin.yaml)) | nodes that want to run the shared `admin-ui`; non-normative |
+| **security** | the observable parts of [security.md](security.md) that the other profiles do not cover | every node; needs admin credentials or a setup code |
 
 ## Running
 
@@ -87,3 +88,23 @@ obx-conformance all      --url http://localhost:8080 --setup-code …           
 | A-PORT-1 | retailer: product list, facets, detail, GTIN paste, selection, product zip, selection zip (entries and names), CSV (canonical columns, formula-escaped), download job with file |
 | A-PORT-2 | retailer restricted to `kestrel` never sees `kestrel-trail` anywhere; originals hidden when not allowed |
 | A-STAT-1 | downloads by retailers appear in stats; admin preview downloads do not |
+
+## Security profile
+
+Runs last (it creates extra retailers and changes settings back and forth). REQUIRED tests test a MUST of [security.md](security.md).
+
+| Id | Test |
+|---|---|
+| S-HDR-1 (optional) | admin UI: `Content-Security-Policy` without inline or eval'd script, `frame-ancestors 'none'` (or `X-Frame-Options: DENY`), `Referrer-Policy`, `nosniff`; file downloads: `Cache-Control: private`, `nosniff`, portal downloads `Content-Disposition: attachment` |
+| S-TOK-1 | upload keys are refused on the protocol, access tokens on ingest and admin, a client secret is no bearer token |
+| S-SESS-1 | a retailer user gets 403 on every admin endpoint; a session cookie is dead after logout; login does not keep a pre-login session id; changing the password ends the user's other sessions |
+| S-ISO-1 | exports, retailer webhooks, access-request status, download jobs, selections and self-service API keys answer 404 to anyone but their owner; a brand-restricted key's export and GTIN lookup stay in its grant |
+| S-URL-1 | a signed rendition URL cannot be moved to another asset or rendition, stripped, extended or re-signed, and stops working when the asset is unpublished |
+| S-SSRF-1 | import sources, brand webhooks and retailer webhooks refuse loopback, private, CGNAT, link-local and metadata addresses in every spelling (IPv4-mapped IPv6, `0.0.0.0`, `localhost`) and non-https schemes; numeric shorthands such as `127.1` or `2130706433` may be saved but must never be fetched |
+| S-UPL-1 | a blob over `max_upload_bytes` and a JSON object over `max_object_bytes` → 413; HTML sent as `image/png` → 415; an SVG logo is refused |
+| S-CSV-1 (optional) | `data.csv` prefixes cells starting with `=` or `+` so spreadsheets do not run them |
+| S-PATH-1 | encoded `..` paths under `/`, `/assets/`, `/locales/` and the logo URL never serve files outside the UI; `.env`, the database and configuration files are not served |
+| S-URLS-2 | brand website, product `dpp_url`, company website and access-request website must be http(s) (no `javascript:`) |
+| S-RATE-2 (optional, `--rate-limit-test`) | 60 failed logins or 120 failed token requests from one IP get a 429 |
+
+Not observable from outside, so checked by review instead: hashing and encryption at rest, constant-time comparisons, secrets kept out of logs, DNS pinning of outbound requests, e-mail links built from the configured or recorded public address (never the request's `Host`). [implementations.md](implementations.md) lists the review results per node.

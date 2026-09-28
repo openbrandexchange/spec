@@ -8,8 +8,13 @@ All notable changes to the Open Brand Exchange specification. Format: [Keep a Ch
 - `IngestRecord` (GET in the Ingest API and the admin catalog): for assets, `data.rights` is the full effective Rights object and `data.provenance` the full Provenance, both with defaults applied; `data.files` lists every current blob, renditions made by the node included, with `sha256`, `width` and `height`; `missing_files` is present (possibly `[]`) for assets only and omitted for other kinds. Found by the cross-implementation interop run: the three nodes answered this in three different ways.
 - `ImportRowError.row` is `null` for header and file-level problems.
 
+- Ingest round trip ([ingest.md §3.4](docs/ingest.md)): PUTting back the `data` of a GET is `unchanged`; rights and provenance fields equal to the defaults are not stored (the asset keeps following the node's default rights), and renditions the node made itself are not client-supplied ones.
+- [security.md §3](docs/security.md): e-mail links use `OBX_PUBLIC_URL` or the address recorded at setup, never the request's `Host` (password-reset poisoning).
+
 ### Added
 - Node Admin API: `branding.portal_name`, the brand's own word for its portal per language.
+- Conformance `security` profile (S-HDR-1 … S-RATE-2) in [conformance.md](docs/conformance.md), part of `all`.
+- [docs/implementations.md](docs/implementations.md): the three portals, conformance per profile, the cross-implementation interop result, the security review, hosting and automation options and the known gaps.
 
 ## [0.1.0-draft] - 2026-09-28
 

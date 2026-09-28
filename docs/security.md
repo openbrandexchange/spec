@@ -24,6 +24,7 @@ Normative for nodes (all three faces) and for the `obx` CLI where noted. RFC 211
 - Login, setup, password reset, invite acceptance, access requests and the token endpoint are rate-limited per IP (and per e-mail for login). Login and forgot-password responses do not reveal whether an account exists.
 - Blocking a retailer or revoking a client takes effect on the next request (no cached authorisation beyond 60 s).
 - Password policy: 10–72 characters; nodes SHOULD reject the 1000 most common passwords.
+- Links in e-mails (invitations, password resets, approvals, "your zip is ready") MUST use the configured public address (`OBX_PUBLIC_URL`) or, without one, the address recorded at first-run setup, never the `Host` of the request that triggered the e-mail: a forged `Host` on a forgot-password request would otherwise send the victim a valid reset token on the attacker's host.
 
 ## 4. URLs and downloads
 - Rendition, export and download-job URLs are either signed and short-lived (RECOMMENDED 1 h, maximum 24 h; HMAC-SHA256 over method, path and expiry with a node key) or require the Bearer token/session. No permanent public URLs for content. Logos in the discovery document are public by design.

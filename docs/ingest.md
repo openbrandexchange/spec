@@ -59,6 +59,7 @@ The response is an [IngestResult](../schemas/IngestResult.json): `result` is `cr
 - Asset `position` 1–999, unique among the product's non-deleted assets with the same `color_code` (`409 position_conflict`). To replace an image, reuse its external id. To reorder, use `PUT /products/{external_id}/asset-order`, which assigns positions 1..n atomically.
 - Localised text keys are BCP 47 tags; values are non-empty.
 - Asset `rights` fields that are omitted take the node's default rights ([protocol.md §5.6](protocol.md#rights)); `provenance` defaults to `ai_generated: false, ai_edited: false, source: "photo"` (`"generated"` when `ai_generated` is true), `c2pa: "none"` (a node MAY detect embedded C2PA and set `embedded`).
+- **Round trip.** `GET` returns the write model with defaults applied ([IngestRecord](../schemas/IngestRecord.json): effective rights, provenance, every current file). PUTting that `data` back unchanged MUST give `unchanged`. To make that work, a node stores only the rights and provenance fields that differ from the defaults (a field equal to the node default is not pinned, so the asset keeps following later changes of the default rights), and a `web`/`square`/`thumb` reference equal to the rendition the node made itself is not treated as a client-supplied rendition.
 - `If-Match` (optional) gives optimistic concurrency (`412 precondition_failed`).
 
 ## 4. <a id="files"></a>Files
