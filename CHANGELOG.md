@@ -1,0 +1,15 @@
+# Changelog
+
+All notable changes to the Open Brand Exchange specification. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [docs/versioning.md](docs/versioning.md).
+
+## [0.1.0-draft] - 2026-09-28
+
+### Added
+- OBX Protocol (normative): discovery at `/.well-known/obx`, access requests with one-time credential hand-over, OAuth2 client credentials with scopes `catalog:read`, `media:read`, `media:original`, `usage:write`, grants, the change feed (snapshot then live, tombstones kept ≥ 90 days, `cursor_expired`, grant resync), products with variants and assets, GTIN lookup (≤ 2000, GTIN-14 normalisation), renditions (`original` unmodified, `web`, `square`, `thumb`) with ETag, Range and `OBX-Content-SHA256`, bulk exports (NDJSON manifest + zip parts), webhooks with HMAC-SHA256 signatures, usage events, problem+json errors with `obx_error`, rate limit headers.
+- OBX Ingest API (normative): idempotent PUT/PATCH/DELETE keyed by the brand's external ids, content-addressed blobs with dedupe, resumable multipart uploads, client-generated renditions for nodes without an image library, batch (JSON or NDJSON), asset reordering, canonical imports with `upsert`/`mirror`/`dry_run` and image manifests, jobs, and the exact mapping of writes to `/changes`.
+- Node Admin + Portal API (non-normative) for the shared admin UI: setup wizard with setup code, sessions with CSRF, settings and branding, catalog management, uploads and scheduled pull imports (HTTPS, SFTP, S3), retailers, access requests, invitations, API clients, ingest tokens, webhooks, statistics, and the retailer portal (browse, facets, EAN list, selection, zips, CSV, background download jobs, self-service API clients).
+- JSON Schemas (2020-12) for every object.
+- Canonical import format: `products.csv`, `assets.csv`, image filename pattern `{style}_{color}_{position}[_qualifier].ext`, package layout, materials grammar, care codes (ISO 3758 aligned), fibre keys.
+- Documentation: protocol, ingest, import format, automation recipes, security, conformance profiles, directory, versioning, governance.
+- Fixtures: fictional "Kestrel Outfitters" catalog with generated images, expected protocol objects, ingest replay script with expected results and change entries, example documents, webhook signature test vector.
+- Tooling: `npm run check` (Redocly lint + Ajv validation).
