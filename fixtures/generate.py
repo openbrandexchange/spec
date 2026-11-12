@@ -146,7 +146,7 @@ PRODUCTS = [
      ["S", "M", "L", "XL"], [("front", None), ("back", None)]),
     ("kestrel", "KO-1003", ("Organic Cotton Tee", "T-shirt van biologisch katoen"),
      ("Relaxed T-shirt in organic cotton jersey.", "Losvallend T-shirt van biologisch katoenen jersey."),
-     "t_shirt", "women", "SS26", "Essentials", "main: 100% organic_cotton",
+     "t_shirt", "women", "SS26", "Essentials", "main: 100% cotton (organic)",
      "wash_40|do_not_bleach|tumble_dry_low|iron_medium|dry_clean_p", "PT",
      [("WHT", "White", "Wit", "Chalk", "#F7F7F2"), ("BLK", "Black", "Zwart", "Jet", "#1A1A1A"), ("RST", "Rust", "Roest", "Burnt Rust", "#A0472A")],
      ["XS", "S", "M", "L"], [("front", None), ("back", None)]),
@@ -155,7 +155,7 @@ PRODUCTS = [
      "jeans", "men", "NOS", "Denim", "main: 98% cotton, 2% elastane",
      "wash_30|do_not_bleach|do_not_tumble_dry|iron_medium|dry_clean_p", "IT",
      [("IND", "Indigo", "Indigo", "Rinse Indigo", "#26345C")],
-     ["30/32", "32/32", "34/32"], [("front", None), ("back", None), ("detail", "detail")]),
+     ["30", "32", "34"], [("front", None), ("back", None), ("detail", "detail")]),
     ("kestrel", "KO-1005", ("Leather Weekender Bag", "Leren weekendtas"),
      ("Full-grain leather weekender with cotton lining.", "Weekendtas van volnerf leer met katoenen voering."),
      "bag", "unisex", "NOS", "Travel", "outer: 100% leather; lining: 100% cotton",
@@ -168,9 +168,27 @@ PRODUCTS = [
      "hand_wash|do_not_bleach|do_not_tumble_dry|dry_flat|do_not_iron|dry_clean_p", "NL",
      [("RST", "Rust", "Roest", "Burnt Rust", "#A0472A"), ("NVY", "Navy", "Marineblauw", "Deep Navy", "#1F2A44")],
      ["ONE SIZE"], [("front", None)]),
+    ("kestrel", "KO-1008", ("Hardshell Cabin Spinner", "Harde handbagagekoffer"),
+     ("Four-wheel hardshell cabin suitcase with TSA lock and expansion zip.", "Harde handbagagekoffer met vier wielen, TSA-slot en uitbreidingsrits."),
+     "luggage", "unisex", "NOS", "Travel", "shell: 100% polypropylene; lining: 100% polyester (recycled)",
+     "do_not_wash|do_not_bleach|do_not_tumble_dry|do_not_iron|do_not_dry_clean", "CN",
+     [("BLK", "Black", "Zwart", "Jet", "#1A1A1A")],
+     ["CABIN", "CABIN PLUS"], [("front", None), ("side", None), ("inside", None)]),
+    ("kestrel", "KO-1009", ("Commuter Laptop Messenger", "Laptoptas voor forenzen"),
+     ("Water-repellent messenger with a padded 15.6 inch laptop compartment and a detachable shoulder strap.", "Waterafstotende schoudertas met gevoerd laptopvak voor 15,6 inch en afneembare schouderband."),
+     "bag", "unisex", "NOS", "Travel", "outer: 100% polyester (recycled); lining: 100% polyamide",
+     "hand_wash|do_not_bleach|do_not_tumble_dry|do_not_iron|do_not_dry_clean", "VN",
+     [("CHR", "Charcoal", "Antraciet", "Slate", "#3C3F44")],
+     ["ONE SIZE"], [("front", None), ("back", None), ("inside", None)]),
+    ("kestrel", "KO-1010", ("Leather Chelsea Boot", "Leren chelsea boot"),
+     ("Chelsea boot in full-grain leather with leather lining and a removable insole.", "Chelsea boot van volnerf leer met leren voering en uitneembaar voetbed."),
+     "shoes", "men", "AW26", "Highland", "upper: 100% leather; lining: 100% leather; sole: 100% rubber",
+     "do_not_wash|do_not_bleach|do_not_tumble_dry|do_not_iron|do_not_dry_clean", "PT",
+     [("BRN", "Dark brown", "Donkerbruin", "Espresso", "#4A2C1A")],
+     ["41", "42", "43"], [("side", None), ("front", None)]),
     ("kestrel-trail", "KT-2001", ("Trail Running Shorts", "Trailrunning short"),
      ("Lightweight running shorts with inner brief.", "Lichte hardloopshort met binnenbroekje."),
-     "shorts", "men", "SS26", "Trail", "outer: 100% recycled_polyester; lining: 88% polyamide, 12% elastane",
+     "shorts", "men", "SS26", "Trail", "outer: 100% recycled_polyester; lining: 88% polyamide, 12% elastane",  # 0.1 fibre key on purpose
      "wash_30|do_not_bleach|do_not_tumble_dry|do_not_iron|do_not_dry_clean", "VN",
      [("BLK", "Black", "Zwart", "Jet", "#1A1A1A")],
      ["S", "M", "L"], [("front", None), ("back", None)]),
@@ -182,6 +200,93 @@ PRODUCTS = [
      ["S", "M", "L"], [("front", None), ("back", None)]),
 ]
 
+# 0.2 product data per style (docs/proposals/0002-product-data.md). Product level:
+# item_subtype, contains_animal_origin, footwear_materials, certifications, features.
+# Variant level: color family per colour code, size_length and measurements per size.
+FEATURE_KEYS = ["shell", "wheels", "lock", "expandable", "closure", "laptop_compartment", "water_resistance",
+                "detachable_parts", "adjustable_parts", "fit", "sleeve_length", "neckline"]
+MEASUREMENT_KEYS = ["height_cm", "width_cm", "depth_cm", "weight_kg", "volume_l", "volume_expanded_l",
+                    "handle_drop_cm", "strap_length_cm", "laptop_max_inch", "heel_height_cm", "shaft_height_cm", "inseam_cm"]
+COLOR_FAMILY = {"NVY": "blue", "OAT": "beige", "OLV": "green", "BLK": "black", "WHT": "white", "RST": "orange",
+                "IND": "blue", "COG": "brown", "YLW": "yellow", "CHR": "grey", "BRN": "brown"}
+EXTRA = {
+    "KO-1001": {"contains_animal_origin": False,
+                "certifications": [{"scheme": "rws", "licence_number": "CU 200101", "scope": "material"}],
+                "features": {"fit": "regular", "sleeve_length": "long", "neckline": "crew"}},
+    "KO-1002": {"contains_animal_origin": False,
+                "features": {"closure": "zip", "water_resistance": "water_repellent", "fit": "regular", "sleeve_length": "long", "neckline": "collar"}},
+    "KO-1003": {"contains_animal_origin": False,
+                "certifications": [{"scheme": "gots", "licence_number": "CU 200301", "scope": "product"},
+                                   {"scheme": "oeko_tex_standard_100", "licence_number": "26.KST.20003", "scope": "product"}],
+                "features": {"fit": "relaxed", "sleeve_length": "short", "neckline": "crew"}},
+    "KO-1004": {"contains_animal_origin": True,  # leather patch at the back
+                "features": {"closure": "button", "fit": "regular"},
+                "size_length": {"30": "32", "32": "32", "34": "32"},
+                "measurements": {"30": {"inseam_cm": 81}, "32": {"inseam_cm": 81}, "34": {"inseam_cm": 81}}},
+    "KO-1005": {"item_subtype": "weekender", "contains_animal_origin": True,
+                "features": {"closure": "zip", "detachable_parts": ["shoulder_strap"], "adjustable_parts": ["shoulder_strap"]},
+                "measurements": {"ONE SIZE": {"height_cm": 32, "width_cm": 52, "depth_cm": 26, "weight_kg": 1.8, "volume_l": 40,
+                                              "handle_drop_cm": 20, "strap_length_cm": {"min": 100, "max": 130}}}},
+    "KO-1006": {"contains_animal_origin": False},
+    "KO-1008": {"item_subtype": "cabin", "size_system": None,
+                "features": {"shell": "hard", "wheels": 4, "lock": "tsa_combination", "expandable": True, "closure": "zip"},
+                "measurements": {"CABIN": {"height_cm": 55, "width_cm": 40, "depth_cm": 20, "weight_kg": 2.6, "volume_l": 36, "volume_expanded_l": 42},
+                                 "CABIN PLUS": {"height_cm": 55, "width_cm": 40, "depth_cm": 23, "weight_kg": 2.8, "volume_l": 42, "volume_expanded_l": 48}}},
+    "KO-1009": {"item_subtype": "laptop_bag", "contains_animal_origin": False,
+                "certifications": [{"scheme": "grs", "licence_number": "CU 200901", "scope": "material"}],
+                "features": {"closure": "flap", "laptop_compartment": True, "water_resistance": "water_repellent",
+                             "detachable_parts": ["shoulder_strap"], "adjustable_parts": ["shoulder_strap"]},
+                "measurements": {"ONE SIZE": {"height_cm": 30, "width_cm": 40, "depth_cm": 12, "weight_kg": 0.9, "volume_l": 14,
+                                              "handle_drop_cm": 10, "strap_length_cm": {"min": 85, "max": 140}, "laptop_max_inch": 15.6}}},
+    "KO-1010": {"item_subtype": "ankle_boot",
+                "footwear_materials": {"upper": "leather", "lining_and_sock": "leather", "outer_sole": "other"},
+                "certifications": [{"scheme": "lwg", "licence_number": "LWG-200-1010", "scope": "material"}],
+                "features": {"closure": "slip_on", "detachable_parts": ["insole"]},
+                "measurements": {"41": {"heel_height_cm": 3.5, "shaft_height_cm": 14},
+                                 "42": {"heel_height_cm": 3.5, "shaft_height_cm": 14.5},
+                                 "43": {"heel_height_cm": 3.5, "shaft_height_cm": 15}}},
+    "KT-2001": {"contains_animal_origin": False, "features": {"fit": "regular"}},
+    "KT-2002": {"contains_animal_origin": False,
+                "features": {"closure": "zip", "water_resistance": "waterproof", "fit": "regular", "sleeve_length": "long", "neckline": "hood"}},
+}
+
+
+def size_system(style, size):
+    if "size_system" in EXTRA[style]:
+        return EXTRA[style]["size_system"]
+    return "EU" if size[0].isdigit() else (None if size == "ONE SIZE" else "INT")
+
+
+def sku(style, code, size):
+    length = EXTRA[style].get("size_length", {}).get(size)
+    return f"{style}-{code}-{size.replace(' ', '')}" + (f"-{length}" if length else "")
+
+
+def csv_number(n):
+    return str(n)
+
+
+def csv_measurement(key, v):
+    if key == "strap_length_cm":
+        return f"{csv_number(v['min'])}-{csv_number(v['max'])}"
+    return csv_number(v)
+
+
+def csv_feature(v):
+    if isinstance(v, bool):
+        return "yes" if v else "no"
+    if isinstance(v, list):
+        return "|".join(v)
+    return str(v)
+
+
+def csv_certifications(certs):
+    return "; ".join(f"{c['scheme']}:{c['licence_number']}" + (" (material)" if c["scope"] == "material" else "") for c in certs or [])
+
+
+def csv_footwear(fw):
+    return "; ".join(f"{k}: {fw[k]}" for k in ("upper", "lining_and_sock", "outer_sole") if fw.get(k)) if fw else ""
+
 # assets.csv overrides: basename -> dict
 ASSET_OVERRIDES = {
     "KO-1003_RST_3_model.png": {"ai_generated": "true", "ai_edited": "false", "source": "generated", "c2pa": "none",
@@ -192,10 +297,13 @@ ASSET_OVERRIDES = {
 }
 BIG = "KO-1002_OLV_1_front.png"  # 2400x3000 original to exercise downscaling
 
-PRODUCTS_HEADER = ["brand", "style_number", "name:en", "name:nl", "description:en", "description:nl", "item_type",
-                   "target_group", "season", "collection", "materials", "care", "country_of_origin",
-                   "variant_id", "gtin", "sku", "color_code", "color_name:en", "color_name:nl", "supplier_color",
-                   "size", "size_system"]
+PRODUCTS_HEADER = (["brand", "style_number", "name:en", "name:nl", "description:en", "description:nl", "item_type",
+                    "item_subtype", "target_group", "season", "collection", "materials", "contains_animal_origin",
+                    "footwear_materials", "care", "country_of_origin", "certifications"]
+                   + [f"feature:{k}" for k in FEATURE_KEYS]
+                   + ["variant_id", "gtin", "sku", "color_code", "color_name:en", "color_name:nl", "color_family",
+                      "supplier_color", "size", "size_length", "size_system"]
+                   + MEASUREMENT_KEYS)
 ASSETS_HEADER = ["file", "role", "view", "alt_text:en", "alt_text:nl", "embargo_until", "credit",
                  "ai_generated", "ai_edited", "source", "c2pa", "generator"]
 
@@ -213,7 +321,19 @@ def parse_materials(s):
         out = []
         for f in fibers.split(","):
             pct, _, fiber = f.strip().partition("% ")
-            out.append({"fiber": fiber.strip(), "percentage": int(pct)})
+            flags = {}
+            fiber = fiber.strip()
+            while fiber.endswith(")"):
+                fiber, _, flag = fiber[:-1].rpartition("(")
+                fiber = fiber.strip()
+                flags[flag.strip()] = True
+            for prefix in ("recycled", "organic"):  # 0.1 keys: recycled_polyester -> polyester + recycled
+                if fiber.startswith(prefix + "_"):
+                    fiber = fiber[len(prefix) + 1:]
+                    flags[prefix] = True
+            entry = {"fiber": fiber, "percentage": int(pct)}
+            entry.update({k: True for k in ("recycled", "organic") if flags.get(k)})
+            out.append(entry)
         parts.append({"part": part.strip(), "fibers": out})
     return parts
 
@@ -240,9 +360,16 @@ def main():
             for si, size in enumerate(sizes):
                 g = ean13("200" + style[-4:].rjust(5, "0") + f"{ci + 1:02d}{si + 1:02d}")
                 gtins[(style, code, size)] = g
-                rows.append([BRANDS[brand], style, name[0], name[1], desc[0], desc[1], itype, tg, season, coll, mats, care, origin,
-                             "", g, f"{style}-{code}-{size.replace(' ', '').replace('/', '-')}", code, cen, cnl, sup, size,
-                             "EU" if size[0].isdigit() else ("" if size == "ONE SIZE" else "INT")])
+                x = EXTRA[style]
+                cao = x.get("contains_animal_origin")
+                meas = x.get("measurements", {}).get(size, {})
+                rows.append([BRANDS[brand], style, name[0], name[1], desc[0], desc[1], itype, x.get("item_subtype", ""), tg,
+                             season, coll, mats, "" if cao is None else ("yes" if cao else "no"),
+                             csv_footwear(x.get("footwear_materials")), care, origin, csv_certifications(x.get("certifications"))]
+                            + [csv_feature(x["features"][k]) if k in x.get("features", {}) else "" for k in FEATURE_KEYS]
+                            + ["", g, sku(style, code, size), code, cen, cnl, COLOR_FAMILY[code], sup, size,
+                               x.get("size_length", {}).get(size, ""), size_system(style, size) or ""]
+                            + [csv_measurement(k, meas[k]) if k in meas else "" for k in MEASUREMENT_KEYS])
             extra = [("model", None)] if (style, code) == ("KO-1003", "RST") else []
             for pos, (q1, q2) in enumerate(shots + extra, start=1):
                 quals = [q1]
@@ -272,6 +399,7 @@ def main():
     write(os.path.join(HERE, "kestrel", "images.json"), json.dumps(image_meta, indent=2, sort_keys=True) + "\n")
 
     write_expected(image_meta, gtins)
+    write_import_cases(gtins)
     write_ingest()
     total = sum(os.path.getsize(os.path.join(dp, f)) for dp, _, fs in os.walk(HERE) for f in fs)
     print(f"{len(rows)} variant rows, {len(image_meta)} images, fixtures total {total / 1024:.0f} KiB")
@@ -334,20 +462,26 @@ def expected_product(style, image_meta, gtins):
     for code, cen, cnl, sup, rgb in colors:
         for size in sizes:
             g = gtins[(style, code, size)]
+            x = EXTRA[style]
             variants.append({"id": ANY_ID, "external_id": g, "product_id": ANY_ID, "brand_id": ANY_ID, "gtin": gtin14(g),
-                             "gtin_original": g, "sku": f"{style}-{code}-{size.replace(' ', '').replace('/', '-')}",
-                             "color": {"code": code, "name": {"en": cen, "nl": cnl}, "supplier_color": sup},
-                             "size": size, "size_system": "EU" if size[0].isdigit() else (None if size == "ONE SIZE" else "INT"),
-                             "updated_at": ANY_TIME})
+                             "gtin_original": g, "sku": sku(style, code, size),
+                             "color": {"code": code, "name": {"en": cen, "nl": cnl}, "supplier_color": sup, "family": COLOR_FAMILY[code]},
+                             "size": size, "size_length": x.get("size_length", {}).get(size), "size_system": size_system(style, size),
+                             "measurements": x.get("measurements", {}).get(size), "updated_at": ANY_TIME})
     variants.sort(key=lambda v: v["external_id"])
     assets = [expected_asset(f, m) for f, m in image_meta.items() if m["style"] == style]
     assets.sort(key=lambda a: (a["color_code"] or "", a["position"]))
     return {
         "id": ANY_ID, "external_id": style, "brand_id": ANY_ID, "style_number": style,
         "name": {"en": name[0], "nl": name[1]}, "description": {"en": desc[0], "nl": desc[1]},
-        "item_type": itype, "gpc_brick": None, "target_group": tg, "season": season, "collection": coll,
-        "materials": parse_materials(mats), "care": [{"code": c, "text": None} for c in care.split("|")],
-        "country_of_origin": origin, "dpp_url": None, "attributes": None,
+        "item_type": itype, "item_subtype": EXTRA[style].get("item_subtype"), "gpc_brick": None, "target_group": tg,
+        "season": season, "collection": coll, "materials": parse_materials(mats),
+        "contains_animal_origin": EXTRA[style].get("contains_animal_origin"),
+        "footwear_materials": EXTRA[style].get("footwear_materials"),
+        "care": [{"code": c, "text": None} for c in care.split("|")],
+        "country_of_origin": origin, "certifications": EXTRA[style].get("certifications"), "dpp_url": None,
+        "features": {k: EXTRA[style]["features"][k] for k in FEATURE_KEYS if k in EXTRA[style].get("features", {})} or None,
+        "attributes": None,
         "created_at": ANY_TIME, "updated_at": ANY_TIME, "variants": variants, "assets": assets,
     }
 
@@ -360,7 +494,8 @@ def write_expected(image_meta, gtins):
         write(os.path.join(out, name), json.dumps(obj, indent=2, ensure_ascii=False) + "\n")
 
     dump("product-KO-1001.json", expected_product("KO-1001", image_meta, gtins))
-    dump("product-KO-1005.json", expected_product("KO-1005", image_meta, gtins))
+    for style in ("KO-1005", "KO-1008", "KO-1009", "KO-1010", "KT-2001"):
+        dump(f"product-{style}.json", expected_product(style, image_meta, gtins))
     dump("asset-ai-generated.json", expected_asset("KO-1003_RST_3_model.png", image_meta["KO-1003_RST_3_model.png"]))
     dump("asset-embargoed.json", expected_asset("KO-1002_BLK_2_back.png", image_meta["KO-1002_BLK_2_back.png"]))
     dump("asset-large-original.json", expected_asset(BIG, image_meta[BIG]))
@@ -381,6 +516,105 @@ def write_expected(image_meta, gtins):
     })
     dump("counts.json", {"brands": 2, "products": len(PRODUCTS), "variants": len(gtins), "assets": len(image_meta),
                          "note": "Visible objects after importing fixtures/kestrel into a fresh node whose first brand is external_id 'kestrel' (see fixtures/README.md)."})
+
+# --------------------------------------------------------------------------- import cases (0.2 columns)
+
+def write_import_cases(gtins):
+    """Small products.csv files for conformance I-IMP-7, applied in order to a node that holds exactly
+    the fixture import; the last case re-imports kestrel/products.csv and restores that state."""
+    out = os.path.join(HERE, "imports")
+    os.makedirs(out, exist_ok=True)
+    for old in os.listdir(out):
+        os.remove(os.path.join(out, old))
+    cabin, plus = gtins[("KO-1008", "BLK", "CABIN")], gtins[("KO-1008", "BLK", "CABIN PLUS")]
+    bag, boot = gtins[("KO-1009", "CHR", "ONE SIZE")], gtins[("KO-1010", "BRN", "41")]
+    f1008 = dict(EXTRA["KO-1008"]["features"])
+    m_cabin = dict(EXTRA["KO-1008"]["measurements"]["CABIN"])
+    name = "Hardshell Cabin Spinner"
+    cases = [
+        ("1-feature-update.csv", ["brand", "style_number", "name:en", "feature:wheels"],
+         [["Kestrel", "KO-1008", name, "2"]],
+         "A file with one feature column changes only that feature; the other features of KO-1008 stay (rule 9, per key).",
+         {"rows": 1, "created": 0, "updated": 1, "unchanged": 0, "errors": 0}, [],
+         [("product", "upsert", "KO-1008")], {"KO-1008": {"features": dict(f1008, wheels=2)}}, {}),
+        ("2-feature-clear.csv", ["brand", "style_number", "name:en", "feature:wheels"],
+         [["Kestrel", "KO-1008", name, ""]],
+         "An empty cell in a feature column removes that feature only.",
+         {"rows": 1, "created": 0, "updated": 1, "unchanged": 0, "errors": 0}, [],
+         [("product", "upsert", "KO-1008")], {"KO-1008": {"features": {k: v for k, v in f1008.items() if k != "wheels"}}}, {}),
+        ("3-measurement-update.csv", ["brand", "style_number", "name:en", "gtin", "color_code", "weight_kg"],
+         [["Kestrel", "KO-1008", name, cabin, "BLK", "2,7"]],
+         "One measurement column with a decimal comma changes only that measurement of that variant; the product is unchanged.",
+         {"rows": 1, "created": 0, "updated": 1, "unchanged": 1, "errors": 0}, [],
+         [("variant", "upsert", cabin)], {}, {cabin: {"measurements": dict(m_cabin, weight_kg=2.7)}}),
+        ("4-fibre-flags.csv", ["brand", "style_number", "name:en", "materials"],
+         [["Kestrel Trail", "KT-2001", "Trail Running Shorts", "outer: 100% polyester (recycled); lining: 88% polyamide, 12% elastane"]],
+         "The flag form gives the same materials as the 0.1 key recycled_polyester in the fixture: unchanged, no change entries.",
+         {"rows": 1, "created": 0, "updated": 0, "unchanged": 1, "errors": 0}, [], [], {}, {}),
+        ("5-invalid.csv", ["brand", "style_number", "name:en", "gtin", "color_code", "feature:wheels", "height_cm", "color_family", "footwear_materials"],
+         [["Kestrel", "KO-1008", name, "", "", "3", "", "", ""],
+          ["Kestrel", "KO-1009", "Commuter Laptop Messenger", bag, "CHR", "", "30 cm", "", ""],
+          ["Kestrel", "KO-1010", "Leather Chelsea Boot", boot, "BRN", "", "", "navy", ""],
+          ["Kestrel", "KO-1005", "Leather Weekender Bag", "", "", "", "", "", "upper: plastic"]],
+         "Each row has one value outside the rules: every row is skipped with an error, nothing is written, the job succeeds.",
+         {"rows": 4, "created": 0, "updated": 0, "unchanged": 0, "errors": 4},
+         [{"file": "products.csv", "row": 1, "column": "feature:wheels", "severity": "error", "obx_error": "validation_failed", "value": "3"},
+          {"file": "products.csv", "row": 2, "column": "height_cm", "severity": "error", "obx_error": "validation_failed", "value": "30 cm"},
+          {"file": "products.csv", "row": 3, "column": "color_family", "severity": "error", "obx_error": "validation_failed", "value": "navy"},
+          {"file": "products.csv", "row": 4, "column": "footwear_materials", "severity": "error", "obx_error": "validation_failed", "value": "upper: plastic"}],
+         [], {}, {}),
+        ("6-restore.csv", None, None,
+         "kestrel/products.csv again (the same bytes): restores wheels 4 and weight 2.6; everything else is unchanged.",
+         {"rows": len(gtins), "created": 0, "updated": 2, "unchanged": len(PRODUCTS) + len(gtins) - 2, "errors": 0}, [],
+         [("product", "upsert", "KO-1008"), ("variant", "upsert", cabin)],
+         {"KO-1008": {"features": f1008}}, {cabin: {"measurements": m_cabin}}),
+    ]
+    expected = []
+    for fname, header, rows, what, counts, errors, changes, products, variants in cases:
+        if header is None:
+            with open(os.path.join(HERE, "kestrel", "products.csv"), encoding="utf-8", newline="") as f:
+                data = f.read()
+        else:
+            buf = io.StringIO()
+            w = csv.writer(buf, lineterminator="\r\n")
+            w.writerow(header)
+            w.writerows(rows)
+            data = buf.getvalue()
+        write(os.path.join(out, fname), data)
+        expected.append({"file": fname, "what": what, "counts": counts, "errors": errors,
+                         "changes": [{"type": t, "op": o, "external_id": e} for t, o, e in changes],
+                         "products": products, "variants": variants})
+    assert plus not in variants
+    # I-IMP-8: label completeness warnings (dry run, nothing is written)
+    header = ["brand", "style_number", "name:en", "item_type", "materials", "contains_animal_origin", "footwear_materials"]
+    rows = [["Kestrel", "KL-8001", "Label Test Tee", "t_shirt", "", "no", ""],
+            ["Kestrel", "KL-8002", "Label Test Scarf", "scarf", "main: 100% wool", "", ""],
+            ["Kestrel", "KL-8003", "Label Test Sneaker", "sneakers", "upper: 100% polyester", "", ""],
+            ["Kestrel", "KL-8004", "Label Test Shirt", "shirt", "main: 60% cotton, 30% polyester", "no", ""],
+            ["Kestrel", "KL-8005", "Label Test Sandal", "sandals", "", "", "upper: leather; lining_and_sock: leather"],
+            ["Kestrel", "KL-8006", "Label Test Complete", "t_shirt", "main: 100% cotton", "no", ""]]
+    buf = io.StringIO()
+    w = csv.writer(buf, lineterminator="\r\n")
+    w.writerow(header)
+    w.writerows(rows)
+    write(os.path.join(out, "label-warnings.csv"), buf.getvalue())
+    warn = lambda row, col, code: {"file": "products.csv", "row": row, "column": col, "severity": "warning", "obx_error": code}
+    write(os.path.join(out, "label-warnings.expected.json"), json.dumps({
+        "description": "Conformance I-IMP-8. Send label-warnings.csv as the import's products.csv with dry_run: true (mode upsert). The job succeeds, "
+                       "nothing is written (no change entries, KL-8001 to KL-8006 do not exist afterwards), there are no errors, and the ImportRowErrors whose "
+                       "obx_error is one of the four label completeness codes are exactly these, in this order (other warnings are not checked). "
+                       "KL-8006 is complete and gets none.",
+        "warnings": [warn(1, "materials", "fibre_composition_missing"),
+                     warn(2, "contains_animal_origin", "animal_origin_unknown"),
+                     warn(3, "footwear_materials", "footwear_materials_missing"),
+                     warn(4, "materials", "fibre_percentages_not_100"),
+                     warn(5, "footwear_materials", "footwear_materials_missing")]}, indent=2, ensure_ascii=False) + "\n")
+    write(os.path.join(out, "expected.json"), json.dumps({
+        "description": "Conformance I-IMP-7. Apply the files in order, each sent as the import's products.csv (mode upsert, no images, no assets.csv), "
+                       "to a node that holds exactly the import of fixtures/kestrel. counts: ImportRun.counts (other count fields not checked). "
+                       "errors: the ImportRowErrors with severity error, in order (warnings not checked). changes: the /changes entries the import "
+                       "produced, in order. products/variants: fields of the protocol objects afterwards (by external_id), matched like fixtures/expected.",
+        "cases": expected}, indent=2, ensure_ascii=False) + "\n")
 
 # --------------------------------------------------------------------------- ingest scenario
 

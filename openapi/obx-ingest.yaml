@@ -1,13 +1,14 @@
 openapi: 3.1.0
 info:
   title: OBX Ingest API (write side)
-  version: 0.1.0
+  version: 0.2.0
   summary: How a brand's own systems publish content to any OBX node.
   description: |
-    **Normative.** The OBX Ingest API lets a brand's automation (PIM/ERP/DAM connector,
-    spreadsheet export, the `obx` CLI, a GitHub Action, n8n/Make/Zapier) publish to ANY
-    conforming node. It is keyed by the brand's own ids, so every write is an idempotent
-    upsert: send the same thing twice and nothing changes (and no change entry is written).
+    **Optional; normative for nodes that offer it** (capability `ingest`). The OBX Protocol
+    is the standard; how content gets into a node is up to the node. The OBX Ingest API lets
+    a brand's automation (PIM/ERP/DAM connector, spreadsheet export, the `obx` CLI, a GitHub
+    Action, n8n/Make/Zapier) publish to ANY conforming node. It is keyed by the brand's own
+    ids, so every write is an idempotent upsert: send the same thing twice and nothing changes (and no change entry is written).
 
     See `docs/ingest.md` for the full semantics, including exactly how writes appear in the
     OBX Protocol `/changes` feed, and `docs/import-format.md` for the canonical CSV and
@@ -158,6 +159,9 @@ paths:
               minimal:
                 summary: A minimal product
                 value: {$ref: '../fixtures/examples/ProductInput.minimal.json'}
+              luggage:
+                summary: A suitcase with subtype, composition and features
+                value: {$ref: '../fixtures/examples/ProductInput.luggage.json'}
       responses:
         '200': {$ref: '#/components/responses/Result'}
         '201': {$ref: '#/components/responses/ResultCreated'}
@@ -262,6 +266,9 @@ paths:
               variant:
                 summary: A size with EAN
                 value: {$ref: '../fixtures/examples/VariantInput.example.json'}
+              measurements:
+                summary: A suitcase size with measurements and colour family
+                value: {$ref: '../fixtures/examples/VariantInput.luggage.json'}
       responses:
         '200': {$ref: '#/components/responses/Result'}
         '201': {$ref: '#/components/responses/ResultCreated'}

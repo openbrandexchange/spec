@@ -1,13 +1,17 @@
 openapi: 3.1.0
 info:
   title: OBX Protocol (read side)
-  version: 0.1.0
+  version: 0.2.0
   summary: How retailers' software discovers a brand node, gets access and pulls product content.
   description: |
     **Normative.** The Open Brand Exchange (OBX) Protocol is the read side of a brand node:
     a retailer's software (shop, PIM, ERP, content hub) discovers the node, requests access,
     authenticates with OAuth2 client credentials and pulls brands, products, variants (with
     GTIN) and final images with role, view, order, rights and AI provenance.
+
+    This is the OBX standard: passing its conformance profile is what "OBX-conformant" means.
+    The Ingest API and the Node Admin + Portal API are optional companions. New here? Start
+    with `docs/quickstart.md` (OBX in 10 minutes).
 
     The prose specification in `docs/protocol.md` is authoritative where this file is silent.
     Key words MUST, SHOULD, MAY are to be interpreted as described in RFC 2119.
@@ -18,7 +22,7 @@ info:
       Extension fields are prefixed `x-<vendor>-` (for example `x-acme-crop`).
     - Errors are `application/problem+json` (RFC 9457) with an `obx_error` code, except the
       OAuth2 token endpoint which uses RFC 6749 error JSON.
-    - Responses carry `OBX-Version: 0.1` and rate limit headers (`RateLimit-Limit`,
+    - Responses carry `OBX-Version: 0.2` and rate limit headers (`RateLimit-Limit`,
       `RateLimit-Remaining`, `RateLimit-Reset`); 429 carries `Retry-After`.
     - A retailer never sees more than it could see in the brand's portal: only published
       objects of brands in its grant.
