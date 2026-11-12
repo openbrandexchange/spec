@@ -1,6 +1,8 @@
-# Proposal 0003: product data for home and sport (spec 0.3)
+# Proposal 0003: product data for home and sport (spec 0.4)
 
-Status: **draft** 2026-11-12 · non-breaking (additive), target spec **0.3.0** · open for comments for at least 14 days ([governance](../governance.md#process))
+Status: **draft** 2026-11-12 · non-breaking (additive), target spec **0.4.0** · open for comments for at least 14 days ([governance](../governance.md#process))
+
+> **Retargeted to 0.4** (2026-11-12): 0.3 is the release that turns materials and care into terms with names ([proposal 0004](0004-terms-with-names.md)). Where this draft says 0.3 read 0.4, and where it builds on the `materials` and `care` of 0.2, read the 0.3 shapes (`part`/`material`/`qualifier` as `{code, name}`; care with `category`, `symbol` and `name`).
 
 ## Why
 

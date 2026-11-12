@@ -2,9 +2,29 @@
 
 All notable changes to the Open Brand Exchange specification. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [docs/versioning.md](docs/versioning.md).
 
-## [Unreleased]
+## [0.3.0] - 2026-11-12
+
+Materials and care as terms with names ([proposal 0004](docs/proposals/0004-terms-with-names.md)). **Breaking** (allowed before 1.0, [versioning](docs/versioning.md)). It also carries the Excel import and the documentation below, which were unreleased on 0.2.
+
+### Breaking
+- **`materials`**: `part`, the fibre's material and its qualifier are terms `{code, name}`, with `name` a LocalizedText per language (`null` for the part `main` and for codes the node has no name for). A fibre is `{"material": {...}, "percentage": 95, "qualifier": {...} | null}`; `fiber` and the flags `recycled`/`organic` are gone. One qualifier per fibre: `organic`, `recycled`, `regenerative`, or another code.
+- **`care`**: every entry has `code`, `category` (ISO 3758 group: `washing`, `bleaching`, `drying`, `ironing`, `professional_care`), `symbol` (GINETEX notation such as `1_C_40`, or `null`), `name` and `text`. `text` is now only the brand's own extra text.
+- **0.1 and 0.2 are withdrawn.** They were never used (no consumers, no published integrations), so their schemas are removed from `main`, from `site/` and so from the website (`/schemas/v0.1/`, `/schemas/v0.2/`); the tags `v0.1.0` and `v0.2.0` stay in git. The reference nodes and the conformance suite serve and test 0.3 only. From 0.3 on, the promise of [versioning.md](docs/versioning.md) holds: earlier minors stay online at their `$id` paths.
+- **Cursors from before the upgrade expire**: a node that upgrades to 0.3 MUST answer every `/changes` cursor it issued before the upgrade with `410 cursor_expired` ([protocol.md §6](docs/protocol.md)), so a consumer that kept a 0.2 cursor restarts with a snapshot in the 0.3 shapes instead of keeping 0.2 objects for products that did not change. Discovery `spec_version` shows why.
 
 ### Added
+- **Vocabularies** in [`vocabularies/`](vocabularies): parts, materials, qualifiers and care codes with their names in English, Dutch, German and French, and for care the category and symbol. A node returns these names for known codes; a missing language is omitted, never an empty string.
+- Import format: `(<qualifier>)` after a fibre, e.g. `(regenerative)`; the `(recycled)`/`(organic)` forms and the 0.1 keys `recycled_*`/`organic_*` keep working.
+- Conformance P-CAT-6 checks names, categories and symbols against the vocabularies.
+
+### Changed
+- `OBX-Version: 0.3`; schemas at `/schemas/v0.3/`.
+- Proposal 0003 (home and sport) is retargeted to 0.4.
+
+### Migration
+Consumers: on `410 cursor_expired` restart `/changes` without a cursor, as before (no new code); then read `part.code`, `fibers[].material.code` and `fibers[].qualifier.code` instead of `part`, `fiber` and the flags, and show `name` in the shopper's language. Nodes: store one qualifier code per fibre (`recycled: true` → `recycled`, `organic: true` → `organic`) and fill names, categories and symbols from `vocabularies/`; for codes outside the vocabularies keep what was written; and expire every cursor issued before the upgrade (a version or epoch in the cursor, or an upgrade marker that cursors are compared with).
+
+### Added (Excel import)
 - **Excel templates** for brands: [`templates/products.xlsx`](templates/products.xlsx) and [`templates/assets.xlsx`](templates/assets.xlsx), generated from the schemas, [import-format.md](docs/import-format.md) and the Kestrel fixtures by `npm run templates`. The columns of the canonical CSV in order, text-formatted cells (so Excel keeps GTINs), dropdowns for every enumerated column, an explanation per column in English and Dutch, how to save as CSV UTF-8 and the image naming rule. `npm run check` fails when they drift.
 - **Excel import** as a non-normative node feature ([import-format.md §5](docs/import-format.md#excel)): one exact conversion from an `.xlsx` workbook to the canonical CSV rows, so a node that accepts workbooks gives the same rows, errors and row numbers as every other. The sheet named `Products`/`Assets` (else the first visible sheet with the key column in row 1; hidden sheets never), row 1 as header, stored values only (formulas are never calculated; one without a cached value is a row error), numbers written exactly without exponent and rounded to 15 digits, zero-padded barcode formats, date formats to ISO dates, merged cells only in the top-left cell, hidden rows imported, Excel row numbers and a `row 12, column ean (C): ` locator in errors, fixed limits against zip bombs, and refusal of macros, external links and `DOCTYPE`s. The templates import as they are. New error codes `workbook_invalid`, `workbook_unsafe`, `workbook_sheet_missing`, `workbook_too_large`; ImportRowError `file` can be `products.xlsx`/`assets.xlsx`.
 - Fixtures [`fixtures/imports/xlsx/`](fixtures/imports/xlsx) with `expected.json` (the templates, edge cases, files to refuse, number/date/format vectors), generated by `npm run xlsx-fixtures` and checked against a reference conversion (`tools/xlsx.mjs`) by `npm run check`. Conformance I-IMP-9 and I-IMP-10 (optional).

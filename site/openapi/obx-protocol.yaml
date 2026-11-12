@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: OBX Protocol (read side)
-  version: 0.2.0
+  version: 0.3.0
   summary: How retailers' software discovers a brand node, gets access and pulls product content.
   description: |
     **Normative.** The Open Brand Exchange (OBX) Protocol is the read side of a brand node:
@@ -22,7 +22,7 @@ info:
       Extension fields are prefixed `x-<vendor>-` (for example `x-acme-crop`).
     - Errors are `application/problem+json` (RFC 9457) with an `obx_error` code, except the
       OAuth2 token endpoint which uses RFC 6749 error JSON.
-    - Responses carry `OBX-Version: 0.2` and rate limit headers (`RateLimit-Limit`,
+    - Responses carry `OBX-Version: 0.3` and rate limit headers (`RateLimit-Limit`,
       `RateLimit-Remaining`, `RateLimit-Reset`); 429 carries `Retry-After`.
     - A retailer never sees more than it could see in the brand's portal: only published
       objects of brands in its grant.
@@ -91,11 +91,11 @@ paths:
                 kestrel:
                   summary: Kestrel Outfitters
                   value:
-                    obx_version: "0.2"
-                    spec_version: 0.2.0
+                    obx_version: "0.3"
+                    spec_version: 0.3.0
                     node:
                       software: obx-node-go
-                      version: 0.2.0
+                      version: 0.3.0
                     publisher:
                       id: pub_kestrel
                       name: Kestrel Outfitters
@@ -1361,7 +1361,7 @@ components:
       maxLength: 254
     LocalizedText:
       $schema: https://json-schema.org/draft/2020-12/schema
-      $id: https://openbrandexchange.com/schemas/v0.2/LocalizedText.json
+      $id: https://openbrandexchange.com/schemas/v0.3/LocalizedText.json
       title: LocalizedText
       description: 'Free text per language, keyed by BCP 47 tag. At least one language. Example: {"nl": "Trui", "en": "Sweater"}.'
       type: object
@@ -1390,7 +1390,7 @@ components:
         - de-CH
     DiscoveryDocument:
       $schema: https://json-schema.org/draft/2020-12/schema
-      $id: https://openbrandexchange.com/schemas/v0.2/DiscoveryDocument.json
+      $id: https://openbrandexchange.com/schemas/v0.3/DiscoveryDocument.json
       type: object
       title: DiscoveryDocument
       description: Served at GET /.well-known/obx on the node's host (also on custom domains).
@@ -1615,7 +1615,7 @@ components:
       description: Machine-readable OBX error code (see docs/protocol.md#errors). Clients MUST treat unknown codes by HTTP status.
     Problem:
       $schema: https://json-schema.org/draft/2020-12/schema
-      $id: https://openbrandexchange.com/schemas/v0.2/Problem.json
+      $id: https://openbrandexchange.com/schemas/v0.3/Problem.json
       type: object
       title: Problem
       description: "application/problem+json (RFC 9457) error body. Exception: the OAuth2 token endpoint uses RFC 6749 error JSON."
@@ -1683,7 +1683,7 @@ components:
         - NL
     AccessRequestInput:
       $schema: https://json-schema.org/draft/2020-12/schema
-      $id: https://openbrandexchange.com/schemas/v0.2/AccessRequestInput.json
+      $id: https://openbrandexchange.com/schemas/v0.3/AccessRequestInput.json
       type: object
       title: AccessRequestInput
       properties:
@@ -1779,7 +1779,7 @@ components:
         - 2026-09-28T10:00:00Z
     AccessRequest:
       $schema: https://json-schema.org/draft/2020-12/schema
-      $id: https://openbrandexchange.com/schemas/v0.2/AccessRequest.json
+      $id: https://openbrandexchange.com/schemas/v0.3/AccessRequest.json
       type: object
       title: AccessRequest
       description: A retailer's request for access. Admin API adds retailer/contact details (see node-admin.yaml).
@@ -1866,7 +1866,7 @@ components:
         ^x-[a-z0-9]+-[a-z0-9_-]+$: true
     TokenResponse:
       $schema: https://json-schema.org/draft/2020-12/schema
-      $id: https://openbrandexchange.com/schemas/v0.2/TokenResponse.json
+      $id: https://openbrandexchange.com/schemas/v0.3/TokenResponse.json
       type: object
       title: TokenResponse
       properties:
@@ -1889,7 +1889,7 @@ components:
         - scope
     Grant:
       $schema: https://json-schema.org/draft/2020-12/schema
-      $id: https://openbrandexchange.com/schemas/v0.2/Grant.json
+      $id: https://openbrandexchange.com/schemas/v0.3/Grant.json
       type: object
       title: Grant
       description: What a retailer is allowed to see. Returned by GET /obx/v1/grant and as 'data' of grant changes.
@@ -1959,7 +1959,7 @@ components:
         - KO-1001
     Brand:
       $schema: https://json-schema.org/draft/2020-12/schema
-      $id: https://openbrandexchange.com/schemas/v0.2/Brand.json
+      $id: https://openbrandexchange.com/schemas/v0.3/Brand.json
       type: object
       title: Brand
       description: A brand (label) published by this node. One node (one brand company) may publish several brands.
@@ -1996,57 +1996,96 @@ components:
       additionalProperties: false
       patternProperties:
         ^x-[a-z0-9]+-[a-z0-9_-]+$: true
+    term:
+      type: object
+      description: A stable code with its name per language. On write paths `name` may be omitted; responses always include it (null when unknown).
+      properties:
+        code:
+          type: string
+          pattern: ^[a-z][a-z0-9_]{0,63}$
+        name:
+          anyOf:
+            - $ref: "#/components/schemas/LocalizedText"
+            - type: "null"
+      required:
+        - code
+      additionalProperties: false
+      patternProperties:
+        ^x-[a-z0-9]+-[a-z0-9_-]+$: true
     Materials:
       $schema: https://json-schema.org/draft/2020-12/schema
-      $id: https://openbrandexchange.com/schemas/v0.2/Materials.json
+      $id: https://openbrandexchange.com/schemas/v0.3/Materials.json
+      title: Materials
+      description: "Fibre composition per part (textile labelling regulation / DPP ready). Parts, materials and qualifiers are terms: a stable `code` and its `name` per language. For a code in the vocabulary of the specification (vocabularies/*.json) a node returns the vocabulary's name; for another code the name it was given, or null. A language without a name is omitted, never an empty string."
       type: array
+      $defs:
+        term:
+          type: object
+          description: A stable code with its name per language. On write paths `name` may be omitted; responses always include it (null when unknown).
+          properties:
+            code:
+              type: string
+              pattern: ^[a-z][a-z0-9_]{0,63}$
+            name:
+              anyOf:
+                - $ref: "#/components/schemas/LocalizedText"
+                - type: "null"
+          required:
+            - code
+          additionalProperties: false
+          patternProperties:
+            ^x-[a-z0-9]+-[a-z0-9_-]+$: true
       items:
         type: object
         properties:
           part:
-            type: string
-            description: "Part of the article. Recommended keys: main, outer, lining, filling, padding, trim, pocket_lining, shell (luggage), handle, strap, and for footwear upper, sole, insole. 'main' when the product has one composition. Unknown keys are allowed."
-            pattern: ^[a-z][a-z0-9_]{0,63}$
+            allOf:
+              - $ref: "#/components/schemas/term"
+            description: "Part of the article. Codes in vocabularies/parts.json: main, outer, lining, filling, padding, trim, pocket_lining, shell (luggage), handle, strap, and for footwear upper, sole, insole. 'main' when the product has one composition; its name is null. Unknown codes are allowed."
             examples:
-              - main
+              - code: main
+                name: null
+              - code: lining
+                name:
+                  en: Lining
+                  nl: Voering
+                  de: Futter
+                  fr: Doublure
           fibers:
             type: array
+            minItems: 1
+            description: Percentages of one part SHOULD sum to 100.
             items:
               type: object
               properties:
-                fiber:
-                  type: string
-                  description: "Fibre key: the English textile fibre name of Annex I of Reg. (EU) 1007/2011 in lowercase with _ (linen for flax), e.g. cotton, wool, polyester, polyamide, elastane, viscose, lyocell; recommended list in docs/import-format.md#fibres. Recycled or organic content is a flag, not a fibre: the 0.1 keys `recycled_*` and `organic_*` (e.g. recycled_polyester, organic_cotton) are accepted on input and normalised to the fibre with recycled or organic set."
-                  pattern: ^[a-z][a-z0-9_]{0,63}$
+                material:
+                  allOf:
+                    - $ref: "#/components/schemas/term"
+                  description: "Material code: the English textile fibre name of Annex I of Reg. (EU) 1007/2011 in lowercase with _ (linen for flax), e.g. cotton, wool, polyester, polyamide, elastane, viscose, lyocell; the list with names is vocabularies/materials.json. Recycled or organic content is a qualifier, not a material."
                 percentage:
                   type: number
                   exclusiveMinimum: 0
                   maximum: 100
-                recycled:
-                  type: boolean
-                  description: The fibre is recycled. Present only when true.
-                organic:
-                  type: boolean
-                  description: The fibre is organically grown. Present only when true.
+                qualifier:
+                  anyOf:
+                    - $ref: "#/components/schemas/term"
+                    - type: "null"
+                  description: "What the fibre is, apart from which fibre: organic, recycled, regenerative (vocabularies/qualifiers.json; unknown codes are allowed). null = none."
               required:
-                - fiber
+                - material
                 - percentage
               additionalProperties: false
               patternProperties:
                 ^x-[a-z0-9]+-[a-z0-9_-]+$: true
-            minItems: 1
-            description: Percentages of one part SHOULD sum to 100.
         required:
           - part
           - fibers
         additionalProperties: false
         patternProperties:
           ^x-[a-z0-9]+-[a-z0-9_-]+$: true
-      title: Materials
-      description: Fibre composition per part (textile labelling regulation / DPP ready).
     FootwearMaterials:
       $schema: https://json-schema.org/draft/2020-12/schema
-      $id: https://openbrandexchange.com/schemas/v0.2/FootwearMaterials.json
+      $id: https://openbrandexchange.com/schemas/v0.3/FootwearMaterials.json
       title: FootwearMaterials
       description: "Footwear labelling (Directive 94/11/EC): the material of the three parts of a shoe, in the directive's four categories. The value is the material that makes up at least 80 % of the surface of the upper and of the lining and sock, and at least 80 % of the volume of the outer sole. Responses include all three parts; null = not stated."
       type: object
@@ -2086,29 +2125,52 @@ components:
         ^x-[a-z0-9]+-[a-z0-9_-]+$: true
     Care:
       $schema: https://json-schema.org/draft/2020-12/schema
-      $id: https://openbrandexchange.com/schemas/v0.2/Care.json
+      $id: https://openbrandexchange.com/schemas/v0.3/Care.json
+      title: Care
+      description: "Ordered care instructions (label order: washing, bleaching, drying, ironing, professional_care). For a code in vocabularies/care.json a node returns the vocabulary's category, symbol and name; for another code what it was given, or null."
       type: array
       items:
         type: object
         properties:
           code:
             type: string
-            description: Care instruction key, ISO 3758 aligned (recommended list in docs/import-format.md#care-codes), e.g. wash_30, do_not_bleach, tumble_dry_low, iron_low, dry_clean_p, do_not_dry_clean.
             pattern: ^[a-z][a-z0-9_]{0,63}$
+            description: Care instruction code, ISO 3758 aligned (vocabularies/care.json), e.g. wash_30, do_not_bleach, tumble_dry_low, iron_low, dry_clean_p, do_not_dry_clean.
+          category:
+            anyOf:
+              - type: string
+                enum:
+                  - washing
+                  - bleaching
+                  - drying
+                  - ironing
+                  - professional_care
+              - type: "null"
+            description: The ISO 3758 symbol group. null = unknown (a code outside the vocabulary).
+          symbol:
+            anyOf:
+              - type: string
+                pattern: ^[1-5]_[A-Za-z0-9_]{1,30}$
+              - type: "null"
+            description: "The symbol code in GINETEX notation as fashion data pools exchange it (group digit, symbol, temperature: 1_C_40, 2_X, 3_C, 4_B, 5_P), so a consumer can reuse an existing pictogram mapping. null when there is none."
+          name:
+            anyOf:
+              - $ref: "#/components/schemas/LocalizedText"
+              - type: "null"
+            description: 'The name of the instruction per language, e.g. {"en": "Wash at 30 °C", "nl": "Wassen op 30 °C"}.'
           text:
             anyOf:
               - $ref: "#/components/schemas/LocalizedText"
               - type: "null"
+            description: Extra text of the brand for this instruction, e.g. "Wash inside out".
         required:
           - code
         additionalProperties: false
         patternProperties:
           ^x-[a-z0-9]+-[a-z0-9_-]+$: true
-      title: Care
-      description: Ordered care instructions.
     Certifications:
       $schema: https://json-schema.org/draft/2020-12/schema
-      $id: https://openbrandexchange.com/schemas/v0.2/Certifications.json
+      $id: https://openbrandexchange.com/schemas/v0.3/Certifications.json
       title: Certifications
       description: Voluntary certifications the brand states for this product (private schemes, not legal requirements). The node passes them on as stated; checking a licence is up to the reader.
       type: array
@@ -2140,7 +2202,7 @@ components:
           ^x-[a-z0-9]+-[a-z0-9_-]+$: true
     Features:
       $schema: https://json-schema.org/draft/2020-12/schema
-      $id: https://openbrandexchange.com/schemas/v0.2/Features.json
+      $id: https://openbrandexchange.com/schemas/v0.3/Features.json
       title: Features
       description: Typed product features from the registry in docs/protocol.md#features. Keys of the registry have the type and values listed there; other keys (same key pattern) are allowed and not validated. Only stated features are present; null instead of an empty object.
       type: object
@@ -2277,7 +2339,7 @@ components:
         - "2000010010011"
     Color:
       $schema: https://json-schema.org/draft/2020-12/schema
-      $id: https://openbrandexchange.com/schemas/v0.2/Color.json
+      $id: https://openbrandexchange.com/schemas/v0.3/Color.json
       type: object
       title: Color
       properties:
@@ -2325,7 +2387,7 @@ components:
         ^x-[a-z0-9]+-[a-z0-9_-]+$: true
     Measurements:
       $schema: https://json-schema.org/draft/2020-12/schema
-      $id: https://openbrandexchange.com/schemas/v0.2/Measurements.json
+      $id: https://openbrandexchange.com/schemas/v0.3/Measurements.json
       title: Measurements
       description: "Measurements of one variant. Numbers only; the unit is part of the key (cm, kg, l, inch). Only the measurements the brand stated are present; null instead of an empty object. How to measure: docs/protocol.md#measurements."
       type: object
@@ -2395,7 +2457,7 @@ components:
         ^x-[a-z0-9]+-[a-z0-9_-]+$: true
     Variant:
       $schema: https://json-schema.org/draft/2020-12/schema
-      $id: https://openbrandexchange.com/schemas/v0.2/Variant.json
+      $id: https://openbrandexchange.com/schemas/v0.3/Variant.json
       type: object
       title: Variant
       description: A sellable colour/size combination of a product.
@@ -2503,7 +2565,7 @@ components:
       description: Sales/marketing channel a rights grant covers.
     Rights:
       $schema: https://json-schema.org/draft/2020-12/schema
-      $id: https://openbrandexchange.com/schemas/v0.2/Rights.json
+      $id: https://openbrandexchange.com/schemas/v0.3/Rights.json
       type: object
       title: Rights
       properties:
@@ -2562,7 +2624,7 @@ components:
         ^x-[a-z0-9]+-[a-z0-9_-]+$: true
     Provenance:
       $schema: https://json-schema.org/draft/2020-12/schema
-      $id: https://openbrandexchange.com/schemas/v0.2/Provenance.json
+      $id: https://openbrandexchange.com/schemas/v0.3/Provenance.json
       type: object
       title: Provenance
       description: Origin of the image, required so AI provenance (EU AI Act art. 50) survives the brand -> retailer -> shop chain.
@@ -2616,7 +2678,7 @@ components:
       description: Rendition name.
     Rendition:
       $schema: https://json-schema.org/draft/2020-12/schema
-      $id: https://openbrandexchange.com/schemas/v0.2/Rendition.json
+      $id: https://openbrandexchange.com/schemas/v0.3/Rendition.json
       type: object
       title: Rendition
       description: One downloadable form of an asset. original = uploaded bytes, unmodified; web = longest side <= 2000 px JPEG; square = web centred on a white square canvas; thumb = longest side <= 600 px JPEG.
@@ -2659,7 +2721,7 @@ components:
         ^x-[a-z0-9]+-[a-z0-9_-]+$: true
     Asset:
       $schema: https://json-schema.org/draft/2020-12/schema
-      $id: https://openbrandexchange.com/schemas/v0.2/Asset.json
+      $id: https://openbrandexchange.com/schemas/v0.3/Asset.json
       type: object
       title: Asset
       description: A final, published product image with order, rights and provenance.
@@ -2780,7 +2842,7 @@ components:
         ^x-[a-z0-9]+-[a-z0-9_-]+$: true
     Product:
       $schema: https://json-schema.org/draft/2020-12/schema
-      $id: https://openbrandexchange.com/schemas/v0.2/Product.json
+      $id: https://openbrandexchange.com/schemas/v0.3/Product.json
       type: object
       title: Product
       description: A style/model. In /changes entries 'data' holds the product without 'variants' and 'assets'; product endpoints return ProductDetail (with both arrays).
@@ -2913,7 +2975,7 @@ components:
         ^x-[a-z0-9]+-[a-z0-9_-]+$: true
     Change:
       $schema: https://json-schema.org/draft/2020-12/schema
-      $id: https://openbrandexchange.com/schemas/v0.2/Change.json
+      $id: https://openbrandexchange.com/schemas/v0.3/Change.json
       type: object
       title: Change
       description: One entry of the change feed.
@@ -2977,7 +3039,7 @@ components:
         ^x-[a-z0-9]+-[a-z0-9_-]+$: true
     ChangesPage:
       $schema: https://json-schema.org/draft/2020-12/schema
-      $id: https://openbrandexchange.com/schemas/v0.2/ChangesPage.json
+      $id: https://openbrandexchange.com/schemas/v0.3/ChangesPage.json
       type: object
       title: ChangesPage
       description: "One page of the change feed. Paginated: while has_more is true, request the next page with cursor=next_cursor right away; when it is false, store next_cursor and poll later (or on a changes.available webhook). See docs/protocol.md section 2.1 (Pagination)."
@@ -3009,7 +3071,7 @@ components:
         ^x-[a-z0-9]+-[a-z0-9_-]+$: true
     ProductDetail:
       $schema: https://json-schema.org/draft/2020-12/schema
-      $id: https://openbrandexchange.com/schemas/v0.2/ProductDetail.json
+      $id: https://openbrandexchange.com/schemas/v0.3/ProductDetail.json
       title: ProductDetail
       description: A Product with its published variants and visible assets embedded. Returned by GET /products, /products/{id} and by-GTIN lookups.
       type: object
@@ -3028,7 +3090,7 @@ components:
             $ref: "#/components/schemas/Asset"
     GtinLookupResult:
       $schema: https://json-schema.org/draft/2020-12/schema
-      $id: https://openbrandexchange.com/schemas/v0.2/GtinLookupResult.json
+      $id: https://openbrandexchange.com/schemas/v0.3/GtinLookupResult.json
       type: object
       title: GtinLookupResult
       properties:
@@ -3083,7 +3145,7 @@ components:
         ^x-[a-z0-9]+-[a-z0-9_-]+$: true
     ExportRequest:
       $schema: https://json-schema.org/draft/2020-12/schema
-      $id: https://openbrandexchange.com/schemas/v0.2/ExportRequest.json
+      $id: https://openbrandexchange.com/schemas/v0.3/ExportRequest.json
       type: object
       title: ExportRequest
       properties:
@@ -3135,7 +3197,7 @@ components:
         ^x-[a-z0-9]+-[a-z0-9_-]+$: true
     Export:
       $schema: https://json-schema.org/draft/2020-12/schema
-      $id: https://openbrandexchange.com/schemas/v0.2/Export.json
+      $id: https://openbrandexchange.com/schemas/v0.3/Export.json
       type: object
       title: Export
       properties:
@@ -3225,7 +3287,7 @@ components:
         ^x-[a-z0-9]+-[a-z0-9_-]+$: true
     ExportManifestLine:
       $schema: https://json-schema.org/draft/2020-12/schema
-      $id: https://openbrandexchange.com/schemas/v0.2/ExportManifestLine.json
+      $id: https://openbrandexchange.com/schemas/v0.3/ExportManifestLine.json
       title: ExportManifestLine
       description: One line of an export manifest (NDJSON). First line is 'header'. Consumers MUST ignore unknown line types.
       oneOf:
@@ -3356,7 +3418,7 @@ components:
             ^x-[a-z0-9]+-[a-z0-9_-]+$: true
     UsageEvent:
       $schema: https://json-schema.org/draft/2020-12/schema
-      $id: https://openbrandexchange.com/schemas/v0.2/UsageEvent.json
+      $id: https://openbrandexchange.com/schemas/v0.3/UsageEvent.json
       type: object
       title: UsageEvent
       properties:
@@ -3393,7 +3455,7 @@ components:
         ^x-[a-z0-9]+-[a-z0-9_-]+$: true
     Usage:
       $schema: https://json-schema.org/draft/2020-12/schema
-      $id: https://openbrandexchange.com/schemas/v0.2/Usage.json
+      $id: https://openbrandexchange.com/schemas/v0.3/Usage.json
       type: object
       title: Usage
       description: "Body of POST /obx/v1/usage. Organisation-level only: never include personal data."
@@ -3411,7 +3473,7 @@ components:
         ^x-[a-z0-9]+-[a-z0-9_-]+$: true
     WebhookSubscription:
       $schema: https://json-schema.org/draft/2020-12/schema
-      $id: https://openbrandexchange.com/schemas/v0.2/WebhookSubscription.json
+      $id: https://openbrandexchange.com/schemas/v0.3/WebhookSubscription.json
       type: object
       title: WebhookSubscription
       properties:
@@ -3460,7 +3522,7 @@ components:
         ^x-[a-z0-9]+-[a-z0-9_-]+$: true
     WebhookEvent:
       $schema: https://json-schema.org/draft/2020-12/schema
-      $id: https://openbrandexchange.com/schemas/v0.2/WebhookEvent.json
+      $id: https://openbrandexchange.com/schemas/v0.3/WebhookEvent.json
       type: object
       title: WebhookEvent
       description: "Webhook payload. Signed: OBX-Webhook-Signature: v1=<hex HMAC-SHA256(secret, timestamp + '.' + raw_body)>."

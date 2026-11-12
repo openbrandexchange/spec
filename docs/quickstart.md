@@ -254,7 +254,7 @@ curl -s -H "Authorization: Bearer $TOKEN" "$HOST/obx/v1/products/<id>" | jq '{st
 
 What you get ([protocol.md §5](protocol.md#5-data-model)):
 
-- **product**: style number, names and descriptions per language, item type and subtype, composition per part (with `recycled`/`organic` flags), care codes, country of origin, footwear materials, certifications and typed features (wheels, lock, closure, ...);
+- **product**: style number, names and descriptions per language, item type and subtype, composition per part (part, material and qualifier as a code with a name per language), care codes with category, symbol and name, country of origin, footwear materials, certifications and typed features (wheels, lock, closure, ...);
 - **variant**: colour (with a colour family for filters), size, the EAN as `gtin` (14 digits; `gtin_original` is what the brand typed) and measurements in cm, kg and litres;
 - **asset**: a final image with its colour, order (`position`), role, view, usage rights and AI provenance.
 

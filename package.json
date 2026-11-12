@@ -1,7 +1,7 @@
 {
   "name": "@openbrandexchange/spec",
   "private": true,
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Open Brand Exchange specification: OpenAPI, JSON Schemas, docs and fixtures.",
   "license": "CC-BY-4.0",
   "type": "module",

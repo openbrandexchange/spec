@@ -1,4 +1,4 @@
-# Canonical import format 0.2
+# Canonical import format 0.3
 
 **Status:** normative. Every node (upload in the admin UI, scheduled pull imports, `POST /obx/v1/ingest/imports`) and the `obx` CLI MUST support this format with exactly these rules, so a brand's export works everywhere. Example: [`fixtures/kestrel/`](../fixtures/kestrel). Section 5 (Excel workbooks) is a non-normative node feature: optional, but a node that offers it follows it exactly.
 
@@ -74,19 +74,19 @@ Exports (portal "CSV" download) use the same columns in the order of the tables 
 ```
 materials := part (";" part)*
 part      := [part_name ":"] fiber ("," fiber)*        part_name defaults to "main"
-fiber     := number "%" fiber_key flag*                e.g. "95% cotton", "100% polyester (recycled)"
-flag      := "(recycled)" | "(organic)"
+fiber     := number "%" material_code [qualifier]      e.g. "95% cotton", "100% polyester (recycled)"
+qualifier := "(" qualifier_code ")"                   e.g. "(organic)", "(recycled)", "(regenerative)"
 ```
-Examples: `100% cotton (organic)` · `outer: 65% cotton, 35% polyamide; lining: 100% polyester (recycled)`. Fibre keys are lowercase with `_`; a node lowercases and replaces spaces with `_` (`Merino Wool` → `merino_wool`). A flag sets `recycled: true` or `organic: true` on that fibre ([protocol.md §5.9.1](protocol.md#composition)). Percentages of a part SHOULD sum to 100; for textile item types a part that does not gives the warning `fibre_percentages_not_100` ([rule 10](#label-completeness)).
+Examples: `100% cotton (organic)` · `outer: 65% cotton, 35% polyamide; lining: 100% polyester (recycled)`. Part, material and qualifier codes are lowercase with `_`; a node lowercases and replaces spaces with `_` (`Merino Wool` → `merino_wool`). The file holds codes only: the node adds the names from [`vocabularies/`](../vocabularies) ([protocol.md §5.9.1](protocol.md#composition)). A qualifier in brackets sets that fibre's `qualifier`; one per fibre (two are a `validation_failed` error). Percentages of a part SHOULD sum to 100; for textile item types a part that does not gives the warning `fibre_percentages_not_100` ([rule 10](#label-completeness)).
 
-**0.1 fibre keys.** A key `recycled_<fibre>` or `organic_<fibre>` (the 0.1 keys `recycled_cotton`, `recycled_polyester`, `recycled_polyamide`, `organic_cotton`) is normalised to the fibre with the flag: `100% recycled_polyester` = `100% polyester (recycled)`, `100% organic_cotton` = `100% cotton (organic)`. Files written for 0.1 therefore keep working, and give the same result as files with flags.
+**0.1 fibre keys.** A key `recycled_<fibre>` or `organic_<fibre>` (the 0.1 keys `recycled_cotton`, `recycled_polyester`, `recycled_polyamide`, `organic_cotton`) is normalised to the material with that qualifier: `100% recycled_polyester` = `100% polyester (recycled)`, `100% organic_cotton` = `100% cotton (organic)`. Files written for 0.1 therefore keep working.
 
-<a id="fibres"></a>**Recommended fibre keys** (the English names of Annex I of Regulation (EU) No 1007/2011 where one exists): `cotton`, `linen`, `hemp`, `silk`, `wool`, `merino_wool`, `lambswool`, `cashmere`, `alpaca`, `mohair`, `viscose`, `lyocell`, `modal`, `cupro`, `acetate`, `polyester`, `polyamide`, `elastane`, `acrylic`, `polypropylene`, `polyurethane`, and the non-textile materials `leather`, `suede`, `down`, `feather`, `rubber`, `metal`, `other`.
+<a id="fibres"></a>**Material codes** ([`vocabularies/materials.json`](../vocabularies/materials.json), with their names; the English names of Annex I of Regulation (EU) No 1007/2011 where one exists): `cotton`, `linen`, `hemp`, `silk`, `wool`, `merino_wool`, `lambswool`, `cashmere`, `alpaca`, `mohair`, `viscose`, `lyocell`, `modal`, `cupro`, `acetate`, `polyester`, `polyamide`, `elastane`, `acrylic`, `polypropylene`, `polyurethane`, and the non-textile materials `leather`, `suede`, `down`, `feather`, `rubber`, `metal`, `other`.
 
-**Recommended part keys:** `main`, `outer`, `lining`, `filling`, `padding`, `trim`, `pocket_lining`, `shell` (luggage), `handle`, `strap`, and for footwear `upper`, `sole`, `insole`.
+**Part codes** ([`vocabularies/parts.json`](../vocabularies/parts.json)): `main`, `outer`, `lining`, `filling`, `padding`, `trim`, `pocket_lining`, `shell` (luggage), `handle`, `strap`, and for footwear `upper`, `sole`, `insole`.
 
 ### 1.5 <a id="care-codes"></a>Care codes
-Codes separated by `|`, in label order. Aligned with ISO 3758 (GINETEX symbols). Unknown codes matching `^[a-z][a-z0-9_]{0,63}$` are kept (with a warning); others are errors.
+Codes separated by `|`, in label order. Aligned with ISO 3758 (GINETEX symbols); [`vocabularies/care.json`](../vocabularies/care.json) gives each code its category, symbol and names, which the node adds. Unknown codes matching `^[a-z][a-z0-9_]{0,63}$` are kept (with a warning); others are errors.
 
 | Group | Codes |
 |---|---|

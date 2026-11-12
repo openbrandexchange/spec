@@ -101,8 +101,10 @@ export function specModel() {
   const subtypes = [];
   for (const [, keys] of tables(protocol, "| `item_type` | `item_subtype` |")[0]) for (const k of backticks(keys)) if (!subtypes.includes(k)) subtypes.push(k);
   const careGroups = tables(imp, "| Group | Codes |")[0].map(([group, codes]) => ({ group, codes: backticks(codes) }));
-  const fibreKeys = backticks(paragraph(imp, "**Recommended fibre keys**").split(":").slice(1).join(":"));
-  const partKeys = backticks(paragraph(imp, "**Recommended part keys:**"));
+  const vocab = (kind) => JSON.parse(read(`vocabularies/${kind}.json`)).entries.map((e) => e.code);
+  const fibreKeys = vocab("materials");
+  const partKeys = vocab("parts");
+  const qualifierKeys = vocab("qualifiers");
   const schemes = schema("Certifications").items.properties.scheme.description.split("recommended:")[1].replace(/\.$/, "").split(",").map((s) => s.trim());
   const pattern = after(imp, "### 2.1 Filename pattern\n```\n").split("\n```")[0].trim();
   const extensions = backticks(after(imp, "- `ext`:").split("\n")[0]);
@@ -123,6 +125,7 @@ export function specModel() {
     careGroups,
     fibreKeys,
     partKeys,
+    qualifierKeys,
     schemes,
     roles: common.Role.enum,
     views: common.View.enum,
@@ -317,8 +320,8 @@ function describeProductColumn(name, m) {
       d.allowed = bool; d.list = "yes_no"; break;
     case "materials":
       d.allowed = [
-        `part: percentage fibre, … per part; parts separated by ; (e.g. outer: 65% cotton, 35% polyamide; lining: 100% polyester (recycled)). Percentages of a part add up to 100. Flags: (recycled), (organic). Parts: ${m.partKeys.join(", ")}. Fibres: ${m.fibreKeys.join(", ")}.`,
-        `onderdeel: percentage vezel, … per onderdeel; onderdelen gescheiden door ; (bijvoorbeeld outer: 65% cotton, 35% polyamide; lining: 100% polyester (recycled)). De percentages van een onderdeel tellen op tot 100. Toevoegingen: (recycled) = gerecycled, (organic) = biologisch. Onderdelen: ${m.partKeys.join(", ")}. Vezels: ${m.fibreKeys.join(", ")}. Gebruik de Engelse sleutels; schrijf een decimaal met een punt (98.5%), want een komma scheidt de vezels.`,
+        `part: percentage fibre, … per part; parts separated by ; (e.g. outer: 65% cotton, 35% polyamide; lining: 100% polyester (recycled)). Percentages of a part add up to 100. Qualifier, at most one per fibre: ${m.qualifierKeys.map((q) => `(${q})`).join(", ")}. Parts: ${m.partKeys.join(", ")}. Fibres: ${m.fibreKeys.join(", ")}.`,
+        `onderdeel: percentage vezel, … per onderdeel; onderdelen gescheiden door ; (bijvoorbeeld outer: 65% cotton, 35% polyamide; lining: 100% polyester (recycled)). De percentages van een onderdeel tellen op tot 100. Kenmerk, hoogstens één per vezel: (recycled) = gerecycled, (organic) = biologisch, (regenerative) = regeneratief. Onderdelen: ${m.partKeys.join(", ")}. Vezels: ${m.fibreKeys.join(", ")}. Gebruik de Engelse sleutels; schrijf een decimaal met een punt (98.5%), want een komma scheidt de vezels.`,
       ];
       break;
     case "footwear_materials":

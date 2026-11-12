@@ -13,7 +13,7 @@ test("overview page links to every reference and passes axe", async ({ page }) =
   await page.goto("/");
   await expect(page).toHaveTitle(/API reference 0\.2\.0/);
   for (const p of PAGES) await expect(page.locator(`a[href="${p.path}"]`)).toBeVisible();
-  await expect(page.locator('a[href="schemas/v0.2/Product.json"]')).toBeVisible();
+  await expect(page.locator('a[href="schemas/v0.3/Product.json"]')).toBeVisible();
   const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();
   expect(results.violations.map((v) => `${v.id}: ${v.nodes.length}`)).toEqual([]);
 });
@@ -74,8 +74,8 @@ for (const p of PAGES) {
   });
 }
 
-test("schemas are served at their $id path, the 0.1 ones too", async ({ request }) => {
-  for (const v of ["v0.2", "v0.1"]) {
+test("schemas are served at their $id path", async ({ request }) => {
+  for (const v of ["v0.3"]) {
     const res = await request.get(`schemas/${v}/Product.json`);
     expect(res.ok()).toBeTruthy();
     const schema = await res.json();

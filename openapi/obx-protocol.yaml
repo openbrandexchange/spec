@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: OBX Protocol (read side)
-  version: 0.2.0
+  version: 0.3.0
   summary: How retailers' software discovers a brand node, gets access and pulls product content.
   description: |
     **Normative.** The Open Brand Exchange (OBX) Protocol is the read side of a brand node:
@@ -22,7 +22,7 @@ info:
       Extension fields are prefixed `x-<vendor>-` (for example `x-acme-crop`).
     - Errors are `application/problem+json` (RFC 9457) with an `obx_error` code, except the
       OAuth2 token endpoint which uses RFC 6749 error JSON.
-    - Responses carry `OBX-Version: 0.2` and rate limit headers (`RateLimit-Limit`,
+    - Responses carry `OBX-Version: 0.3` and rate limit headers (`RateLimit-Limit`,
       `RateLimit-Remaining`, `RateLimit-Reset`); 429 carries `Retry-After`.
     - A retailer never sees more than it could see in the brand's portal: only published
       objects of brands in its grant.
