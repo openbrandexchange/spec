@@ -38,7 +38,7 @@ Goals:
 - `part`, `material` and `qualifier` are terms `{code, name}` (`$defs/term` in [Materials.json](../../schemas/Materials.json)). `name` is a [LocalizedText](../../schemas/LocalizedText.json): a language without a name is omitted, never an empty string. `main` has the name `null` (a label shows its fibres without a heading).
 - `percentage` stays a number. `qualifier` is `null` when the fibre has none.
 - A care entry gets `category` (the ISO 3758 symbol group: `washing`, `bleaching`, `drying`, `ironing`, `professional_care`), `symbol` (the symbol code in the GINETEX notation fashion data pools exchange, e.g. `1_C_40`, or `null`) and `name`. `text` stays, now only for the brand's own extra text ("Wash inside out").
-- **Where the names come from.** For a code in the vocabulary a node returns the vocabulary's name (and for care its category and symbol). For another code it returns the name (category, symbol) it was given on write, or `null`. On write paths `name`, `category` and `symbol` may be left out.
+- **Where the names come from.** For a code in the vocabulary a node returns the vocabulary's category and symbol, and its name unless it has its own reviewed translations (SHOULD). For another code it returns the name (category, symbol) it was given on write, or `null`. On write paths `name`, `category` and `symbol` may be left out.
 
 ## Compatibility
 
