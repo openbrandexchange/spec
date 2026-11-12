@@ -4965,7 +4965,6 @@ components:
                 - string
                 - number
                 - boolean
-      minProperties: 1
     ProductInput:
       $schema: https://json-schema.org/draft/2020-12/schema
       $id: https://openbrandexchange.com/schemas/v0.2/ProductInput.json
@@ -5192,7 +5191,6 @@ components:
           type: number
           exclusiveMinimum: 0
           description: "Trousers: inside leg length, from the crotch seam to the hem."
-      minProperties: 1
       additionalProperties: false
       patternProperties:
         ^x-[a-z0-9]+-[a-z0-9_-]+$: true

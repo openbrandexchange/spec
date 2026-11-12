@@ -2219,7 +2219,6 @@ components:
                 - string
                 - number
                 - boolean
-      minProperties: 1
     Gtin14:
       type: string
       description: GTIN normalised to 14 digits (left-padded with zeros).
@@ -2347,7 +2346,6 @@ components:
           type: number
           exclusiveMinimum: 0
           description: "Trousers: inside leg length, from the crotch seam to the hem."
-      minProperties: 1
       additionalProperties: false
       patternProperties:
         ^x-[a-z0-9]+-[a-z0-9_-]+$: true

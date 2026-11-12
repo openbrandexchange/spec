@@ -192,7 +192,7 @@ Values: `leather`, `coated_leather`, `textile`, `other`; a part that is not stat
 | `weight_kg` | kg | the article itself, without packaging |
 | `volume_l`, `volume_expanded_l` | litres | capacity; expanded = with the expansion zip open |
 | `handle_drop_cm` | cm | bags: from the top of the handle, held upright, to the top of the body |
-| `strap_length_cm` | cm | bags: the shoulder strap as `{"min": 80, "max": 130}` (shortest and longest setting; equal when not adjustable) |
+| `strap_length_cm` | cm | bags: the shoulder strap as `{"min": 80, "max": 130}` (shortest and longest setting; equal when not adjustable; `min` ≤ `max`) |
 | `laptop_max_inch` | inch | the largest laptop (screen diagonal) the laptop compartment takes |
 | `heel_height_cm` | cm | footwear: the heel at the back, from the floor |
 | `shaft_height_cm` | cm | boots: from the top of the insole at the heel to the top of the shaft |
