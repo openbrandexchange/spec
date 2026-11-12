@@ -4,8 +4,8 @@ An implementation is **OBX-conformant** for a profile when `obx-conformance` (in
 
 | Profile | Tests | Who needs it |
 |---|---|---|
-| **protocol** | the read side ([protocol.md](protocol.md)) | every node; normative |
-| **ingest** | the write side ([ingest.md](ingest.md), [import-format.md](import-format.md)) | every node that accepts automation; normative |
+| **protocol** | the read side ([protocol.md](protocol.md)) | every node; normative. **This is what "OBX-conformant" means** |
+| **ingest** | the write side ([ingest.md](ingest.md), [import-format.md](import-format.md)) | nodes that offer the Ingest API; normative for them, optional otherwise |
 | **portal** | the Node Admin + Portal API ([node-admin.yaml](../openapi/node-admin.yaml)) | nodes that want to run the shared `admin-ui`; non-normative |
 | **security** | the observable parts of [security.md](security.md) that the other profiles do not cover | every node; needs admin credentials or a setup code |
 
@@ -23,6 +23,17 @@ obx-conformance mock --addr :8080                                               
 ```
 
 `all` on a **fresh** node is the reference path used in CI by every node repository: it completes setup (company "Kestrel Outfitters", first brand "Kestrel" → external id `kestrel`, languages `nl,en`), creates an ingest token and two retailers with API clients (one restricted to brand `kestrel`, one without originals), imports [`fixtures/kestrel`](../fixtures/kestrel), then runs all profiles. The suite also ships a **mock node** (`obx-conformance mock`) that passes everything, for developing consumers.
+
+### Nodes without the Ingest or Node Admin API
+
+How a node gets its data and how a brand manages its retailers is up to the node. Such a node loads [`fixtures/kestrel`](../fixtures/kestrel) with its own import (company "Kestrel Outfitters", brands `kestrel` and `kestrel-trail`) and runs the protocol profile with an **operator**: a hook program, a person at the terminal, or a Go function in the node's own tests, that does the brand-side steps the tests need while they run (create, restrict and revoke an API key, approve an access request, change and unpublish a product).
+
+```sh
+obx-conformance protocol --url https://node.example --operator-hook ./obx-operator.sh
+obx-conformance protocol --url https://node.example --operator-prompt
+```
+
+The actions and the hook's input and output are described in obx-go's [docs/conformance.md](https://github.com/openbrandexchange/obx-go/blob/main/docs/conformance.md#portals-without-the-ingest-or-node-admin-api). P-FEED-5 (the ingest replay) is skipped on such nodes; every other REQUIRED protocol test applies.
 
 ## Fixture conventions
 

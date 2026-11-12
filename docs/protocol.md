@@ -16,7 +16,7 @@ A **node** is one brand company's deployment (self-hosted or hosted by a vendor)
 | Face | For | Contract |
 |---|---|---|
 | OBX Protocol (this document) | retailers' software (shop, PIM, ERP) pulling content | normative |
-| OBX Ingest API ([ingest.md](ingest.md)) | the brand's own automation publishing content | normative |
+| OBX Ingest API ([ingest.md](ingest.md)) | the brand's own automation publishing content | optional; normative for nodes that offer it (capability `ingest`) |
 | Portal + admin | people: the brand's staff and the retailers' buyers | non-normative ([node-admin.yaml](../openapi/node-admin.yaml)) |
 
 Principles: small, pull-first, idempotent, everything repeatable. What the brand did not publish does not exist. A retailer's software never sees more than that retailer could see in the brand's portal.

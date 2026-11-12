@@ -13,7 +13,7 @@ This repository is the **source of truth** that every implementation follows.
 | | |
 |---|---|
 | [`openapi/obx-protocol.yaml`](openapi/obx-protocol.yaml) | **OBX Protocol** (normative): what retailers' software reads |
-| [`openapi/obx-ingest.yaml`](openapi/obx-ingest.yaml) | **OBX Ingest API** (normative): how a brand's automation publishes |
+| [`openapi/obx-ingest.yaml`](openapi/obx-ingest.yaml) | **OBX Ingest API** (optional; normative for nodes that offer it): one standard way for a brand's automation to publish. How data gets into a node is up to the node |
 | [`openapi/node-admin.yaml`](openapi/node-admin.yaml) | Node Admin + Portal API (non-normative): shared by the admin UI and the reference nodes |
 | [`schemas/`](schemas) | JSON Schema 2020-12 for every object |
 | [`docs/protocol.md`](docs/protocol.md) | the readable specification (start here) |
