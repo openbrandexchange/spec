@@ -2,7 +2,7 @@
 
 All notable changes to the Open Brand Exchange specification. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [docs/versioning.md](docs/versioning.md).
 
-## [0.1.0] - 2026-09-28
+## [0.1.0] - 2026-11-12
 
 The first release. Implemented by three portals in three runtimes (Cloudflare, Google Cloud & Docker, web hosting), the Go SDK and CLI, and the conformance suite; see [docs/implementations.md](docs/implementations.md).
 
