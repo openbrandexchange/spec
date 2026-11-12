@@ -9,7 +9,8 @@ import { fileURLToPath } from "node:url";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 export const ALLOWED = ["MIT", "ISC", "Apache-2.0", "BSD-2-Clause", "BSD-3-Clause", "0BSD", "CC0-1.0", "CC-BY-4.0", "BlueOak-1.0.0", "Python-2.0"];
 // File-level copyleft is fine for tools that only run in tests and are never shipped.
-export const DEV_ONLY_ALLOWED = ["MPL-2.0"];
+// Zlib (permissive, OSI) is pako, the deflate library of jszip under exceljs (tools/templates.mjs).
+export const DEV_ONLY_ALLOWED = ["MPL-2.0", "Zlib"];
 // Third-party files committed to the repository (shipped in site/ and the release bundle).
 export const VENDORED = [
   { path: "tools/vendor/redoc.standalone.js", name: "redoc", version: "2.5.4", license: "MIT", notice: "tools/vendor/redoc.LICENSE" },

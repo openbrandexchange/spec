@@ -2,6 +2,11 @@
 
 All notable changes to the Open Brand Exchange specification. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [docs/versioning.md](docs/versioning.md).
 
+## [Unreleased]
+
+### Added
+- **Excel templates** for brands: [`templates/products.xlsx`](templates/products.xlsx) and [`templates/assets.xlsx`](templates/assets.xlsx), generated from the schemas, [import-format.md](docs/import-format.md) and the Kestrel fixtures by `npm run templates`. The columns of the canonical CSV in order, text-formatted cells (so Excel keeps GTINs), dropdowns for every enumerated column, an explanation per column in English and Dutch, how to save as CSV UTF-8 and the image naming rule. `npm run check` fails when they drift.
+
 ## [0.2.0] - 2026-11-12
 
 Product data for fashion, shoes, bags and luggage ([proposal 0002](docs/proposals/0002-product-data.md)). Additive: every new field is optional, a 0.1 document is still valid, and clients written for 0.1 keep working because they ignore what they do not know.
