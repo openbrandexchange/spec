@@ -19,14 +19,40 @@ let checked = 0;
 const ajv = new Ajv2020({ strict: true, allowUnionTypes: true, allErrors: true });
 addFormats(ajv);
 const schemaDir = join(root, "schemas");
+// The current schemas live in schemas/*.json with $id .../schemas/v<major>.<minor>/; the
+// schemas of earlier releases are kept unchanged in schemas/v<major>.<minor>/ so their
+// $id URLs keep resolving on the website.
+const readJSON = (p) => JSON.parse(readFileSync(p, "utf8"));
+const specVersion = readJSON(join(root, "package.json")).version;
+export const schemaBase = `https://openbrandexchange.com/schemas/v${specVersion.split(".").slice(0, 2).join(".")}/`;
 const schemaNames = readdirSync(schemaDir).filter((f) => f.endsWith(".json")).map((f) => f.replace(/\.json$/, ""));
-for (const name of schemaNames) ajv.addSchema(JSON.parse(readFileSync(join(schemaDir, `${name}.json`), "utf8")));
+for (const name of schemaNames) {
+  const doc = JSON.parse(readFileSync(join(schemaDir, `${name}.json`), "utf8"));
+  checked++;
+  if (doc.$id !== `${schemaBase}${name}.json`) fail(`schemas/${name}.json`, `$id ${doc.$id}, expected ${schemaBase}${name}.json`);
+  ajv.addSchema(doc);
+}
 const validators = {};
 for (const name of schemaNames) {
   try {
-    validators[name] = ajv.getSchema(`https://openbrandexchange.com/schemas/v0.1/${name}.json`);
+    validators[name] = ajv.getSchema(`${schemaBase}${name}.json`);
   } catch (e) {
     fail(`schemas/${name}.json`, `does not compile: ${e.message}`);
+  }
+}
+// Earlier releases: each folder must still compile on its own, with $ids under its own version.
+for (const dir of readdirSync(schemaDir).filter((f) => /^v\d+\.\d+$/.test(f))) {
+  const old = new Ajv2020({ strict: true, allowUnionTypes: true, allErrors: true });
+  addFormats(old);
+  const files = readdirSync(join(schemaDir, dir)).filter((f) => f.endsWith(".json"));
+  for (const f of files) {
+    const doc = JSON.parse(readFileSync(join(schemaDir, dir, f), "utf8"));
+    checked++;
+    if (doc.$id !== `https://openbrandexchange.com/schemas/${dir}/${f}`) fail(`schemas/${dir}/${f}`, `$id ${doc.$id}`);
+    old.addSchema(doc);
+  }
+  for (const f of files) {
+    try { old.getSchema(`https://openbrandexchange.com/schemas/${dir}/${f}`); } catch (e) { fail(`schemas/${dir}/${f}`, `does not compile: ${e.message}`); }
   }
 }
 
@@ -36,8 +62,6 @@ function check(schema, value, where) {
   if (!v) return fail(where, `no schema ${schema}`);
   if (!v(value)) fail(where, `${schema}: ${ajv.errorsText(v.errors, { separator: "\n    " })}`);
 }
-
-const readJSON = (p) => JSON.parse(readFileSync(p, "utf8"));
 
 // ---------------------------------------------------------------- GTIN helpers
 function gtinValid(code) {
@@ -161,9 +185,12 @@ function parseCSV(text) {
   if (field || row.length) { row.push(field); rows.push(row); }
   return rows.filter((r) => r.some((c) => c !== ""));
 }
-const PRODUCT_COLUMNS = /^(brand|product_id|style_number|name|description|item_type|target_group|season|collection|gpc_brick|materials|care|country_of_origin|dpp_url|status|variant_id|gtin|sku|color_code|color_name|supplier_color|size|size_system|variant_status|image_files)(:[a-z]{2,3}(-[A-Z]{2})?)?$|^attr:[a-z][a-z0-9_]{0,63}$/;
+const MEASUREMENT_COLUMNS = ["height_cm", "width_cm", "depth_cm", "weight_kg", "volume_l", "volume_expanded_l", "handle_drop_cm", "strap_length_cm", "laptop_max_inch", "heel_height_cm", "shaft_height_cm", "inseam_cm"];
+const PRODUCT_COLUMNS = new RegExp(`^(brand|product_id|style_number|name|description|item_type|item_subtype|target_group|season|collection|gpc_brick|materials|contains_animal_origin|footwear_materials|care|country_of_origin|certifications|dpp_url|status|variant_id|gtin|sku|color_code|color_name|color_family|supplier_color|size|size_length|size_system|${MEASUREMENT_COLUMNS.join("|")}|variant_status|image_files)(:[a-z]{2,3}(-[A-Z]{2})?)?$|^(attr|feature):[a-z][a-z0-9_]{0,63}$`);
 const ASSET_COLUMNS = /^(file|asset_id|product_id|style_number|color_code|position|role|view|alt_text|license|license_text|channels|territories|embargo_until|expires_at|credit|model_release|ai_generated|ai_edited|source|c2pa|c2pa_manifest_url|generator|status)(:[a-z]{2,3}(-[A-Z]{2})?)?$/;
-const MATERIALS = /^\s*(([a-z][a-z0-9_]*)\s*:\s*)?\d+(\.\d+)?%\s+[a-z][a-z0-9_]*(\s*,\s*\d+(\.\d+)?%\s+[a-z][a-z0-9_]*)*\s*(;\s*(([a-z][a-z0-9_]*)\s*:\s*)?\d+(\.\d+)?%\s+[a-z][a-z0-9_]*(\s*,\s*\d+(\.\d+)?%\s+[a-z][a-z0-9_]*)*\s*)*$/;
+const FIBER = String.raw`\d+(\.\d+)?%\s+[a-z][a-z0-9_]*(\s*\((recycled|organic)\))*`;
+const PART = String.raw`\s*(([a-z][a-z0-9_]*)\s*:\s*)?${FIBER}(\s*,\s*${FIBER})*\s*`;
+const MATERIALS = new RegExp(`^${PART}(;${PART})*$`);
 const ROLES = ["packshot", "model", "detail", "ghost", "flatlay", "scene", "swatch", "size_chart", "other"];
 const VIEWS = ["front", "back", "side", "left", "right", "top", "bottom", "tilted_left", "tilted_right", "inside", "detail", "other"];
 
@@ -219,6 +246,153 @@ productRows.slice(1).forEach((row, i) => {
   if (!styles.has(col(row, "style_number"))) styles.set(col(row, "style_number"), new Set());
   styles.get(col(row, "style_number")).add(col(row, "color_code"));
 });
+// The 0.2 columns, parsed as docs/import-format.md says, must give valid objects, and for the
+// products with an expected object, exactly the values in fixtures/expected.
+export function parseMaterialsCell(cell) {
+  return cell.split(";").map((chunk) => {
+    const m = /^\s*(?:([a-z][a-z0-9_]*)\s*:)?(.*)$/.exec(chunk);
+    const fibers = m[2].split(",").map((f) => {
+      let [, pct, fiber, flags] = /^\s*(\d+(?:\.\d+)?)%\s+([a-z][a-z0-9_]*)((?:\s*\((?:recycled|organic)\))*)\s*$/.exec(f);
+      const set = new Set([...flags.matchAll(/recycled|organic/g)].map((x) => x[0]));
+      for (const prefix of ["recycled", "organic"]) if (fiber.startsWith(`${prefix}_`)) { fiber = fiber.slice(prefix.length + 1); set.add(prefix); }
+      const out = { fiber, percentage: Number(pct) };
+      for (const k of ["recycled", "organic"]) if (set.has(k)) out[k] = true;
+      return out;
+    });
+    return { part: m[1] ?? "main", fibers };
+  });
+}
+const BOOL = { true: true, yes: true, ja: true, 1: true, false: false, no: false, nee: false, 0: false };
+const number = (v) => (/^\d+([.,]\d+)?$/.test(v) ? Number(v.replace(",", ".")) : NaN);
+export function parseFeature(key, v) {
+  const props = readJSON(join(schemaDir, "Features.json")).properties;
+  const t = props[key];
+  if (!t) return v;
+  if (t.type === "boolean") return BOOL[v.toLowerCase()] ?? v;
+  if (t.type === "integer") return /^\d+$/.test(v) ? Number(v) : v;
+  if (t.type === "array") return v.split("|").map((x) => x.trim().toLowerCase());
+  return v.toLowerCase();
+}
+export function parseCertifications(cell) {
+  return cell.split(";").map((c) => {
+    const m = /^\s*([a-z][a-z0-9_]*)\s*(?::\s*(.*?))?\s*(\((product|material)\))?\s*$/.exec(c);
+    return m ? { scheme: m[1], licence_number: m[2] || null, scope: m[4] ?? "product" } : { invalid: c };
+  });
+}
+export function parseFootwear(cell) {
+  const out = { upper: null, lining_and_sock: null, outer_sole: null };
+  for (const p of cell.split(";")) { const [k, v] = p.split(":").map((x) => x.trim()); out[k] = v; }
+  return out;
+}
+export function parseMeasurements(get) {
+  const out = {};
+  for (const k of MEASUREMENT_COLUMNS) {
+    const v = get(k);
+    if (!v) continue;
+    if (k === "strap_length_cm") { const [a, b = a] = v.split("-").map(number); out[k] = { min: a, max: b }; }
+    else out[k] = number(v);
+  }
+  return Object.keys(out).length ? out : null;
+}
+const productsFromCsv = new Map();
+productRows.slice(1).forEach((row, i) => {
+  const where = `products.csv row ${i + 1}`;
+  const get = (name) => (header.includes(name) ? col(row, name) : "");
+  const features = {};
+  header.filter((h) => h.startsWith("feature:")).forEach((h) => { const v = col(row, h); if (v) features[h.slice(8)] = parseFeature(h.slice(8), v); });
+  const cao = get("contains_animal_origin");
+  const product = {
+    item_subtype: get("item_subtype") || null,
+    materials: get("materials") ? parseMaterialsCell(get("materials")) : null,
+    contains_animal_origin: cao ? (BOOL[cao.toLowerCase()] ?? cao) : null,
+    footwear_materials: get("footwear_materials") ? parseFootwear(get("footwear_materials")) : null,
+    certifications: get("certifications") ? parseCertifications(get("certifications")) : null,
+    features: Object.keys(features).length ? features : null,
+  };
+  const variant = {
+    external_id: col(row, "gtin"),
+    color_family: get("color_family") || null,
+    size_length: get("size_length") || null,
+    measurements: parseMeasurements(get),
+  };
+  checked++;
+  for (const [k, schema] of [["features", "Features"], ["certifications", "Certifications"], ["footwear_materials", "FootwearMaterials"], ["materials", "Materials"]]) {
+    if (product[k] !== null) check(schema, product[k], `${where} ${k}`);
+  }
+  if (variant.measurements) check("Measurements", variant.measurements, `${where} measurements`);
+  if (variant.color_family) check("Color", { code: "X", family: variant.color_family }, `${where} color_family`);
+  if (typeof product.contains_animal_origin !== "boolean" && product.contains_animal_origin !== null) fail(where, `contains_animal_origin ${cao}`);
+  const style = col(row, "style_number");
+  if (!productsFromCsv.has(style)) productsFromCsv.set(style, { product, variants: [] });
+  productsFromCsv.get(style).variants.push(variant);
+});
+for (const [style, exp] of Object.entries(expectedProducts)) {
+  const got = productsFromCsv.get(style);
+  checked++;
+  if (!got) { fail(`expected/product-${style}.json`, "no rows in products.csv"); continue; }
+  for (const [k, v] of Object.entries(got.product)) {
+    if (JSON.stringify(v) !== JSON.stringify(exp[k] ?? null) && !(k === "features" && JSON.stringify(sortKeys(v)) === JSON.stringify(sortKeys(exp[k])))) {
+      fail(`expected/product-${style}.json`, `${k} is ${JSON.stringify(exp[k])}, products.csv gives ${JSON.stringify(v)}`);
+    }
+  }
+  for (const v of got.variants) {
+    const e = exp.variants.find((x) => x.external_id === v.external_id);
+    if (!e) { fail(`expected/product-${style}.json`, `no variant ${v.external_id}`); continue; }
+    for (const [k, want] of [["color_family", e.color.family ?? null], ["size_length", e.size_length ?? null], ["measurements", e.measurements ?? null]]) {
+      if (JSON.stringify(v[k]) !== JSON.stringify(want)) fail(`expected/product-${style}.json`, `variant ${v.external_id} ${k} is ${JSON.stringify(want)}, products.csv gives ${JSON.stringify(v[k])}`);
+    }
+  }
+}
+function sortKeys(o) { return o && typeof o === "object" && !Array.isArray(o) ? Object.fromEntries(Object.keys(o).sort().map((k) => [k, sortKeys(o[k])])) : o; }
+
+// Label completeness warnings (docs/import-format.md rule 10).
+const APPAREL = ["t_shirt", "top", "shirt", "blouse", "polo", "sweater", "cardigan", "hoodie", "sweatshirt", "vest", "jacket", "coat", "blazer", "suit", "dress", "skirt", "trousers", "jeans", "shorts", "jumpsuit", "leggings", "underwear", "lingerie", "nightwear", "swimwear", "socks", "hat", "cap", "scarf", "gloves", "tie"];
+const TEXTILE_TYPES = new Set([...APPAREL, "bag", "backpack", "luggage"]);
+const FOOTWEAR_TYPES = new Set(["shoes", "sneakers", "boots", "sandals"]);
+const ANIMAL = /^(leather|suede|fur|down|feather|silk|wool|merino_wool|lambswool|cashmere|alpaca|mohair)$/;
+export function labelWarnings(rows, hdr) {
+  const out = [], seen = new Set();
+  rows.forEach((row, i) => {
+    const get = (n) => (hdr.includes(n) ? row[hdr.indexOf(n)] ?? "" : "");
+    const style = get("style_number");
+    if (seen.has(style)) return;
+    seen.add(style);
+    const type = get("item_type"), mats = get("materials") ? parseMaterialsCell(get("materials")) : null;
+    const w = (column, code) => out.push({ file: "products.csv", row: i + 1, column, severity: "warning", obx_error: code });
+    if (TEXTILE_TYPES.has(type)) {
+      if (!mats) w("materials", "fibre_composition_missing");
+      else if (!get("contains_animal_origin") && mats.some((p) => p.fibers.some((f) => ANIMAL.test(f.fiber)))) w("contains_animal_origin", "animal_origin_unknown");
+    }
+    if (FOOTWEAR_TYPES.has(type)) {
+      const fw = get("footwear_materials") ? parseFootwear(get("footwear_materials")) : null;
+      if (!fw || Object.values(fw).some((v) => !v)) w("footwear_materials", "footwear_materials_missing");
+    }
+    for (const p of mats ?? []) if (Math.abs(p.fibers.reduce((a, f) => a + f.percentage, 0) - 100) > 1e-9) w("materials", "fibre_percentages_not_100");
+  });
+  return out;
+}
+checked++;
+{
+  const got = labelWarnings(productRows.slice(1), header);
+  if (got.length) fail("products.csv", `label completeness warnings: ${JSON.stringify(got)}`);
+}
+{
+  const importsDir = join(root, "fixtures", "imports");
+  for (const f of readdirSync(importsDir).filter((f) => f.endsWith(".csv"))) {
+    const rows = parseCSV(readFileSync(join(importsDir, f), "utf8"));
+    for (const h of rows[0]) { checked++; if (!PRODUCT_COLUMNS.test(h.trim().toLowerCase())) fail(`imports/${f}`, `unknown column ${h}`); }
+  }
+  const rows = parseCSV(readFileSync(join(importsDir, "label-warnings.csv"), "utf8"));
+  const want = readJSON(join(importsDir, "label-warnings.expected.json")).warnings;
+  checked++;
+  const got = labelWarnings(rows.slice(1), rows[0]);
+  if (JSON.stringify(got) !== JSON.stringify(want)) fail("imports/label-warnings.expected.json", `rule 10 gives ${JSON.stringify(got)}`);
+  for (const c of readJSON(join(importsDir, "expected.json")).cases) {
+    for (const [ext, obj] of Object.entries(c.products)) { checked++; if (obj.features) check("Features", obj.features, `imports/expected.json ${c.file} ${ext}`); }
+    for (const [ext, obj] of Object.entries(c.variants)) { checked++; if (obj.measurements) check("Measurements", obj.measurements, `imports/expected.json ${c.file} ${ext}`); }
+  }
+}
+
 const images = readdirSync(join(kestrel, "images"));
 const positions = new Set();
 for (const img of images) {
@@ -297,6 +471,12 @@ if (existsSync(protocolDoc)) {
   const doc = readFileSync(protocolDoc, "utf8");
   for (const code of codes) { checked++; if (!doc.includes(`\`${code}\``)) fail("docs/protocol.md", `error code ${code} is not documented`); }
 } else fail("docs/protocol.md", "missing");
+for (const code of readJSON(join(schemaDir, "Common.json")).$defs.WarningCode.enum) {
+  for (const doc of ["import-format.md", "ingest.md"]) {
+    checked++;
+    if (!readFileSync(join(root, "docs", doc), "utf8").includes(`\`${code}\``)) fail(`docs/${doc}`, `warning code ${code} is not documented`);
+  }
+}
 
 // ---------------------------------------------------------------- OpenAPI examples
 // Every example in the OpenAPI files references a fixture file; it must exist and validate
