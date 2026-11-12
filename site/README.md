@@ -7,7 +7,8 @@ Built by `npm run build:site` (tools/build-site.mjs) from `openapi/` and `schema
 | `index.html` | overview page |
 | `protocol.html`, `ingest.html`, `admin.html` | rendered API reference (Redocly), pre-rendered HTML that the Redoc viewer hydrates |
 | `openapi/*.yaml` | single-file OpenAPI bundles (no external `$ref`s), for tools and code generators |
-| `schemas/v0.1/*.json` | the JSON Schemas at the path of their `$id` (`https://openbrandexchange.com/schemas/v0.1/…`) |
+| `schemas/v0.2/*.json` | the JSON Schemas at the path of their `$id` (`https://openbrandexchange.com/schemas/v0.2/…`) |
+| `schemas/v0.1/*.json` | the schemas of release 0.1, unchanged, so their `$id`s keep resolving |
 | `assets/redoc.standalone.js` | the Redoc viewer (MIT, `assets/redoc.LICENSE`; bundled libraries in `redoc.standalone.js.LICENSE.txt`), served locally instead of from a CDN |
 
 For the website: copy this folder as it is, for example to `/reference/`, and serve `schemas/` at `/schemas/` so the schema `$id`s resolve. The pages work without JavaScript (the content is pre-rendered); with JavaScript the viewer adds search and navigation. Every page, the overview included, carries its own Content-Security-Policy in a `<meta>` element (the API pages allow their one inline start-up script by hash), so a host should not add a stricter policy header for this folder.

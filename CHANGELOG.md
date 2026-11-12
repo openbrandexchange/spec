@@ -2,6 +2,29 @@
 
 All notable changes to the Open Brand Exchange specification. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [docs/versioning.md](docs/versioning.md).
 
+## [0.2.0] - 2026-11-12
+
+Product data for fashion, shoes, bags and luggage ([proposal 0002](docs/proposals/0002-product-data.md)). Additive: every new field is optional, a 0.1 document is still valid, and clients written for 0.1 keep working because they ignore what they do not know.
+
+### Added
+- **Article data** ([protocol.md §5.9](docs/protocol.md#59-article-data)): product `item_subtype` (recommended keys per item type), `contains_animal_origin`, `footwear_materials` (Directive 94/11/EC), `features` (a typed registry: `shell`, `wheels`, `lock`, `expandable`, `closure`, `laptop_compartment`, `water_resistance`, `detachable_parts`, `adjustable_parts`, `fit`, `sleeve_length`, `neckline`), `certifications` (`scheme`, `licence_number`, `scope`); variant `measurements` (fixed units in the key: cm, kg, l, inch; how to measure luggage and bags), `size_length`, `color.family`; fibre flags `recycled` and `organic`. New schemas Measurements, Features, FootwearMaterials, Certifications.
+- `item_type` recommended key `luggage`; controlled part keys for `materials`; fibre keys named after Annex I of Regulation (EU) No 1007/2011.
+- **Legal basis** table: what EU law requires (fibre composition, also online before purchase; "contains non-textile parts of animal origin"; footwear materials) and what is voluntary (care, country of origin, certifications; the textiles DPP is planned for Q4 2027).
+- **Import format**: columns `item_subtype`, `contains_animal_origin`, `footwear_materials`, `certifications`, `feature:<key>`, `color_family`, `size_length` and the measurement columns; `(recycled)`/`(organic)` in the materials grammar; rule 9 per feature and measurement key ([import-format.md §1.6](docs/import-format.md#article-data)).
+- **Label completeness warnings** with stable codes, in imports (rule 10) and in IngestResult `warning_details`: `fibre_composition_missing`, `animal_origin_unknown`, `footwear_materials_missing`, `fibre_percentages_not_100`. They never block publishing.
+- **OBX in 10 minutes** ([docs/quickstart.md](docs/quickstart.md)) for a retailer's developer.
+- Fixtures: a suitcase (KO-1008), a laptop bag (KO-1009) and a Chelsea boot (KO-1010) with images; article data on existing products; `fixtures/imports/` with expected results; expected objects for KO-1008, KO-1009, KO-1010 and KT-2001.
+- Conformance: P-CAT-5 (article data round trip), P-CAT-6 (article data shape), I-IMP-7 (the new CSV columns), I-IMP-8 (label completeness warnings).
+
+### Changed
+- Schemas are published at `/schemas/v0.2/`; the 0.1 schemas stay unchanged at `/schemas/v0.1/`. `OBX-Version: 0.2`.
+- The 0.1 fibre keys `recycled_*` and `organic_*` (`recycled_polyester`, `organic_cotton`, ...) are normalised to the fibre with a flag; a 0.2 node never returns them.
+- The protocol, the README and the OpenAPI files say at the top that the protocol is the standard and the Ingest API and Node Admin API are optional companions.
+- The fixture catalog grew to 11 products, 46 variants and 35 images; KO-1004 now has `size` `30`/`32`/`34` with `size_length` `32`.
+
+### Migration
+None required. Nodes and consumers written for 0.1 stay conformant on the 0.1 profile; to pass 0.2 conformance a node stores and returns the new fields (as `null` when unknown) and normalises the 0.1 fibre keys. Consumers that also read 0.1 nodes SHOULD treat `recycled_<fibre>` / `organic_<fibre>` like the fibre with the flag.
+
 ## [0.1.0] - 2026-11-12
 
 The first release. Implemented by three portals in three runtimes (Cloudflare, Google Cloud & Docker, web hosting), the Go SDK and CLI, and the conformance suite; see [docs/implementations.md](docs/implementations.md).

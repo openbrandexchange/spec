@@ -20,6 +20,10 @@ import { parse as parseYAML, stringify as stringifyYAML } from "yaml";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const redocly = join(root, "node_modules", ".bin", "redocly");
 const version = JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version;
+// Schemas are published at /schemas/v<major>.<minor>/ (their $id); earlier releases are kept
+// unchanged in schemas/v<major>.<minor>/ and published next to the current ones.
+const schemaDir = `v${version.split(".").slice(0, 2).join(".")}`;
+const archivedSchemaDirs = readdirSync(join(root, "schemas")).filter((f) => /^v\d+\.\d+$/.test(f) && f !== schemaDir).sort();
 const args = new Set(process.argv.slice(2));
 
 const APIS = [
@@ -58,7 +62,9 @@ function build(out) {
   cpSync(join(root, "tools", "vendor", "redoc.standalone.js"), join(out, "assets", "redoc.standalone.js"));
   cpSync(join(root, "tools", "vendor", "redoc.standalone.js.LICENSE.txt"), join(out, "assets", "redoc.standalone.js.LICENSE.txt"));
   cpSync(join(root, "tools", "vendor", "redoc.LICENSE"), join(out, "assets", "redoc.LICENSE"));
-  cpSync(join(root, "schemas"), join(out, "schemas", "v0.1"), { recursive: true });
+  mkdirSync(join(out, "schemas", schemaDir), { recursive: true });
+  for (const f of readdirSync(join(root, "schemas")).filter((f) => f.endsWith(".json"))) cpSync(join(root, "schemas", f), join(out, "schemas", schemaDir, f));
+  for (const d of archivedSchemaDirs) cpSync(join(root, "schemas", d), join(out, "schemas", d), { recursive: true });
   writeFileSync(join(out, "index.html"), indexPage(redocVersion));
   writeFileSync(join(out, "README.md"), readme());
 }
@@ -100,7 +106,8 @@ function indexPage(redocVersion) {
         <p>${a.what} <a href="openapi/${a.file}">OpenAPI (YAML)</a></p>
       </li>`).join("\n");
   const schemas = readdirSync(join(root, "schemas")).filter((f) => f.endsWith(".json")).sort()
-    .map((f) => `<a href="schemas/v0.1/${f}">${f.replace(/\.json$/, "")}</a>`).join(", ");
+    .map((f) => `<a href="schemas/${schemaDir}/${f}">${f.replace(/\.json$/, "")}</a>`).join(", ");
+  const older = archivedSchemaDirs.map((d) => `<code>schemas/${d}/</code>`).join(", ");
   // Like the API pages, the overview carries its own policy: no scripts at all, only its
   // inline stylesheet, nothing from other hosts.
   const csp = ["default-src 'none'", "style-src 'unsafe-inline'", "img-src 'self' data:", "base-uri 'none'", "form-action 'none'"].join("; ");
@@ -136,7 +143,8 @@ function indexPage(redocVersion) {
 ${items}
     </ul>
     <h2>JSON Schemas</h2>
-    <p class="schemas">${schemas}</p>
+    <p class="schemas">${schemas}</p>${older ? `
+    <p>The schemas of earlier releases stay unchanged at their own <code>$id</code> paths: ${older}.</p>` : ""}
     <footer>
       <p>Open Brand Exchange Foundation (in formation) · <a href="mailto:hello@openbrandexchange.com">hello@openbrandexchange.com</a></p>
       <p>Specification licensed under <a href="https://creativecommons.org/licenses/by/4.0/">CC-BY-4.0</a>. Rendered with Redocly CLI and the Redoc ${redocVersion} viewer (MIT).</p>
@@ -157,7 +165,8 @@ Built by \`npm run build:site\` (tools/build-site.mjs) from \`openapi/\` and \`s
 | \`index.html\` | overview page |
 | \`protocol.html\`, \`ingest.html\`, \`admin.html\` | rendered API reference (Redocly), pre-rendered HTML that the Redoc viewer hydrates |
 | \`openapi/*.yaml\` | single-file OpenAPI bundles (no external \`$ref\`s), for tools and code generators |
-| \`schemas/v0.1/*.json\` | the JSON Schemas at the path of their \`$id\` (\`https://openbrandexchange.com/schemas/v0.1/…\`) |
+| \`schemas/${schemaDir}/*.json\` | the JSON Schemas at the path of their \`$id\` (\`https://openbrandexchange.com/schemas/${schemaDir}/…\`) |${archivedSchemaDirs.map((d) => `
+| \`schemas/${d}/*.json\` | the schemas of release ${d.slice(1)}, unchanged, so their \`$id\`s keep resolving |`).join("")}
 | \`assets/redoc.standalone.js\` | the Redoc viewer (MIT, \`assets/redoc.LICENSE\`; bundled libraries in \`redoc.standalone.js.LICENSE.txt\`), served locally instead of from a CDN |
 
 For the website: copy this folder as it is, for example to \`/reference/\`, and serve \`schemas/\` at \`/schemas/\` so the schema \`$id\`s resolve. The pages work without JavaScript (the content is pre-rendered); with JavaScript the viewer adds search and navigation. Every page, the overview included, carries its own Content-Security-Policy in a \`<meta>\` element (the API pages allow their one inline start-up script by hash), so a host should not add a stricter policy header for this folder.

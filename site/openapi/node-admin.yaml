@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: OBX Node Admin + Portal API
-  version: 0.1.0
+  version: 0.2.0
   summary: The API between the shared admin-ui and a node (brand admin + retailer portal).
   description: |
     **Non-normative.** Not part of the OBX standard; it is the contract between the shared
@@ -4213,7 +4213,7 @@ components:
             - "null"
     LocalizedText:
       $schema: https://json-schema.org/draft/2020-12/schema
-      $id: https://openbrandexchange.com/schemas/v0.1/LocalizedText.json
+      $id: https://openbrandexchange.com/schemas/v0.2/LocalizedText.json
       title: LocalizedText
       description: 'Free text per language, keyed by BCP 47 tag. At least one language. Example: {"nl": "Trui", "en": "Sweater"}.'
       type: object
@@ -4277,7 +4277,7 @@ components:
       description: Machine-readable OBX error code (see docs/protocol.md#errors). Clients MUST treat unknown codes by HTTP status.
     Problem:
       $schema: https://json-schema.org/draft/2020-12/schema
-      $id: https://openbrandexchange.com/schemas/v0.1/Problem.json
+      $id: https://openbrandexchange.com/schemas/v0.2/Problem.json
       type: object
       title: Problem
       description: "application/problem+json (RFC 9457) error body. Exception: the OAuth2 token endpoint uses RFC 6749 error JSON."
@@ -4370,7 +4370,7 @@ components:
         - NL
     Rights:
       $schema: https://json-schema.org/draft/2020-12/schema
-      $id: https://openbrandexchange.com/schemas/v0.1/Rights.json
+      $id: https://openbrandexchange.com/schemas/v0.2/Rights.json
       type: object
       title: Rights
       properties:
@@ -4451,7 +4451,7 @@ components:
       description: Rendition name.
     IngestRecord:
       $schema: https://json-schema.org/draft/2020-12/schema
-      $id: https://openbrandexchange.com/schemas/v0.1/IngestRecord.json
+      $id: https://openbrandexchange.com/schemas/v0.2/IngestRecord.json
       type: object
       title: IngestRecord
       description: GET representation in the Ingest API (and the admin catalog).
@@ -4512,7 +4512,7 @@ components:
       maxLength: 2048
     BrandInput:
       $schema: https://json-schema.org/draft/2020-12/schema
-      $id: https://openbrandexchange.com/schemas/v0.1/BrandInput.json
+      $id: https://openbrandexchange.com/schemas/v0.2/BrandInput.json
       type: object
       title: BrandInput
       description: "Ingest write model for a brand. Key: the brand's external_id (path)."
@@ -4541,9 +4541,17 @@ components:
       additionalProperties: false
       patternProperties:
         ^x-[a-z0-9]+-[a-z0-9_-]+$: true
+    WarningCode:
+      type: string
+      enum:
+        - fibre_composition_missing
+        - animal_origin_unknown
+        - footwear_materials_missing
+        - fibre_percentages_not_100
+      description: Label completeness warning (see docs/import-format.md#label-completeness). Never blocks a write or publishing. Clients MUST ignore unknown codes.
     IngestResult:
       $schema: https://json-schema.org/draft/2020-12/schema
-      $id: https://openbrandexchange.com/schemas/v0.1/IngestResult.json
+      $id: https://openbrandexchange.com/schemas/v0.2/IngestResult.json
       type: object
       title: IngestResult
       properties:
@@ -4607,6 +4615,29 @@ components:
           items:
             type: string
             maxLength: 1000
+        warning_details:
+          type: array
+          description: Warnings with a stable code (label completeness, docs/import-format.md#label-completeness). Each is also listed as text in warnings. Present only when there are any.
+          items:
+            type: object
+            properties:
+              code:
+                $ref: "#/components/schemas/WarningCode"
+              pointer:
+                type:
+                  - string
+                  - "null"
+                description: JSON Pointer into the write model, e.g. /materials/0.
+                maxLength: 500
+              detail:
+                type: string
+                maxLength: 1000
+            required:
+              - code
+              - detail
+            additionalProperties: false
+            patternProperties:
+              ^x-[a-z0-9]+-[a-z0-9_-]+$: true
       required:
         - op
         - kind
@@ -4626,7 +4657,7 @@ components:
       pattern: ^[a-f0-9]{64}$
     Rendition:
       $schema: https://json-schema.org/draft/2020-12/schema
-      $id: https://openbrandexchange.com/schemas/v0.1/Rendition.json
+      $id: https://openbrandexchange.com/schemas/v0.2/Rendition.json
       type: object
       title: Rendition
       description: One downloadable form of an asset. original = uploaded bytes, unmodified; web = longest side <= 2000 px JPEG; square = web centred on a white square canvas; thumb = longest side <= 600 px JPEG.
@@ -4669,14 +4700,14 @@ components:
         ^x-[a-z0-9]+-[a-z0-9_-]+$: true
     Materials:
       $schema: https://json-schema.org/draft/2020-12/schema
-      $id: https://openbrandexchange.com/schemas/v0.1/Materials.json
+      $id: https://openbrandexchange.com/schemas/v0.2/Materials.json
       type: array
       items:
         type: object
         properties:
           part:
             type: string
-            description: "Garment part. Recommended keys: main, outer, lining, filling, trim, sole, upper, insole. 'main' when the product has one composition."
+            description: "Part of the article. Recommended keys: main, outer, lining, filling, padding, trim, pocket_lining, shell (luggage), handle, strap, and for footwear upper, sole, insole. 'main' when the product has one composition. Unknown keys are allowed."
             pattern: ^[a-z][a-z0-9_]{0,63}$
             examples:
               - main
@@ -4687,12 +4718,18 @@ components:
               properties:
                 fiber:
                   type: string
-                  description: Fibre key, lowercase English (recommended list in docs/import-format.md#fibres), e.g. cotton, organic_cotton, elastane, wool, merino_wool, polyester, recycled_polyester, polyamide, viscose, linen, silk, leather.
+                  description: "Fibre key: the English textile fibre name of Annex I of Reg. (EU) 1007/2011 in lowercase with _ (linen for flax), e.g. cotton, wool, polyester, polyamide, elastane, viscose, lyocell; recommended list in docs/import-format.md#fibres. Recycled or organic content is a flag, not a fibre: the 0.1 keys `recycled_*` and `organic_*` (e.g. recycled_polyester, organic_cotton) are accepted on input and normalised to the fibre with recycled or organic set."
                   pattern: ^[a-z][a-z0-9_]{0,63}$
                 percentage:
                   type: number
                   exclusiveMinimum: 0
                   maximum: 100
+                recycled:
+                  type: boolean
+                  description: The fibre is recycled. Present only when true.
+                organic:
+                  type: boolean
+                  description: The fibre is organically grown. Present only when true.
               required:
                 - fiber
                 - percentage
@@ -4709,9 +4746,49 @@ components:
           ^x-[a-z0-9]+-[a-z0-9_-]+$: true
       title: Materials
       description: Fibre composition per part (textile labelling regulation / DPP ready).
+    FootwearMaterials:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      $id: https://openbrandexchange.com/schemas/v0.2/FootwearMaterials.json
+      title: FootwearMaterials
+      description: "Footwear labelling (Directive 94/11/EC): the material of the three parts of a shoe, in the directive's four categories. The value is the material that makes up at least 80 % of the surface of the upper and of the lining and sock, and at least 80 % of the volume of the outer sole. Responses include all three parts; null = not stated."
+      type: object
+      properties:
+        upper:
+          anyOf:
+            - type: string
+              enum:
+                - leather
+                - coated_leather
+                - textile
+                - other
+              description: "Upper: the outer face of the structural element attached to the outer sole."
+            - type: "null"
+        lining_and_sock:
+          anyOf:
+            - type: string
+              enum:
+                - leather
+                - coated_leather
+                - textile
+                - other
+              description: "Lining and sock: the lining of the upper and the sock (insole) that form the inside of the shoe."
+            - type: "null"
+        outer_sole:
+          anyOf:
+            - type: string
+              enum:
+                - leather
+                - coated_leather
+                - textile
+                - other
+              description: "Outer sole: the bottom part that touches the ground and is attached to the upper."
+            - type: "null"
+      additionalProperties: false
+      patternProperties:
+        ^x-[a-z0-9]+-[a-z0-9_-]+$: true
     Care:
       $schema: https://json-schema.org/draft/2020-12/schema
-      $id: https://openbrandexchange.com/schemas/v0.1/Care.json
+      $id: https://openbrandexchange.com/schemas/v0.2/Care.json
       type: array
       items:
         type: object
@@ -4731,9 +4808,167 @@ components:
           ^x-[a-z0-9]+-[a-z0-9_-]+$: true
       title: Care
       description: Ordered care instructions.
+    Certifications:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      $id: https://openbrandexchange.com/schemas/v0.2/Certifications.json
+      title: Certifications
+      description: Voluntary certifications the brand states for this product (private schemes, not legal requirements). The node passes them on as stated; checking a licence is up to the reader.
+      type: array
+      items:
+        type: object
+        properties:
+          scheme:
+            type: string
+            description: "Open vocabulary; recommended: gots, ocs, grs, rcs, oeko_tex_standard_100, oeko_tex_made_in_green, bluesign, fsc, lwg, rws, rds."
+            pattern: ^[a-z][a-z0-9_]{0,63}$
+          licence_number:
+            type:
+              - string
+              - "null"
+            description: The licence, certificate or label number as issued by the scheme.
+            minLength: 1
+            maxLength: 200
+          scope:
+            type: string
+            enum:
+              - product
+              - material
+            description: "product: the finished product is certified; material: a material in it is (the product itself is not)."
+        required:
+          - scheme
+          - scope
+        additionalProperties: false
+        patternProperties:
+          ^x-[a-z0-9]+-[a-z0-9_-]+$: true
+    Features:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      $id: https://openbrandexchange.com/schemas/v0.2/Features.json
+      title: Features
+      description: Typed product features from the registry in docs/protocol.md#features. Keys of the registry have the type and values listed there; other keys (same key pattern) are allowed and not validated. Only stated features are present; null instead of an empty object.
+      type: object
+      properties:
+        shell:
+          type: string
+          enum:
+            - hard
+            - soft
+            - hybrid
+          description: "Luggage: construction of the shell."
+        wheels:
+          type: integer
+          enum:
+            - 0
+            - 2
+            - 4
+            - 8
+          description: "Luggage: number of wheels."
+        lock:
+          type: string
+          enum:
+            - none
+            - combination
+            - tsa_combination
+            - tsa_key
+            - key
+          description: "Luggage, bags: built-in lock."
+        expandable:
+          type: boolean
+          description: "Luggage, bags: has an expansion zip (volume in measurements.volume_expanded_l)."
+        closure:
+          type: string
+          enum:
+            - zip
+            - magnet
+            - flap
+            - buckle
+            - drawstring
+            - button
+            - hook_and_loop
+            - laces
+            - slip_on
+            - open
+          description: "Bags, shoes, apparel: main closure."
+        laptop_compartment:
+          type: boolean
+          description: "Bags: has a padded laptop compartment (size in measurements.laptop_max_inch)."
+        water_resistance:
+          type: string
+          enum:
+            - none
+            - water_repellent
+            - waterproof
+          description: "All: resistance to water as stated by the brand."
+        detachable_parts:
+          type: array
+          items:
+            type: string
+            enum:
+              - shoulder_strap
+              - handle
+              - lining
+              - insole
+              - hood
+              - belt
+              - pouch
+              - wheels
+          uniqueItems: true
+          description: "All: parts that can be removed by the user."
+        adjustable_parts:
+          type: array
+          items:
+            type: string
+            enum:
+              - shoulder_strap
+              - waist
+              - hem
+              - cuff
+          uniqueItems: true
+          description: "All: parts the user can adjust."
+        fit:
+          type: string
+          enum:
+            - slim
+            - regular
+            - relaxed
+            - oversized
+          description: "Apparel: fit."
+        sleeve_length:
+          type: string
+          enum:
+            - sleeveless
+            - short
+            - three_quarter
+            - long
+          description: "Apparel: sleeve length."
+        neckline:
+          type: string
+          enum:
+            - crew
+            - v_neck
+            - collar
+            - hood
+            - turtleneck
+            - boat
+            - scoop
+          description: "Apparel: neckline."
+      propertyNames:
+        pattern: ^[a-z][a-z0-9_]{0,63}$
+      additionalProperties:
+        anyOf:
+          - type:
+              - string
+              - number
+              - boolean
+          - type: array
+            items:
+              type:
+                - string
+                - number
+                - boolean
+      minProperties: 1
     ProductInput:
       $schema: https://json-schema.org/draft/2020-12/schema
-      $id: https://openbrandexchange.com/schemas/v0.1/ProductInput.json
+      $id: https://openbrandexchange.com/schemas/v0.2/ProductInput.json
       type: object
       title: ProductInput
       description: "Ingest write model for a product. Key: external_id (path); when a brand has no separate product id, use the style number."
@@ -4754,6 +4989,11 @@ components:
             - $ref: "#/components/schemas/LocalizedText"
             - type: "null"
         item_type:
+          type:
+            - string
+            - "null"
+          pattern: ^[a-z][a-z0-9_]{0,63}$
+        item_subtype:
           type:
             - string
             - "null"
@@ -4782,6 +5022,14 @@ components:
           anyOf:
             - $ref: "#/components/schemas/Materials"
             - type: "null"
+        contains_animal_origin:
+          type:
+            - boolean
+            - "null"
+        footwear_materials:
+          anyOf:
+            - $ref: "#/components/schemas/FootwearMaterials"
+            - type: "null"
         care:
           anyOf:
             - $ref: "#/components/schemas/Care"
@@ -4790,9 +5038,17 @@ components:
           anyOf:
             - $ref: "#/components/schemas/CountryCode"
             - type: "null"
+        certifications:
+          anyOf:
+            - $ref: "#/components/schemas/Certifications"
+            - type: "null"
         dpp_url:
           anyOf:
             - $ref: "#/components/schemas/Url"
+            - type: "null"
+        features:
+          anyOf:
+            - $ref: "#/components/schemas/Features"
             - type: "null"
         attributes:
           type:
@@ -4823,7 +5079,7 @@ components:
         - "2000010010011"
     Color:
       $schema: https://json-schema.org/draft/2020-12/schema
-      $id: https://openbrandexchange.com/schemas/v0.1/Color.json
+      $id: https://openbrandexchange.com/schemas/v0.2/Color.json
       type: object
       title: Color
       properties:
@@ -4842,14 +5098,107 @@ components:
             - "null"
           description: Colour name as used in the brand's own systems/labels.
           maxLength: 200
+        family:
+          anyOf:
+            - type: string
+              enum:
+                - black
+                - white
+                - grey
+                - beige
+                - brown
+                - red
+                - pink
+                - orange
+                - yellow
+                - green
+                - blue
+                - purple
+                - gold
+                - silver
+                - multicolour
+                - transparent
+              description: Colour family for filters, next to the brand's own colour name. The same for every variant of one colour code.
+            - type: "null"
       required:
         - code
       additionalProperties: false
       patternProperties:
         ^x-[a-z0-9]+-[a-z0-9_-]+$: true
+    Measurements:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      $id: https://openbrandexchange.com/schemas/v0.2/Measurements.json
+      title: Measurements
+      description: "Measurements of one variant. Numbers only; the unit is part of the key (cm, kg, l, inch). Only the measurements the brand stated are present; null instead of an empty object. How to measure: docs/protocol.md#measurements."
+      type: object
+      properties:
+        height_cm:
+          type: number
+          exclusiveMinimum: 0
+          description: "Vertical, the article standing in normal use. Luggage: outer dimension including wheels, handles and feet. Bags: the body without handles and strap."
+        width_cm:
+          type: number
+          exclusiveMinimum: 0
+          description: "Left to right, seen from the front. Luggage: outer dimension including wheels, handles and feet. Bags: the body."
+        depth_cm:
+          type: number
+          exclusiveMinimum: 0
+          description: "Front to back. Luggage: outer dimension including wheels, handles and feet. Bags: the body."
+        weight_kg:
+          type: number
+          exclusiveMinimum: 0
+          description: Weight of the article itself, without packaging.
+        volume_l:
+          type: number
+          exclusiveMinimum: 0
+          description: Volume in litres (luggage, bags).
+        volume_expanded_l:
+          type: number
+          exclusiveMinimum: 0
+          description: Volume in litres when expanded (luggage and bags with an expansion zip).
+        handle_drop_cm:
+          type: number
+          exclusiveMinimum: 0
+          description: "Bags: from the top of the handle to the top of the body, handle held upright."
+        strap_length_cm:
+          type: object
+          description: "Bags: length of the shoulder strap, shortest and longest setting (equal when not adjustable)."
+          properties:
+            min:
+              type: number
+              exclusiveMinimum: 0
+              description: Shortest setting.
+            max:
+              type: number
+              exclusiveMinimum: 0
+              description: Longest setting.
+          required:
+            - min
+            - max
+          additionalProperties: false
+        laptop_max_inch:
+          type: number
+          exclusiveMinimum: 0
+          description: Largest laptop (screen diagonal in inches) the laptop compartment takes.
+        heel_height_cm:
+          type: number
+          exclusiveMinimum: 0
+          description: "Footwear: height of the heel at the back, measured from the floor."
+        shaft_height_cm:
+          type: number
+          exclusiveMinimum: 0
+          description: "Footwear (boots): height of the shaft, from the top of the insole at the heel to the top of the shaft."
+        inseam_cm:
+          type: number
+          exclusiveMinimum: 0
+          description: "Trousers: inside leg length, from the crotch seam to the hem."
+      minProperties: 1
+      additionalProperties: false
+      patternProperties:
+        ^x-[a-z0-9]+-[a-z0-9_-]+$: true
     VariantInput:
       $schema: https://json-schema.org/draft/2020-12/schema
-      $id: https://openbrandexchange.com/schemas/v0.1/VariantInput.json
+      $id: https://openbrandexchange.com/schemas/v0.2/VariantInput.json
       type: object
       title: VariantInput
       description: "Ingest write model for a variant. Key: external_id (path); default convention = the GTIN, else `<style>-<color>-<size>`."
@@ -4873,11 +5222,20 @@ components:
             - string
             - "null"
           maxLength: 64
+        size_length:
+          type:
+            - string
+            - "null"
+          maxLength: 64
         size_system:
           type:
             - string
             - "null"
           maxLength: 16
+        measurements:
+          anyOf:
+            - $ref: "#/components/schemas/Measurements"
+            - type: "null"
         status:
           $ref: "#/components/schemas/PublicationStatus"
       required:
@@ -4917,7 +5275,7 @@ components:
       description: Viewing angle. Aligned with Fashion Cloud product_view plus 'inside'.
     AssetInput:
       $schema: https://json-schema.org/draft/2020-12/schema
-      $id: https://openbrandexchange.com/schemas/v0.1/AssetInput.json
+      $id: https://openbrandexchange.com/schemas/v0.2/AssetInput.json
       type: object
       title: AssetInput
       description: "Ingest write model for an asset. Key: external_id (path); filename-pattern convention = `<style>_<color>_<position>`."
@@ -5145,7 +5503,7 @@ components:
         ^x-[a-z0-9]+-[a-z0-9_-]+$: true
     Blob:
       $schema: https://json-schema.org/draft/2020-12/schema
-      $id: https://openbrandexchange.com/schemas/v0.1/Blob.json
+      $id: https://openbrandexchange.com/schemas/v0.2/Blob.json
       type: object
       title: Blob
       properties:
@@ -5179,7 +5537,7 @@ components:
         ^x-[a-z0-9]+-[a-z0-9_-]+$: true
     ImportRowError:
       $schema: https://json-schema.org/draft/2020-12/schema
-      $id: https://openbrandexchange.com/schemas/v0.1/ImportRowError.json
+      $id: https://openbrandexchange.com/schemas/v0.2/ImportRowError.json
       type: object
       title: ImportRowError
       properties:
@@ -5203,9 +5561,12 @@ components:
           enum:
             - error
             - warning
-          description: "error: row/file skipped. warning: imported with a correction."
+          description: "error: row/file skipped. warning: imported, with a correction or a label completeness warning."
         obx_error:
-          $ref: "#/components/schemas/ErrorCode"
+          anyOf:
+            - $ref: "#/components/schemas/ErrorCode"
+            - $ref: "#/components/schemas/WarningCode"
+          description: An error code, or for severity warning also a label completeness warning code.
         detail:
           type: string
           maxLength: 2000
@@ -5225,7 +5586,7 @@ components:
         ^x-[a-z0-9]+-[a-z0-9_-]+$: true
     ImportRun:
       $schema: https://json-schema.org/draft/2020-12/schema
-      $id: https://openbrandexchange.com/schemas/v0.1/ImportRun.json
+      $id: https://openbrandexchange.com/schemas/v0.2/ImportRun.json
       type: object
       title: ImportRun
       properties:
@@ -5353,7 +5714,7 @@ components:
         ^x-[a-z0-9]+-[a-z0-9_-]+$: true
     ImportSource:
       $schema: https://json-schema.org/draft/2020-12/schema
-      $id: https://openbrandexchange.com/schemas/v0.1/ImportSource.json
+      $id: https://openbrandexchange.com/schemas/v0.2/ImportSource.json
       type: object
       title: ImportSource
       description: A scheduled pull import configured in the node admin. Unchanged remote files (same ETag/size+mtime/sha256) are skipped.
@@ -5601,7 +5962,7 @@ components:
       description: OBX Ingest token scope.
     WebhookSubscription:
       $schema: https://json-schema.org/draft/2020-12/schema
-      $id: https://openbrandexchange.com/schemas/v0.1/WebhookSubscription.json
+      $id: https://openbrandexchange.com/schemas/v0.2/WebhookSubscription.json
       type: object
       title: WebhookSubscription
       properties:
@@ -5650,7 +6011,7 @@ components:
         ^x-[a-z0-9]+-[a-z0-9_-]+$: true
     Brand:
       $schema: https://json-schema.org/draft/2020-12/schema
-      $id: https://openbrandexchange.com/schemas/v0.1/Brand.json
+      $id: https://openbrandexchange.com/schemas/v0.2/Brand.json
       type: object
       title: Brand
       description: A brand (label) published by this node. One node (one brand company) may publish several brands.
@@ -5695,7 +6056,7 @@ components:
         - "02000010010011"
     Variant:
       $schema: https://json-schema.org/draft/2020-12/schema
-      $id: https://openbrandexchange.com/schemas/v0.1/Variant.json
+      $id: https://openbrandexchange.com/schemas/v0.2/Variant.json
       type: object
       title: Variant
       description: A sellable colour/size combination of a product.
@@ -5732,12 +6093,22 @@ components:
             - "null"
           description: Size label, e.g. 'M', '42', '32/34', 'ONE SIZE'.
           maxLength: 64
+        size_length:
+          type:
+            - string
+            - "null"
+          description: Second size where one exists, e.g. the length of jeans (size 32, size_length 34) or the cup of a bra (size 75, size_length B).
+          maxLength: 64
         size_system:
           type:
             - string
             - "null"
           description: Optional size system, e.g. EU, UK, US, INT, FR, IT.
           maxLength: 16
+        measurements:
+          anyOf:
+            - $ref: "#/components/schemas/Measurements"
+            - type: "null"
         updated_at:
           $ref: "#/components/schemas/DateTime"
       required:
@@ -5752,7 +6123,7 @@ components:
         ^x-[a-z0-9]+-[a-z0-9_-]+$: true
     Provenance:
       $schema: https://json-schema.org/draft/2020-12/schema
-      $id: https://openbrandexchange.com/schemas/v0.1/Provenance.json
+      $id: https://openbrandexchange.com/schemas/v0.2/Provenance.json
       type: object
       title: Provenance
       description: Origin of the image, required so AI provenance (EU AI Act art. 50) survives the brand -> retailer -> shop chain.
@@ -5798,7 +6169,7 @@ components:
         ^x-[a-z0-9]+-[a-z0-9_-]+$: true
     Asset:
       $schema: https://json-schema.org/draft/2020-12/schema
-      $id: https://openbrandexchange.com/schemas/v0.1/Asset.json
+      $id: https://openbrandexchange.com/schemas/v0.2/Asset.json
       type: object
       title: Asset
       description: A final, published product image with order, rights and provenance.
@@ -5919,7 +6290,7 @@ components:
         ^x-[a-z0-9]+-[a-z0-9_-]+$: true
     Product:
       $schema: https://json-schema.org/draft/2020-12/schema
-      $id: https://openbrandexchange.com/schemas/v0.1/Product.json
+      $id: https://openbrandexchange.com/schemas/v0.2/Product.json
       type: object
       title: Product
       description: A style/model. In /changes entries 'data' holds the product without 'variants' and 'assets'; product endpoints return ProductDetail (with both arrays).
@@ -5945,7 +6316,13 @@ components:
           type:
             - string
             - "null"
-          description: Open vocabulary; recommended keys in docs/protocol.md#item-types (e.g. t_shirt, sweater, jacket, jeans, bag).
+          description: Open vocabulary; recommended keys in docs/protocol.md#item-types (e.g. t_shirt, sweater, jacket, jeans, bag, luggage).
+          pattern: ^[a-z][a-z0-9_]{0,63}$
+        item_subtype:
+          type:
+            - string
+            - "null"
+          description: Open vocabulary, refines item_type; recommended keys per item type in docs/protocol.md#item-subtypes (e.g. cabin, crossbody, ankle_boot).
           pattern: ^[a-z][a-z0-9_]{0,63}$
         gpc_brick:
           type:
@@ -5975,6 +6352,15 @@ components:
           anyOf:
             - $ref: "#/components/schemas/Materials"
             - type: "null"
+        contains_animal_origin:
+          type:
+            - boolean
+            - "null"
+          description: "Textile products: true when the product contains non-textile parts of animal origin (Reg. (EU) 1007/2011 Art. 12: the label must then say so); false when it does not; null = not stated."
+        footwear_materials:
+          anyOf:
+            - $ref: "#/components/schemas/FootwearMaterials"
+            - type: "null"
         care:
           anyOf:
             - $ref: "#/components/schemas/Care"
@@ -5983,10 +6369,18 @@ components:
           anyOf:
             - $ref: "#/components/schemas/CountryCode"
             - type: "null"
+        certifications:
+          anyOf:
+            - $ref: "#/components/schemas/Certifications"
+            - type: "null"
         dpp_url:
           anyOf:
             - $ref: "#/components/schemas/Url"
               description: Link to the product's Digital Product Passport, when one exists.
+            - type: "null"
+        features:
+          anyOf:
+            - $ref: "#/components/schemas/Features"
             - type: "null"
         attributes:
           type:
@@ -6029,7 +6423,7 @@ components:
         ^x-[a-z0-9]+-[a-z0-9_-]+$: true
     ProductDetail:
       $schema: https://json-schema.org/draft/2020-12/schema
-      $id: https://openbrandexchange.com/schemas/v0.1/ProductDetail.json
+      $id: https://openbrandexchange.com/schemas/v0.2/ProductDetail.json
       title: ProductDetail
       description: A Product with its published variants and visible assets embedded. Returned by GET /products, /products/{id} and by-GTIN lookups.
       type: object
@@ -6048,7 +6442,7 @@ components:
             $ref: "#/components/schemas/Asset"
     GtinLookupResult:
       $schema: https://json-schema.org/draft/2020-12/schema
-      $id: https://openbrandexchange.com/schemas/v0.1/GtinLookupResult.json
+      $id: https://openbrandexchange.com/schemas/v0.2/GtinLookupResult.json
       type: object
       title: GtinLookupResult
       properties:

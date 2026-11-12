@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: OBX Node Admin + Portal API
-  version: 0.1.0
+  version: 0.2.0
   summary: The API between the shared admin-ui and a node (brand admin + retailer portal).
   description: |
     **Non-normative.** Not part of the OBX standard; it is the contract between the shared
