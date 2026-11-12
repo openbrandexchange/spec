@@ -5,7 +5,7 @@
 | Version | Categories |
 |---|---|
 | **0.2** (current) | Fashion, shoes, bags and luggage ([proposal 0002](docs/proposals/0002-product-data.md)) |
-| 0.3 (in development) | Home and sport (draft proposal 0003) |
+| 0.3 (in development) | Home and sport ([draft proposal 0003](docs/proposals/0003-home-and-sport.md)) |
 
 A brand runs (or has someone host) an **OBX node**. The node gives the brand three things:
 
