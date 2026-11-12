@@ -2,7 +2,7 @@
 
 The known implementations of Open Brand Exchange, what they pass, where they run and what is still missing. Non-normative; updated by hand. What is left before the first release, and who does it: [go-live](go-live.md).
 
-Status of **2026-09-28** (evening), spec **0.1.0**. The results below come from runs against spec `09f4314`, [obx-go](https://github.com/openbrandexchange/obx-go) `8a59644` (conformance suite, CLI, interop tool), [admin-ui](https://github.com/openbrandexchange/admin-ui) `v0.1.1` (`dabdcd0`, vendored by all three portals), node-go `89f9a2b`, node-php `0fecff2` and node-ts `1fda87c`. They include the 0.1.0 clarifications and the three import and download rules added last ([import-format.md](import-format.md) rules 8 and 9 and §2.3; conformance I-IMP-5, I-IMP-6 and the `assets.csv` checks in A-PORT-1).
+Status of **2026-09-28** (evening), spec **0.1.0**. The results below come from runs against spec `1fb2fbf`, [obx-go](https://github.com/openbrandexchange/obx-go) `1ddc0fa` (conformance suite, CLI, interop tool), [admin-ui](https://github.com/openbrandexchange/admin-ui) `v0.1.1` (`d3ee574`, vendored by all three portals), node-go `36e582e`, node-php `117164c` and node-ts `d34633a`. They include the 0.1.0 clarifications and the three import and download rules added last ([import-format.md](import-format.md) rules 8 and 9 and §2.3; conformance I-IMP-5, I-IMP-6 and the `assets.csv` checks in A-PORT-1).
 
 ## The pieces
 
@@ -59,8 +59,8 @@ Reviewed on 2026-09-28 against [security.md](security.md): the conformance `secu
 | no secrets in logs (checked after a full run) | pass | pass | pass |
 | sessions: CSRF, logout, password change, no fixation, retailer kept out of admin | pass | pass | pass |
 | SSRF: every spelling refused; redirects re-checked | pass | pass | pass |
-| SSRF: resolved address pinned for the connection (DNS rebinding) | Workers: n/a (no private network); Bun: fixed in `ec9f166` (was not pinned); covered by S-SSRF-1 and unit tests, no independent re-review yet | pass (dialer control) | pass (`CURLOPT_RESOLVE`) |
-| SSRF: link-local and cloud metadata refused also with `OBX_ALLOW_PRIVATE_URLS=true` | pass | pass (`773d336`) | pass |
+| SSRF: resolved address pinned for the connection (DNS rebinding) | Workers: n/a (no private network); Bun: fixed in `e6cd13e` (was not pinned); covered by S-SSRF-1 and unit tests, no independent re-review yet | pass (dialer control) | pass (`CURLOPT_RESOLVE`) |
+| SSRF: link-local and cloud metadata refused also with `OBX_ALLOW_PRIVATE_URLS=true` | pass | pass (`f9941a5`) | pass |
 | CORS only on the discovery document | pass | pass | pass (sent `*` on the protocol API and the logo before; fixed and tested) |
 | e-mail links never built from the request's Host (password-reset poisoning) | **fixed** (was vulnerable without `OBX_PUBLIC_URL`) | pass (fixed public URL) | pass (setup address) |
 | uploads: size limits, magic bytes, no SVG, zip slip, zip size and entry caps, pixel limits | pass | pass | pass |
