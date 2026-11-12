@@ -55,7 +55,7 @@ Some checks ran on an earlier commit with the same code; the commits since then 
 
 6. **Cloudflare Pages token:** My Profile → API Tokens → Create token → custom token with *Account › Cloudflare Pages › Edit* on the account that holds the domain. Add it and the account id as the repository secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` in `openbrandexchange/website`. Optionally put a required reviewer on its environment `production`.
 7. Optional: a Cloudflare Web Analytics site (no cookies) and its token as the repository **variable** `PUBLIC_CF_ANALYTICS_TOKEN`. Without it the site loads nothing from third parties.
-8. Optional **imprint details** in the website's `src/data/imprint.json`: `address` (one line per array item), `phone`, `registration` (the KvK number once the foundation is registered). They are `null` today, and the imprint then shows "An initiative of Richard Lindhout · Open Brand Exchange Foundation (in formation)" and hello@ only.
+8. Optional **imprint details** in the website's `src/data/imprint.json`: `address` (one line per array item), `phone`, `registration` (the KvK number once the foundation is registered). They are `null` today, and the imprint then shows "Open Brand Exchange Foundation (in formation)" and hello@ only.
 9. The deploy itself belongs to the public day (step 17), because the website links to the repositories.
 10. Have a lawyer read the website's privacy, cookie and imprint pages and the portals' `docs/privacy-notice-template.md` (node-go, node-php, node-ts), and say whether the imprint needs a postal address before the foundation exists.
 

@@ -1,7 +1,7 @@
 Open Brand Exchange specification
-Copyright 2026 Richard Lindhout
+Copyright 2026 Open Brand Exchange Foundation (in formation)
 
-An initiative of Richard Lindhout · Open Brand Exchange Foundation (in formation)
+Open Brand Exchange Foundation (in formation)
 Contact: hello@openbrandexchange.com
 
 The specification text, OpenAPI files, JSON Schemas and fixtures in this
@@ -15,8 +15,8 @@ docs/governance.md.
 Contributions by others remain the copyright of their authors and are
 licensed under the same licence (Developer Certificate of Origin).
 
-Attribution for reuse: "Open Brand Exchange specification, © Richard Lindhout
-and contributors, CC-BY-4.0, https://github.com/openbrandexchange/spec".
+Attribution for reuse: "Open Brand Exchange specification, © Open Brand
+Exchange Foundation (in formation) and contributors, CC-BY-4.0, https://github.com/openbrandexchange/spec".
 
 Third-party material:
 - CODE_OF_CONDUCT.md is adapted from the Contributor Covenant 2.1

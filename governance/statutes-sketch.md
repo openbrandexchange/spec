@@ -2,7 +2,7 @@
 
 > **This is a sketch for a notary, not legal advice and not a deed.** It sets out what the founder wants the statutes of the foundation to achieve, in plain English, so that a Dutch civil-law notary can draft the real deed. Article numbers of the Dutch Civil Code (*Burgerlijk Wetboek*, BW) are given where the sketch relies on them; the notary checks them and every provision against current law. Where the sketch offers a choice, it is written as **[option A / option B]**. The Dutch version for the notary is [`statuten-schets.md`](statuten-schets.md); where the two differ, the notary's reading of the intent decides.
 
-Status: draft of 2026-09-28, prepared for the founder, Richard Lindhout. Nothing here has legal effect until a notarial deed is executed.
+Status: draft of 2026-09-28, prepared for the founder. Nothing here has legal effect until a notarial deed is executed.
 
 ## Article 1. Name and seat
 
@@ -44,7 +44,7 @@ Status: draft of 2026-09-28, prepared for the founder, Richard Lindhout. Nothing
 ## Article 5. The board
 
 1. The foundation is governed by a board of at least **[one / three]** and at most **[seven]** natural persons. *Recommendation:* at least three once the founder has appointed them, so that the founder's position (article 6) and the conflict-of-interest rule (article 9) can work.
-2. The **founder**, Richard Lindhout, is a board member and the **chair** for as long as he holds office. The board appoints a secretary and a treasurer from among its members; one person may hold more than one of these roles, but not the chair's.
+2. The **founder** is a board member and the **chair** for as long as he holds office. The board appoints a secretary and a treasurer from among its members; one person may hold more than one of these roles, but not the chair's.
 3. **Appointment.** For as long as the founder is a board member, he alone appoints the other board members (a **personal right** of the founder: it cannot be transferred or inherited, and it ends when his board membership ends). After that, the board appoints new board members by co-optation, by a unanimous decision of the remaining board members.
 4. Board members other than the founder are appointed for a term of **[four]** years and may be reappointed **[twice]**. The founder is appointed for an indefinite period.
 5. When board seats are vacant, the remaining board members (or the only remaining one) stay a valid board. If the board cannot be completed, any interested party may ask the court to appoint board members (art. 2:299 BW).
@@ -151,12 +151,12 @@ At incorporation, the founder is the only board member and the chair. He appoint
 These are the practical steps; each needs the founder's signature and some need the notary.
 
 1. **Incorporation.** Notarial deed of incorporation; registration in the Trade Register of the Chamber of Commerce (KvK), including the board members and the UBO registration; bank account in the foundation's name.
-2. **Copyright.** A **deed of transfer of copyright** (a written deed is required, art. 2 of the Dutch Copyright Act, *Auteurswet*) from Richard Lindhout to the foundation, covering the specification, schemas, fixtures, SDK, CLI, conformance suite, admin UI, reference portals, website texts and logo, listing the repositories and the commit at the moment of transfer, and including future work he contributes.
+2. **Copyright.** A **deed of transfer of copyright** (a written deed is required, art. 2 of the Dutch Copyright Act, *Auteurswet*) from the founder to the foundation, covering the specification, schemas, fixtures, SDK, CLI, conformance suite, admin UI, reference portals, website texts and logo, listing the repositories and the commit at the moment of transfer, and including future work he contributes.
    *Check first:* whether any of it was made by employees of, or on behalf of, a company (for example Photopilot) that would own the copyright as employer (art. 7 *Auteurswet*); if so, that company co-signs the deed. Contributions of third parties are not transferred; they stay available under the repository licences (see [governance.md](../docs/governance.md#contributions)).
 3. **Trademark.** File the word mark "Open Brand Exchange" at BOIP (Benelux), [classes 9, 35 and 42], **in the foundation's name** once it exists. If it was filed earlier in the founder's name, sign a transfer and have BOIP record it. An EU trademark (EUIPO) can follow later.
 4. **Domain.** Change the registrant of `openbrandexchange.com` (and any other domains) to the foundation; move DNS, e-mail routing for `hello@` and `security@`, and the Cloudflare account to an account of the foundation with at least two administrators.
 5. **GitHub.** Make the foundation the owner of the `openbrandexchange` organisation: at least two owners appointed by the board, two-factor authentication required, billing in the foundation's name. Repositories stay where they are.
-6. **Texts.** Replace "Richard Lindhout" and "(in formation)" in the NOTICE files, copyright lines, governance pages and the website imprint by "Open Brand Exchange Foundation", in one change per repository.
+6. **Texts.** Remove "(in formation)" after "Open Brand Exchange Foundation" in the NOTICE files, copyright lines, governance pages and the website imprint, in one change per repository.
 7. **Commitments.** The foundation adopts the patent commitment and the trademark policy, and publishes the first board and advisory board composition.
 
 ## Questions for the notary

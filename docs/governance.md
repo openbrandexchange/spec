@@ -4,7 +4,7 @@ Open Brand Exchange is an open standard for exchanging product content between b
 
 ## Publisher today, foundation tomorrow
 
-- **Publisher.** Open Brand Exchange is **an initiative of Richard Lindhout**, who publishes the specification, holds the copyright in what he wrote, owns the domain `openbrandexchange.com` and administers the `openbrandexchange` GitHub organisation.
+- **Publisher.** Open Brand Exchange is published under the name **Open Brand Exchange Foundation (in formation)**. Until the foundation exists, its founder publishes the specification, holds the copyright in what he wrote, owns the domain `openbrandexchange.com` and administers the `openbrandexchange` GitHub organisation.
 - **Foundation.** Everything will be transferred to the **Open Brand Exchange Foundation (in formation)**, a Dutch *stichting* (a foundation under Dutch law: no members, no shareholders, no profit distribution). Until the deed has been signed, the name is always written with "(in formation)" (translations in the [glossary](glossary.md#the-project-and-its-publisher)). The name is never translated.
 - **What the foundation will own:** the copyright in the specification, schemas, fixtures, SDK, admin UI, reference portals and website that the publisher holds; the name and logo "Open Brand Exchange" (trademark application at the Benelux Office for Intellectual Property); the domain; the GitHub organisation.
 - **The draft statutes** are in [`governance/statutes-sketch.md`](../governance/statutes-sketch.md) (English) and [`governance/statuten-schets.md`](../governance/statuten-schets.md) (Dutch, for the notary). They are a sketch for discussion with a notary, not legal advice and not a deed.
@@ -53,7 +53,7 @@ A change to any of these licences falls under the double lock. Licences already 
 
 ## Patents
 
-Richard Lindhout, and the companies he controls (including Photopilot), commit not to assert any patent they hold or control against an implementation of this specification, to the extent needed to implement it, in the spirit of the Open Web Foundation Final Specification Agreement. The foundation will take over this commitment. Contributors are asked to make the same commitment for their contributions.
+The founder, and the companies he controls (including Photopilot), commit not to assert any patent they hold or control against an implementation of this specification, to the extent needed to implement it, in the spirit of the Open Web Foundation Final Specification Agreement. The foundation will take over this commitment. Contributors are asked to make the same commitment for their contributions.
 
 ## The name and conformance claims
 

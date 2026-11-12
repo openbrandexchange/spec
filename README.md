@@ -68,6 +68,6 @@ npm run package      # the release bundle in dist/ (what the release workflow pu
 
 Version **0.1.0** ([changelog](CHANGELOG.md)). Before 1.0, minor versions may still contain breaking changes, each with a migration note ([versioning](docs/versioning.md)). Three portals in three runtimes, the Go SDK and the conformance suite implement it ([implementations](docs/implementations.md)).
 
-Open Brand Exchange is an initiative of Richard Lindhout · Open Brand Exchange Foundation (in formation). It is designed to be vendor-neutral, and the copyright, the name and the domain are to be transferred to a Dutch foundation (*stichting*); see [governance](docs/governance.md). Contact: hello@openbrandexchange.com.
+Open Brand Exchange is published by the Open Brand Exchange Foundation (in formation). It is designed to be vendor-neutral, and the copyright, the name and the domain are to be transferred to a Dutch foundation (*stichting*); see [governance](docs/governance.md). Contact: hello@openbrandexchange.com.
 
 Licensed under [Creative Commons Attribution 4.0 International](LICENSE) (CC-BY-4.0). You may implement, copy and adapt it, including commercially, with attribution ([NOTICE](NOTICE)).

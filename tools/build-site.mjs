@@ -138,7 +138,7 @@ ${items}
     <h2>JSON Schemas</h2>
     <p class="schemas">${schemas}</p>
     <footer>
-      <p>An initiative of Richard Lindhout · Open Brand Exchange Foundation (in formation) · <a href="mailto:hello@openbrandexchange.com">hello@openbrandexchange.com</a></p>
+      <p>Open Brand Exchange Foundation (in formation) · <a href="mailto:hello@openbrandexchange.com">hello@openbrandexchange.com</a></p>
       <p>Specification licensed under <a href="https://creativecommons.org/licenses/by/4.0/">CC-BY-4.0</a>. Rendered with Redocly CLI and the Redoc ${redocVersion} viewer (MIT).</p>
     </footer>
   </main>

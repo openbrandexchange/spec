@@ -51,7 +51,7 @@ const bom = {
       version: pkg.version,
       description: pkg.description,
       licenses: license(pkg.license),
-      supplier: { name: "Richard Lindhout (Open Brand Exchange Foundation, in formation)", contact: [{ email: "hello@openbrandexchange.com" }] },
+      supplier: { name: "Open Brand Exchange Foundation (in formation)", contact: [{ email: "hello@openbrandexchange.com" }] },
       externalReferences: [{ type: "vcs", url: "https://github.com/openbrandexchange/spec" }],
     },
   },

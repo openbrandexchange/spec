@@ -2,7 +2,7 @@
 
 > **Dit is een schets voor de notaris, geen juridisch advies en geen akte.** De schets beschrijft in gewone taal wat de oprichter met de statuten van de stichting wil bereiken, zodat een notaris de echte akte kan opstellen. Waar de schets steunt op het Burgerlijk Wetboek (BW) staat het artikel erbij; de notaris toetst die verwijzingen en elke bepaling aan het geldende recht. Waar de schets een keuze laat, staat die als **[optie A / optie B]**. De Engelse versie is [`statutes-sketch.md`](statutes-sketch.md); bij verschil beslist de bedoeling zoals de notaris die leest.
 
-Stand: concept van 28 september 2026, opgesteld voor de oprichter, Richard Lindhout. Niets hierin heeft rechtsgevolg voordat een notariële akte is verleden.
+Stand: concept van 28 september 2026, opgesteld voor de oprichter. Niets hierin heeft rechtsgevolg voordat een notariële akte is verleden.
 
 ## Artikel 1. Naam en zetel
 
@@ -44,7 +44,7 @@ Stand: concept van 28 september 2026, opgesteld voor de oprichter, Richard Lindh
 ## Artikel 5. Het bestuur
 
 1. De stichting wordt bestuurd door een bestuur van ten minste **[één / drie]** en ten hoogste **[zeven]** natuurlijke personen. *Aanbeveling:* ten minste drie zodra de oprichter hen heeft benoemd, zodat de positie van de oprichter (artikel 6) en de regeling voor tegenstrijdig belang (artikel 9) kunnen werken.
-2. De **oprichter**, Richard Lindhout, is bestuurder en **voorzitter** zolang hij in functie is. Het bestuur wijst uit zijn midden een secretaris en een penningmeester aan; één persoon kan meer van deze functies vervullen, maar niet die van voorzitter daarbij.
+2. De **oprichter** is bestuurder en **voorzitter** zolang hij in functie is. Het bestuur wijst uit zijn midden een secretaris en een penningmeester aan; één persoon kan meer van deze functies vervullen, maar niet die van voorzitter daarbij.
 3. **Benoeming.** Zolang de oprichter bestuurder is, benoemt hij alleen de overige bestuurders (een **persoonlijk recht** van de oprichter: het is niet overdraagbaar of vererfbaar en eindigt met zijn bestuurslidmaatschap). Daarna benoemt het bestuur nieuwe bestuurders bij coöptatie, bij unaniem besluit van de overblijvende bestuurders.
 4. Bestuurders anders dan de oprichter worden benoemd voor **[vier]** jaar en zijn **[twee keer]** herbenoembaar. De oprichter wordt benoemd voor onbepaalde tijd.
 5. Bij vacatures blijven de overige bestuurders (of de enige overgebleven bestuurder) een wettig bestuur. Kan het bestuur niet worden aangevuld, dan kan iedere belanghebbende de rechtbank verzoeken bestuurders te benoemen (art. 2:299 BW).
@@ -151,12 +151,12 @@ Bij de oprichting is de oprichter de enige bestuurder en de voorzitter. Hij beno
 Dit zijn de praktische stappen; elk vergt de handtekening van de oprichter en sommige de notaris.
 
 1. **Oprichting.** Notariële akte van oprichting; inschrijving in het Handelsregister van de Kamer van Koophandel, met de bestuurders en de UBO-registratie; bankrekening op naam van de stichting.
-2. **Auteursrecht.** Een **akte van overdracht van auteursrecht** (een akte is vereist, art. 2 Auteurswet) van Richard Lindhout aan de stichting voor de specificatie, schema's, fixtures, SDK, CLI, conformiteitssuite, admin-UI, referentieportalen, websiteteksten en het logo, met opgave van de repositories en de commit op het moment van overdracht, en inclusief toekomstig werk dat hij bijdraagt.
+2. **Auteursrecht.** Een **akte van overdracht van auteursrecht** (een akte is vereist, art. 2 Auteurswet) van de oprichter aan de stichting voor de specificatie, schema's, fixtures, SDK, CLI, conformiteitssuite, admin-UI, referentieportalen, websiteteksten en het logo, met opgave van de repositories en de commit op het moment van overdracht, en inclusief toekomstig werk dat hij bijdraagt.
    *Eerst nagaan:* of iets hiervan is gemaakt door werknemers van, of in opdracht van, een onderneming (bijvoorbeeld Photopilot) die als werkgever maker zou zijn (art. 7 Auteurswet); zo ja, dan tekent die onderneming de akte mee. Bijdragen van derden worden niet overgedragen; die blijven beschikbaar onder de licenties van de repositories (zie [governance.md](../docs/governance.md#contributions)).
 3. **Merk.** Het woordmerk "Open Brand Exchange" bij het BBIE (Benelux) deponeren, [klassen 9, 35 en 42], **op naam van de stichting** zodra die bestaat. Is het eerder op naam van de oprichter gedeponeerd, dan een overdracht tekenen en die bij het BBIE laten inschrijven. Een Uniemerk (EUIPO) kan later volgen.
 4. **Domein.** De registrant van `openbrandexchange.com` (en eventuele andere domeinen) wijzigen in de stichting; DNS, e-mailrouting voor `hello@` en `security@` en het Cloudflare-account onderbrengen in een account van de stichting met ten minste twee beheerders.
 5. **GitHub.** De stichting eigenaar maken van de organisatie `openbrandexchange`: ten minste twee door het bestuur aangewezen owners, tweefactorauthenticatie verplicht, facturering op naam van de stichting. De repositories blijven waar ze zijn.
-6. **Teksten.** "Richard Lindhout" en "(in oprichting)" in de NOTICE-bestanden, copyrightregels, governancepagina's en het colofon van de website vervangen door "Open Brand Exchange Foundation", in één wijziging per repository.
+6. **Teksten.** "(in oprichting)" achter "Open Brand Exchange Foundation" schrappen in de NOTICE-bestanden, copyrightregels, governancepagina's en het colofon van de website, in één wijziging per repository.
 7. **Toezeggingen.** De stichting neemt de octrooitoezegging en het merkbeleid over en maakt de eerste samenstelling van het bestuur en de raad van advies bekend.
 
 ## Vragen aan de notaris
