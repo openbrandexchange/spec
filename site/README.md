@@ -8,8 +8,6 @@ Built by `npm run build:site` (tools/build-site.mjs) from `openapi/` and `schema
 | `protocol.html`, `ingest.html`, `admin.html` | rendered API reference (Redocly), pre-rendered HTML that the Redoc viewer hydrates |
 | `openapi/*.yaml` | single-file OpenAPI bundles (no external `$ref`s), for tools and code generators |
 | `schemas/v0.3/*.json` | the JSON Schemas at the path of their `$id` (`https://openbrandexchange.com/schemas/v0.3/…`) |
-| `schemas/v0.1/*.json` | the schemas of release 0.1, unchanged, so their `$id`s keep resolving |
-| `schemas/v0.2/*.json` | the schemas of release 0.2, unchanged, so their `$id`s keep resolving |
 | `vocabularies/v0.3/*.json` | the codes of materials and care with their names per language |
 | `assets/redoc.standalone.js` | the Redoc viewer (MIT, `assets/redoc.LICENSE`; bundled libraries in `redoc.standalone.js.LICENSE.txt`), served locally instead of from a CDN |
 
