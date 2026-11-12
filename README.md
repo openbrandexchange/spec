@@ -8,7 +8,7 @@ A brand runs (or has someone host) an **OBX node**. The node gives the brand thr
 2. **A standard API** retailers' software can pull from: discovery, OAuth2 client credentials, a change feed with deletions, GTIN lookup, renditions with checksums, bulk exports, webhooks.
 3. **Easy automation** for the brand's own systems: a scheduled pull from a web address, SFTP or S3 bucket, a drop folder, the `obx` command-line tool, a GitHub Action, or n8n/Make/Zapier, all using one canonical CSV and an image naming pattern.
 
-This repository is the **source of truth** that every implementation follows.
+This repository is the **source of truth** that every implementation follows. **The OBX Protocol is the standard**: it is what retailers' software reads and what "OBX-conformant" means. The Ingest API, the import format and the Node Admin API are optional companions for the brand's side. New to OBX as a retailer's developer? Start with [OBX in 10 minutes](docs/quickstart.md).
 
 | | |
 |---|---|
@@ -16,7 +16,8 @@ This repository is the **source of truth** that every implementation follows.
 | [`openapi/obx-ingest.yaml`](openapi/obx-ingest.yaml) | **OBX Ingest API** (optional; normative for nodes that offer it): one standard way for a brand's automation to publish. How data gets into a node is up to the node |
 | [`openapi/node-admin.yaml`](openapi/node-admin.yaml) | Node Admin + Portal API (non-normative): shared by the admin UI and the reference nodes |
 | [`schemas/`](schemas) | JSON Schema 2020-12 for every object |
-| [`docs/protocol.md`](docs/protocol.md) | the readable specification (start here) |
+| [`docs/quickstart.md`](docs/quickstart.md) | OBX in 10 minutes: discovery, token, changes, products, images (start here) |
+| [`docs/protocol.md`](docs/protocol.md) | the readable specification, including the article data and its legal basis (§5.9) |
 | [`docs/ingest.md`](docs/ingest.md) · [`docs/import-format.md`](docs/import-format.md) · [`docs/automation.md`](docs/automation.md) | publishing and automating |
 | [`docs/security.md`](docs/security.md) · [`docs/conformance.md`](docs/conformance.md) | requirements and tests |
 | [`docs/implementations.md`](docs/implementations.md) · [`docs/go-live.md`](docs/go-live.md) | the portals that implement it, what they pass, where they run, known gaps; what is left before the first release |
@@ -37,6 +38,8 @@ curl -s https://brands.kestrel.example/.well-known/obx                          
 curl -s -u "$ID:$SECRET" -d grant_type=client_credentials https://brands.kestrel.example/obx/v1/oauth/token
 curl -s -H "Authorization: Bearer $TOKEN" "https://brands.kestrel.example/obx/v1/changes?limit=500"   # everything, then only changes
 ```
+
+The whole walk-through, with access requests and images, is [OBX in 10 minutes](docs/quickstart.md).
 
 For an **implementer**: read [`docs/protocol.md`](docs/protocol.md) and [`docs/ingest.md`](docs/ingest.md), then run the conformance suite ([`docs/conformance.md`](docs/conformance.md)).
 
@@ -66,7 +69,7 @@ npm run package      # the release bundle in dist/ (what the release workflow pu
 
 ## Status and licence
 
-Version **0.1.0** ([changelog](CHANGELOG.md)). Before 1.0, minor versions may still contain breaking changes, each with a migration note ([versioning](docs/versioning.md)). Three portals in three runtimes, the Go SDK and the conformance suite implement it ([implementations](docs/implementations.md)).
+Version **0.2.0** ([changelog](CHANGELOG.md)): product data for fashion, shoes, bags and luggage ([proposal 0002](docs/proposals/0002-product-data.md)), additive to 0.1. Before 1.0, minor versions may still contain breaking changes, each with a migration note ([versioning](docs/versioning.md)). Three portals in three runtimes, the Go SDK and the conformance suite implement it ([implementations](docs/implementations.md)).
 
 Open Brand Exchange is published by the Open Brand Exchange Foundation (in formation). It is designed to be vendor-neutral, and the copyright, the name and the domain are to be transferred to a Dutch foundation (*stichting*); see [governance](docs/governance.md). Contact: hello@openbrandexchange.com.
 

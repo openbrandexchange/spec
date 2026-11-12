@@ -1,6 +1,8 @@
-# OBX Protocol 0.1
+# OBX Protocol 0.2
 
-**Status:** v0.1.0. Normative. Machine-readable contract: [`openapi/obx-protocol.yaml`](../openapi/obx-protocol.yaml) and [`schemas/`](../schemas). Where this document and the OpenAPI file disagree, report it; until fixed, this document wins.
+**Status:** v0.2.0. Normative. Machine-readable contract: [`openapi/obx-protocol.yaml`](../openapi/obx-protocol.yaml) and [`schemas/`](../schemas). Where this document and the OpenAPI file disagree, report it; until fixed, this document wins.
+
+**The OBX Protocol is the standard.** It is what retailers' software reads, and passing its conformance profile is what "OBX-conformant" means ([conformance.md](conformance.md)). The [Ingest API](ingest.md), the [import format](import-format.md) and the Node Admin + Portal API are optional companions: how content gets into a node and how a brand runs it is up to the node. New here? [OBX in 10 minutes](quickstart.md) walks a retailer's developer through the five calls that matter.
 
 The key words MUST, MUST NOT, REQUIRED, SHALL, SHOULD, SHOULD NOT, RECOMMENDED, MAY and OPTIONAL are to be interpreted as described in RFC 2119 and RFC 8174 when, and only when, they appear in all capitals.
 
@@ -21,7 +23,7 @@ A **node** is one brand company's deployment (self-hosted or hosted by a vendor)
 
 Principles: small, pull-first, idempotent, everything repeatable. What the brand did not publish does not exist. A retailer's software never sees more than that retailer could see in the brand's portal.
 
-Out of scope for v0.1: prices, stock, orders, EDI, video/3D assets (reserved), federation between nodes.
+Out of scope: prices, stock, orders, EDI, video/3D assets (reserved), federation between nodes.
 
 ## 2. Conventions
 
@@ -30,8 +32,8 @@ Out of scope for v0.1: prices, stock, orders, EDI, video/3D assets (reserved), f
 - **Extensions.** Implementation-specific fields MUST be prefixed `x-<vendor>-` (for example `x-acme-crop`). Standard fields never start with `x-`.
 - **Ids.** Every object has a node-assigned opaque `id` (`^[A-Za-z0-9][A-Za-z0-9._~-]{0,127}$`), stable for the life of the object, and the brand's own `external_id`. Clients MUST treat ids and cursors as opaque.
 - **Localised text** is an object keyed by BCP 47 tag: `{"nl": "Trui", "en": "Sweater"}`. Enumerations are stable lowercase keys; labels are presentation and belong to the client.
-- **Null vs absent.** Response objects include every property of their schema; unknown values are `null` (except where a schema says a property is only present in some responses).
-- Every response SHOULD carry `OBX-Version: 0.1`.
+- **Null vs absent.** Response objects include every property of their schema; unknown values are `null` (except where a schema says a property is only present in some responses). Inside `measurements` and `features` only the stated members are present (an object without members is `null`), and the fibre flags `recycled` and `organic` are present only when `true` ([5.9](#59-article-data)).
+- Every response SHOULD carry `OBX-Version: 0.2`.
 
 ## 3. Discovery
 
@@ -80,18 +82,28 @@ Schemas: [Brand](../schemas/Brand.json), [Product](../schemas/Product.json) / [P
 A label published by the node (`id`, `external_id`, `name`, `logo_url`, `website`, `description`, `updated_at`). One node MAY publish several brands.
 
 ### 5.2 Product
-A style/model: `style_number`, `name` and `description` (localised), `item_type`, optional `gpc_brick` (GS1 GPC), `target_group`, `season`, `collection`, `materials`, `care`, `country_of_origin`, `dpp_url` (link to the Digital Product Passport once one exists), free `attributes`, `created_at`, `updated_at`.
+A style/model: `style_number`, `name` and `description` (localised), `item_type`, `item_subtype`, optional `gpc_brick` (GS1 GPC), `target_group`, `season`, `collection`, `materials`, `contains_animal_origin`, `footwear_materials`, `care`, `country_of_origin`, `certifications`, `dpp_url` (link to the Digital Product Passport once one exists), `features`, free `attributes`, `created_at`, `updated_at`. The article data added in 0.2 is described in [5.9](#59-article-data).
 
 `updated_at` changes when the product's own protocol representation changes. Product endpoints return **ProductDetail** (the product plus its published `variants`, ordered by `external_id` in byte order, and visible `assets`, ordered by `color_code` with `null` first and then `position`). In `/changes`, product `data` has neither array; variants and assets are separate entries.
 
-<a id="item-types"></a>**`item_type`** is an open vocabulary (pattern `^[a-z][a-z0-9_]{0,63}$`). RECOMMENDED keys: `t_shirt`, `top`, `shirt`, `blouse`, `polo`, `sweater`, `cardigan`, `hoodie`, `sweatshirt`, `vest`, `jacket`, `coat`, `blazer`, `suit`, `dress`, `skirt`, `trousers`, `jeans`, `shorts`, `jumpsuit`, `leggings`, `underwear`, `lingerie`, `nightwear`, `swimwear`, `socks`, `shoes`, `sneakers`, `boots`, `sandals`, `bag`, `backpack`, `wallet`, `belt`, `hat`, `cap`, `scarf`, `gloves`, `tie`, `jewelry`, `watch`, `eyewear`, `accessory`, `home`, `generic_product`.
+<a id="item-types"></a>**`item_type`** is an open vocabulary (pattern `^[a-z][a-z0-9_]{0,63}$`). RECOMMENDED keys: `t_shirt`, `top`, `shirt`, `blouse`, `polo`, `sweater`, `cardigan`, `hoodie`, `sweatshirt`, `vest`, `jacket`, `coat`, `blazer`, `suit`, `dress`, `skirt`, `trousers`, `jeans`, `shorts`, `jumpsuit`, `leggings`, `underwear`, `lingerie`, `nightwear`, `swimwear`, `socks`, `shoes`, `sneakers`, `boots`, `sandals`, `bag`, `backpack`, `luggage`, `wallet`, `belt`, `hat`, `cap`, `scarf`, `gloves`, `tie`, `jewelry`, `watch`, `eyewear`, `accessory`, `home`, `generic_product`.
+
+Suitcases and other travel luggage are `luggage`, not `bag`: retailers filter them separately and airlines measure them differently.
+
+<a id="item-subtypes"></a>**`item_subtype`** refines `item_type` (open vocabulary, same pattern, `null` when not stated). RECOMMENDED keys:
+
+| `item_type` | `item_subtype` |
+|---|---|
+| `bag` | `handbag`, `shoulder_bag`, `crossbody`, `tote`, `clutch`, `belt_bag`, `backpack`, `laptop_bag`, `briefcase`, `weekender`, `toiletry_bag`, `wallet`, `card_holder` |
+| `luggage` | `underseat`, `cabin`, `check_in_medium`, `check_in_large`, `pilot_case`, `garment_bag`, `duffel` |
+| `shoes` | `sneaker`, `running`, `hiking`, `lace_up`, `loafer`, `pump`, `sandal`, `slipper`, `ankle_boot`, `boot`, `knee_boot` |
 
 **`target_group`** RECOMMENDED keys: `women`, `men`, `unisex`, `girls`, `boys`, `kids`, `baby`.
 
-**Materials** are a list of parts (`main`, `outer`, `lining`, `filling`, `trim`, `sole`, `upper`, `insole`, ...) each with fibres and percentages (SHOULD sum to 100). **Care** is an ordered list of ISO 3758-aligned codes with optional localised text. Both vocabularies are listed in [import-format.md](import-format.md#fibres).
+**Materials** are a list of parts (`main`, `outer`, `lining`, ...) each with fibres and percentages (SHOULD sum to 100); see [5.9.1](#composition). **Care** is an ordered list of ISO 3758-aligned codes with optional localised text. Both vocabularies are listed in [import-format.md](import-format.md#fibres).
 
 ### 5.3 Variant
-A sellable colour/size: `color` (`code`, localised `name`, `supplier_color`), `size`, `size_system`, `sku`, and the GTIN.
+A sellable colour/size: `color` (`code`, localised `name`, `supplier_color`, `family`), `size`, `size_length`, `size_system`, `measurements`, `sku`, and the GTIN. Measurements belong to the variant because the sizes of one model differ (a cabin and a large suitcase, shoe sizes); see [5.9](#59-article-data).
 
 **GTIN.** `gtin` is always the 14-digit normalised form (left-padded with zeros); `gtin_original` is the form the brand supplied (GTIN-8, UPC-A, EAN-13 or GTIN-14). The GTIN is the consumer's match key. Within one node a GTIN belongs to at most one variant.
 
@@ -148,6 +160,114 @@ An object is **visible** to a retailer when all of the following hold:
 5. **asset**: status `published`, its product is visible, its original and all renditions exist, and `rights.expires_at` is `null` or in the future.
 
 Everything the protocol returns (lists, lookups, `/changes`, exports, renditions) follows this single rule. An object that is not visible is answered with `404 not_found`, never `403` (no existence leak).
+
+### 5.9 Article data
+
+Added in 0.2 ([proposal 0002](proposals/0002-product-data.md)). Every field is optional: a node that does not have the information returns `null`, and a 0.1 consumer ignores the fields. Units are fixed and part of the field name (cm, kg, l, inch); there are no unit fields and no conversions. Which of these fields EU law requires is in [5.9.7](#legal-basis); the others are voluntary.
+
+#### <a id="composition"></a>5.9.1 Composition
+
+- **`materials`** (unchanged shape): `[{"part": "outer", "fibers": [{"fiber": "polyester", "percentage": 100, "recycled": true}]}]`. RECOMMENDED part keys: `main` (the product has one composition), `outer`, `lining`, `filling`, `padding`, `trim`, `pocket_lining`, `shell` (luggage), `handle`, `strap`, and for footwear `upper`, `sole`, `insole`. Unknown part keys are allowed.
+- **Fibre keys** are the English textile fibre names of Annex I of Regulation (EU) No 1007/2011, lowercase with `_` (`cotton`, `wool`, `polyester`, `polyamide`, `elastane`, `viscose`, `lyocell`, `linen` for flax, ...). More specific keys such as `merino_wool` and `lambswool` remain allowed (they are kinds of `wool`). Non-textile materials (`leather`, `rubber`, `metal`, ...) have no Annex I name and keep their keys. The list is in [import-format.md](import-format.md#fibres).
+- **Recycled and organic content are flags of a fibre, not fibres**: `"recycled": true`, `"organic": true`, present only when true. The 0.1 keys `recycled_<fibre>` (`recycled_polyester`, `recycled_polyamide`, `recycled_cotton`) and `organic_<fibre>` (`organic_cotton`) are still accepted on every write path (Ingest API, imports, admin) and a node MUST normalise them: `recycled_polyester` becomes `{"fiber": "polyester", "recycled": true}`, `organic_cotton` becomes `{"fiber": "cotton", "organic": true}`. A 0.2 node therefore never returns the 0.1 keys; a consumer that also reads 0.1 nodes SHOULD treat them the same way.
+- **`contains_animal_origin`**: `true` when a textile product contains non-textile parts of animal origin (a leather patch on jeans, a fur trim, horn buttons), `false` when it does not, `null` when not stated. When it is `true`, the label of a textile product must carry the words "Contains non-textile parts of animal origin".
+
+#### <a id="footwear"></a>5.9.2 Footwear
+
+**`footwear_materials`** (footwear only, `null` otherwise) gives the material of the three parts of a shoe in the four categories of Directive 94/11/EC:
+
+```json
+"footwear_materials": { "upper": "leather", "lining_and_sock": "textile", "outer_sole": "other" }
+```
+
+Values: `leather`, `coated_leather`, `textile`, `other`; a part that is not stated is `null` (responses always include all three parts). The value is the material that makes up at least 80 % of the surface of the upper and of the lining and sock, and at least 80 % of the volume of the outer sole. Fibre detail for shoes can still go in `materials`.
+
+#### <a id="measurements"></a>5.9.3 Measurements
+
+**`measurements`** on the variant (numbers only; `null` when none are stated; a measurement that is not stated is left out):
+
+| Key | Unit | What |
+|---|---|---|
+| `height_cm`, `width_cm`, `depth_cm` | cm | outer dimensions, measured as below |
+| `weight_kg` | kg | the article itself, without packaging |
+| `volume_l`, `volume_expanded_l` | litres | capacity; expanded = with the expansion zip open |
+| `handle_drop_cm` | cm | bags: from the top of the handle, held upright, to the top of the body |
+| `strap_length_cm` | cm | bags: the shoulder strap as `{"min": 80, "max": 130}` (shortest and longest setting; equal when not adjustable) |
+| `laptop_max_inch` | inch | the largest laptop (screen diagonal) the laptop compartment takes |
+| `heel_height_cm` | cm | footwear: the heel at the back, from the floor |
+| `shaft_height_cm` | cm | boots: from the top of the insole at the heel to the top of the shaft |
+| `inseam_cm` | cm | trousers: inside leg, from the crotch seam to the hem |
+
+How to measure, so every brand measures the same way:
+
+- **height**: vertical, with the article standing as in normal use; **width**: left to right, seen from the front; **depth**: front to back.
+- **Luggage**: the outer dimensions *including* wheels, handles and feet, with the handles retracted (what airlines measure).
+- **Bags**: the body *without* handles and strap; the handles go in `handle_drop_cm`, the strap in `strap_length_cm`.
+
+```json
+"measurements": { "height_cm": 55, "width_cm": 40, "depth_cm": 20, "weight_kg": 2.6, "volume_l": 36, "volume_expanded_l": 42 }
+```
+
+OBX does not store airline rules (they differ per airline and change); a retailer derives "fits as cabin luggage" from the dimensions.
+
+#### <a id="features"></a>5.9.4 Features
+
+**`features`** is an object of typed features (`null` when none are stated; only stated features are present). The keys below form the registry: a node MUST reject (`422 validation_failed`) a registry key with a value outside its type or values. Other keys (pattern `^[a-z][a-z0-9_]{0,63}$`) are allowed and not validated; their values are a string, number, boolean or a list of those. Consumers MUST ignore keys and values they do not know. Everything else stays in the free `attributes`.
+
+| Key | Type | Values | For |
+|---|---|---|---|
+| `shell` | enum | `hard`, `soft`, `hybrid` | luggage |
+| `wheels` | integer | `0`, `2`, `4`, `8` | luggage |
+| `lock` | enum | `none`, `combination`, `tsa_combination`, `tsa_key`, `key` | luggage, bags |
+| `expandable` | boolean | | luggage, bags (expanded volume in `measurements.volume_expanded_l`) |
+| `closure` | enum | `zip`, `magnet`, `flap`, `buckle`, `drawstring`, `button`, `hook_and_loop`, `laces`, `slip_on`, `open` | bags, shoes, apparel |
+| `laptop_compartment` | boolean | | bags (size in `measurements.laptop_max_inch`) |
+| `water_resistance` | enum | `none`, `water_repellent`, `waterproof` | all |
+| `detachable_parts` | list | `shoulder_strap`, `handle`, `lining`, `insole`, `hood`, `belt`, `pouch`, `wheels` | all |
+| `adjustable_parts` | list | `shoulder_strap`, `waist`, `hem`, `cuff` | all |
+| `fit` | enum | `slim`, `regular`, `relaxed`, `oversized` | apparel |
+| `sleeve_length` | enum | `sleeveless`, `short`, `three_quarter`, `long` | apparel |
+| `neckline` | enum | `crew`, `v_neck`, `collar`, `hood`, `turtleneck`, `boat`, `scoop` | apparel |
+
+A list has no duplicates; its order carries no meaning. "Removable" is answered once, generically: a removable insole, lining or strap is a value of `detachable_parts`, not a field per product type. New keys and values are added in minor releases.
+
+```json
+"features": { "shell": "hard", "wheels": 4, "lock": "tsa_combination", "expandable": true, "closure": "zip" }
+```
+
+#### 5.9.5 Colour family and second size
+
+- **`color.family`**: one of `black`, `white`, `grey`, `beige`, `brown`, `red`, `pink`, `orange`, `yellow`, `green`, `blue`, `purple`, `gold`, `silver`, `multicolour`, `transparent`, or `null`. It is for filters, next to the brand's own colour name, and SHOULD be the same for every variant of one colour code.
+- **`size_length`**: the second size where one exists, for example the length of jeans (`size` `32`, `size_length` `34`) or the cup of a bra (`size` `75`, `size_length` `B`); `null` otherwise.
+
+#### <a id="certifications"></a>5.9.6 Certifications
+
+**`certifications`** lists the voluntary certifications the brand states (`null` when none are stated):
+
+```json
+"certifications": [
+  { "scheme": "gots", "licence_number": "CU 123456", "scope": "product" },
+  { "scheme": "oeko_tex_standard_100", "licence_number": "21.HUS.12345", "scope": "product" }
+]
+```
+
+`scheme` is an open vocabulary; RECOMMENDED keys: `gots`, `ocs`, `grs`, `rcs`, `oeko_tex_standard_100`, `oeko_tex_made_in_green`, `bluesign`, `fsc`, `lwg`, `rws`, `rds`. `licence_number` is the number the scheme issued (or `null`). `scope` is `product` (the finished product is certified) or `material` (a material in it is, the product itself is not). The node passes on what the brand states and does not check it; checking a licence is up to the retailer. A certification is not a legal requirement.
+
+#### <a id="legal-basis"></a>5.9.7 Legal basis (EU)
+
+What EU law requires a seller to show, and where OBX carries it. Only the first three rows are mandatory; the rest is voluntary. This table is a pointer, not legal advice.
+
+| Information | EU status | Legal basis | OBX field |
+|---|---|---|---|
+| Fibre composition of a textile product in %, per component of a multi-component product, with the fibre names of Annex I | **mandatory** on the label, and in the offer before purchase, also when sold online | Regulation (EU) No 1007/2011, Art. 5 and Annex I (names), Art. 9 (multi-fibre), Art. 11 (multi-component), Art. 16(1) (catalogues, prospectuses and online, before purchase) | `materials` |
+| "Contains non-textile parts of animal origin" | **mandatory** on the label of a textile product that contains them | Regulation (EU) No 1007/2011, Art. 12 | `contains_animal_origin` |
+| Material of the upper, the lining and sock, and the outer sole of footwear (leather, coated leather, textile, other) | **mandatory** on the footwear's label | Directive 94/11/EC (labelling of materials used in the main components of footwear) | `footwear_materials` |
+| Care instructions | voluntary in the EU; common practice | none at EU level; symbols per ISO 3758 (GINETEX) | `care` |
+| Country of origin | voluntary in the EU | none at EU level | `country_of_origin` |
+| Certifications (GOTS, OEKO-TEX, GRS, ...) | voluntary; private schemes with their own rules | the scheme's own rules | `certifications` |
+| Digital Product Passport | not yet required for textiles: the delegated act for textiles is planned for Q4 2027 | Regulation (EU) 2024/1781 (ESPR) | `dpp_url` |
+
+Regulation (EU) No 1007/2011 applies to textile products, which include products made of at least 80 % textile fibres by weight. Measurements, features, colour family and the second size are product information without an EU labelling requirement. Imports and the Ingest API warn when a product misses what its label needs (`fibre_composition_missing`, `animal_origin_unknown`, `footwear_materials_missing`, `fibre_percentages_not_100`; [import-format.md rule 10](import-format.md#label-completeness)); a warning never blocks publishing.
 
 ## 6. The change feed
 
@@ -276,6 +396,8 @@ Nodes SHOULD rate-limit per client and MUST send `RateLimit-Limit`, `RateLimit-R
 Nodes store retailer company data and contact persons. Protocol responses never contain personal data of other retailers. Usage events and download statistics are organisation-level; nodes SHOULD NOT keep IP addresses longer than needed for abuse prevention (RECOMMENDED ≤ 30 days).
 
 ## 14. Consuming OBX in five calls
+
+The longer walk-through is [OBX in 10 minutes](quickstart.md).
 
 ```sh
 HOST=https://brands.kestrel.example

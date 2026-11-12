@@ -25,6 +25,18 @@ Decisions taken while writing v0.1.0 where the plan was silent or ambiguous. Eac
 19. **Admin catalog endpoints reuse ingest semantics** (same bodies and results, session auth), so nodes implement one write path.
 20. **Webhook secret is the HMAC key as UTF-8 bytes including the `whsec_` prefix.**
 
+## Decisions for v0.2.0 (product data)
+
+The design is [proposal 0002](docs/proposals/0002-product-data.md). Where it was silent:
+
+21. **Output conventions.** New product and variant properties are always present (`null` when not stated). Inside `measurements` and `features` only stated members are present (never an empty object), and the fibre flags `recycled`/`organic` only when true, so 0.1 objects and expected fixtures do not change shape.
+22. **Fibre normalisation is general**: every `recycled_<fibre>` and `organic_<fibre>` key is normalised on every write path, not only the four 0.1 keys.
+23. **Certifications in the CSV** take an optional `(material)` / `(product)` suffix (default `product`), the same style as the `(recycled)` fibre flag; the proposal's CSV example had no scope.
+24. **`strap_length_cm` with one number** means a fixed strap (`min` = `max`). Measurement cells accept `,` as decimal separator.
+25. **Registry feature values are validated** (`validation_failed`); unknown feature keys are stored as sent (CSV: as a string, with a warning).
+26. **Schemas moved to `/schemas/v0.2/`**; the 0.1 schemas stay unchanged in `schemas/v0.1/` so their `$id`s keep resolving.
+27. **Label completeness warnings** (`fibre_composition_missing`, `animal_origin_unknown`, `footwear_materials_missing`, `fibre_percentages_not_100`) are warnings with stable codes, never errors.
+
 ## Shared node conventions (non-normative, for node-go, node-php, node-ts and admin-ui)
 
 | Setting | Meaning |
@@ -52,3 +64,4 @@ Decisions taken while writing v0.1.0 where the plan was silent or ambiguous. Eac
 - Whether `print` belongs in the default channels.
 - Video/3D asset types (reserved: `media_type` values beyond `image`).
 - Per-collection grants (v0.1 grants are per brand).
+- Footwear with no material reaching 80 % of a part: Directive 94/11/EC then asks for the two main materials, while `footwear_materials` holds one value per part (the main one).

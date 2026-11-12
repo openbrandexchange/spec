@@ -28,6 +28,7 @@ We follow coordinated disclosure: we publish an advisory once a fix or mitigatio
 
 | Version | Supported |
 |---|---|
+| 0.2.x | yes |
 | 0.1.x | yes |
 | older drafts | no |
 
