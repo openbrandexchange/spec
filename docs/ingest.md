@@ -90,7 +90,7 @@ The node answers `200` with `{results: [IngestResult…], summary}` when it fini
 
 ## 6. Imports
 
-`POST /imports` (multipart/form-data) runs the canonical import ([import-format.md](import-format.md)) as one job: `package` (zip) or `csv` + `assets_csv` + `images` (zip or files) + `images_manifest` (JSON list of already-uploaded blobs: `{file, sha256, width?, height?, renditions?}`) + `options` (`mode`: `upsert` | `mirror`, `allow_mass_unpublish`, `dry_run`, `default_language`). Always `202` + job. Row and file problems never fail the request; they are [ImportRowError](../schemas/ImportRowError.json) results.
+`POST /imports` (multipart/form-data) runs the canonical import ([import-format.md](import-format.md)) as one job: `package` (zip) or `csv` + `assets_csv` + `images` (zip or files) + `images_manifest` (JSON list of already-uploaded blobs: `{file, sha256, width?, height?, renditions?}`) + `options` (`mode`: `upsert` | `mirror`, `allow_mass_unpublish`, `dry_run`, `default_language`). Always `202` + job. Row and file problems never fail the request; they are [ImportRowError](../schemas/ImportRowError.json) results. A node MAY also accept an Excel workbook (`.xlsx`) in the `csv` or `assets_csv` part or as `products.xlsx`/`assets.xlsx` in the package; it then follows [import-format.md §5](import-format.md#excel) exactly.
 
 `mirror` also unpublishes the products of the brands present in the file that the file does not contain (requires `ingest:delete`). A mirror import that would unpublish more than half of those products is refused with `mass_unpublish_refused` unless `allow_mass_unpublish` is true: an empty or truncated export must never wipe a catalog. A `dry_run` reports everything and writes nothing.
 

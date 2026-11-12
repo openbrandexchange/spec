@@ -65,3 +65,14 @@ The design is [proposal 0002](docs/proposals/0002-product-data.md). Where it was
 - Video/3D asset types (reserved: `media_type` values beyond `image`).
 - Per-collection grants (v0.1 grants are per brand).
 - Footwear with no material reaching 80 % of a part: Directive 94/11/EC then asks for the two main materials, while `footwear_materials` holds one value per part (the main one).
+
+## Decisions for the Excel import (import-format.md §5, unreleased)
+
+28. **A node feature, specified exactly.** Optional, but the conversion is fixed (sheet choice, cell values, row numbers, limits, error codes) so node-go, node-ts and node-php give the same rows and errors; after the conversion it is a CSV import and nothing else changes.
+29. **The file name decides** (`.xlsx`, or the xlsx content type of a part without a name), never the first bytes: a CSV renamed to `.xlsx` is refused (`workbook_invalid`) rather than silently read as CSV.
+30. **Sheet**: the visible sheet named `Products`/`Assets`, else the first visible sheet with the key column in row 1. Hidden sheets are never read, so the template's hidden `Lists` and an old hidden copy cannot be imported by accident.
+31. **Rows are imported as they are**: the template's yellow example rows, hidden rows and hidden columns are ordinary data (as Excel's "Save as CSV" does); formatting is ignored. The Read me tells brands to delete the examples.
+32. **Stored values only**: no formula is calculated (no engine in three runtimes could agree), so a formula without a cached value is a row error, not a guess. Numbers are written from the stored decimal text, rounded to Excel's 15 digits, without exponent, so GTINs typed as numbers keep every digit; number formats are ignored except dates and all-zero formats (barcodes with a leading zero).
+33. **Excel row numbers** in errors (header = row 1), with a `row 12, column ean (C): ` locator, because the brand looks at the sheet, not at a CSV. Empty rows inside the data keep their place so the numbers stay Excel's.
+34. **Fixed limits** (1 000 zip entries, 256 MiB inflated, 100× ratio above 10 MiB, 100 000 data rows, 1 000 columns) rather than node settings, so a zip bomb and a large sheet get the same answer everywhere. Macros, ActiveX, external links, data connections and `DOCTYPE`s are refused, not ignored: the node never runs or fetches them, and a brand learns that the file is not what it thinks.
+35. **Four new error codes** (`workbook_invalid`, `workbook_unsafe`, `workbook_sheet_missing`, `workbook_too_large`) instead of overloading `import_invalid`, so a UI can tell the brand what to do (save as .xlsx without macros, rename the sheet, split the file). Adding error codes is a minor change ([versioning](docs/versioning.md)).

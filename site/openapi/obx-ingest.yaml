@@ -1616,6 +1616,10 @@ components:
         - files_missing
         - import_invalid
         - mass_unpublish_refused
+        - workbook_invalid
+        - workbook_unsafe
+        - workbook_sheet_missing
+        - workbook_too_large
         - unsafe_url
         - csrf_failed
         - invalid_credentials
@@ -2850,13 +2854,13 @@ components:
       properties:
         file:
           type: string
-          description: products.csv, assets.csv or the image file name.
+          description: products.csv, assets.csv, products.xlsx, assets.xlsx (Excel import, a node feature) or the image file name.
           maxLength: 255
         row:
           type:
             - integer
             - "null"
-          description: 1-based data row; null for header, file-level and image-file problems.
+          description: 1-based data row; for a workbook (products.xlsx, assets.xlsx) the Excel row number, header = row 1. null for header, file-level and image-file problems.
           minimum: 1
         column:
           type:

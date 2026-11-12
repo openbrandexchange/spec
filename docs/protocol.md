@@ -376,6 +376,10 @@ Errors are `application/problem+json` (RFC 9457) [Problem](../schemas/Problem.js
 | `files_missing` | 422 | an import references an image that was not provided |
 | `import_invalid` | 422 | import file unreadable (not a CSV/zip, no header, unsafe zip entry) |
 | `mass_unpublish_refused` | 409 | mirror import would unpublish more than half of the brand's products |
+| `workbook_invalid` | 422 | Excel import (a node feature): the `.xlsx` cannot be read (not a zip, encrypted or `.xls`, no workbook, malformed XML, `DOCTYPE`); [import-format.md §5](import-format.md#excel) |
+| `workbook_unsafe` | 422 | Excel import: the workbook has macros, ActiveX, external links or data connections |
+| `workbook_sheet_missing` | 422 | Excel import: no visible sheet named `Products`/`Assets` or with the key column in row 1 |
+| `workbook_too_large` | 422 | Excel import: a size limit of the workbook (zip bomb, rows, columns) is exceeded |
 | `unsafe_url` | 422 | URL resolves to a private/loopback/link-local address or is not https |
 | `csrf_failed` | 403 | admin API: missing or wrong `X-CSRF-Token` |
 | `invalid_credentials` | 401 | admin API: wrong e-mail or password |

@@ -1,6 +1,6 @@
 # Canonical import format 0.2
 
-**Status:** normative. Every node (upload in the admin UI, scheduled pull imports, `POST /obx/v1/ingest/imports`) and the `obx` CLI MUST support this format with exactly these rules, so a brand's export works everywhere. Example: [`fixtures/kestrel/`](../fixtures/kestrel).
+**Status:** normative. Every node (upload in the admin UI, scheduled pull imports, `POST /obx/v1/ingest/imports`) and the `obx` CLI MUST support this format with exactly these rules, so a brand's export works everywhere. Example: [`fixtures/kestrel/`](../fixtures/kestrel). Section 5 (Excel workbooks) is a non-normative node feature: optional, but a node that offers it follows it exactly.
 
 A brand needs at most three things:
 
@@ -169,6 +169,7 @@ assets.csv            optional
 ```
 - Nodes MUST reject entries with absolute paths, `..` segments, symlinks or drive letters (`import_invalid`, zip-slip protection), MUST ignore `__MACOSX/`, `.DS_Store`, `Thumbs.db` and names starting with `.`, and MUST cap the total uncompressed size (RECOMMENDED 10× the node's upload limit) and the number of entries (RECOMMENDED 100 000) to defuse zip bombs.
 - Nested zips are not opened.
+- A node that accepts Excel workbooks ([§5](#excel)) also takes `products.xlsx` and `assets.xlsx` in the place of `products.csv` and `assets.csv`; a workbook is opened under the limits of §5.6, it is not a nested zip.
 
 Scheduled pull imports (SFTP folder, S3 prefix) treat the folder like an unpacked package: `products.csv` (or the only `*.csv` when there is exactly one), optional `assets.csv`, and every image file in the folder and its subfolders. An HTTPS URL points at a CSV or a package zip.
 
@@ -193,3 +194,105 @@ Scheduled pull imports (SFTP folder, S3 prefix) treat the folder like an unpacke
 | `fibre_percentages_not_100` | a part of `materials` whose percentages do not sum to 100 (one per part) | `materials` | the composition is given as percentages of the total fibre weight: Reg. (EU) No 1007/2011 Art. 9 (and Art. 11 per component) |
 
 The import of [`fixtures/kestrel`](../fixtures/kestrel) gives none of these warnings.
+
+## 5. <a id="excel"></a>Excel workbooks (node feature, non-normative)
+
+**Status:** non-normative. A node MAY accept an Excel workbook (`.xlsx`) wherever it accepts `products.csv` or `assets.csv`. A node that does MUST turn it into rows exactly as this section says, so one workbook gives the same rows, the same errors and the same row numbers on every node, and then imports those rows as that CSV file: every rule of §1 to §4 (header names, columns, validation, rules 1 to 10, label warnings, counts, `/changes`, `dry_run`, `mirror`) applies unchanged. The [templates](../templates) can be uploaded as they are. Fixtures: [`fixtures/imports/xlsx/`](../fixtures/imports/xlsx) with `expected.json` (conformance I-IMP-9 and I-IMP-10, optional); a reference conversion in JavaScript: [`tools/xlsx.mjs`](../tools/xlsx.mjs).
+
+### 5.1 Where a workbook is accepted
+
+- A file is a workbook when its name ends in `.xlsx` (any case) or, for a multipart part without a file name, when its content type is `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`. Nothing else makes it a workbook (not its first bytes), and a workbook is never read as CSV: a CSV renamed to `.xlsx` is `workbook_invalid`. Other spreadsheet files (`.xlsm`, `.xls`, `.xlsb`, `.ods`, `.numbers`) are not workbooks in this sense; an upload of one SHOULD be answered with `unsupported_media_type`.
+- What the workbook stands for follows from where it is: the `csv` part of `POST /obx/v1/ingest/imports` or the products upload is `products.csv`, the `assets_csv` part or the assets upload is `assets.csv`. In a package zip and in a pull folder, `products.xlsx` and `assets.xlsx` take the place of `products.csv` and `assets.csv`; a package or folder with both `products.csv` and `products.xlsx` (or both assets files) is `import_invalid`. The "only `*.csv`" fallback of §3 does not extend to workbooks.
+- In an [ImportRowError](../schemas/ImportRowError.json), `file` is `products.xlsx` or `assets.xlsx`, whatever the uploaded file was called.
+
+### 5.2 Which sheet
+
+Only **visible worksheets** count: a sheet with `state="hidden"` or `"veryHidden"`, a chart sheet or a dialog sheet is never read. The node reads exactly one sheet:
+
+1. the first visible worksheet, in workbook order, whose name, trimmed, is `Products` (for `products.xlsx`) or `Assets` (for `assets.xlsx`), ignoring ASCII case;
+2. otherwise the first visible worksheet whose row 1 has a cell that, converted (§5.4) and normalised as a CSV header name (§1.1), is `style_number` or `style` (products) or `file` (assets);
+3. otherwise `workbook_sheet_missing`.
+
+So the templates work as they are: their sheet `Products` (or `Assets`) is read; `Read me`, `Explanation`, `Uitleg` and the hidden `Lists` are not.
+
+### 5.3 From cells to rows
+
+- **Row 1 is the header.** Its width W is the column number of the last cell in row 1 whose converted text is not empty. The header names are the converted texts of row 1, columns 1 to W; an empty cell in between gives an empty name, which §1.1 treats as an unknown column. With W = 0 the result is an empty file (§1.1: no header, `import_invalid`).
+- **Data rows** are the rows 2 to R, R being the last row with a non-empty cell in columns 1 to W. Each is a row of exactly W fields (missing cells are empty). An empty row before R stays in its place as an empty row: §1.1 skips it, and row numbers stay Excel's (§5.5). Rows and columns that have only formatting, a data validation (dropdown) or a comment are empty.
+- **Cells right of column W** are ignored, with one warning per such column that has a non-empty cell (§5.5).
+- **Hidden rows and hidden columns are imported**, as Excel's own "Save as CSV" does. Filters, grouping, row heights, fonts and fill colours are ignored. The yellow example rows of the templates are ordinary rows: the template's Read me tells the brand to delete them, and rows that are left import like any other row.
+- **Merged cells**: the value is the value of the top-left cell; every other cell of the merged range is empty, even when the file has a value for it.
+- A converted text is not trimmed or otherwise changed here; trimming, header matching and the like are the CSV rules of §1.1.
+- **Canonical CSV.** The rows written as `products.csv` / `assets.csv` text (the fixtures do this; a node MAY pass the rows to its CSV import directly): UTF-8 without BOM, delimiter `,`, CRLF after every row including the last, a field in double quotes (a `"` inside doubled) only when it contains `,`, `"`, CR or LF. `templates/products.xlsx` gives [`fixtures/kestrel/products.csv`](../fixtures/kestrel/products.csv) byte for byte.
+
+### 5.4 Cell values
+
+A node uses only the value stored in the file. It never calculates a formula, never runs a macro, never fetches anything, and applies a number format only in the two cases below (dates and zero padding). The cell's `t` attribute decides:
+
+| `t` | Text |
+|---|---|
+| `s` (shared string) | the `<si>` entry: its `<t>`, or the `<t>` of its runs `<r>` joined (rich text loses its formatting); phonetic runs `<rPh>` are ignored. A missing index is `workbook_invalid` |
+| `inlineStr` | the same for `<is>` |
+| `str` (text result of a formula) | the text of `<v>` |
+| `b` | `1` → `true`, `0` → `false` (§2.2 accepts both; Excel writes `TRUE`/`FALSE`) |
+| `e` (`#N/A`, `#REF!`, `#DIV/0!`, …) | a conversion error (§5.5) with the error text as `value` |
+| `d` (ISO 8601 date) | `YYYY-MM-DD` when there is no time or the time is `00:00:00`, else `YYYY-MM-DDTHH:MM:SSZ` (fraction of a second dropped); anything else is a conversion error |
+| `n` or no `t` | a number, below; no `<v>` (or an empty one) is an empty cell |
+
+- **Strings.** The escape `_xHHHH_` (four hex digits) is the character U+HHHH, replaced in one pass from left to right, so `_x000D_` is a carriage return and `_x005F_x0031_` is the text `_x0031_`. Whitespace is kept as in the file.
+- **Formulas.** A cell with `<f>` has the type of its cached result (`t`) and is converted like any cell of that type from its `<v>`. A formula cell without `<v>` (a file written by a program that does not calculate) is a conversion error with `value` `=` followed by the formula (`=G2*2`); the node does not calculate it.
+- **Dates.** A number cell is a date when its number format (the cell's `s` → `cellXfs` → `numFmtId`) is a date format:
+  - built-in ids 14 to 17, 27 to 31, 34 to 36, 50 to 54, 57 and 58 are dates; 18 to 22, 32, 33, 45 to 47, 55 and 56 are date and time; every other built-in id (0 to 13, 37 to 44, 48, 49, …) is not a date;
+  - a custom format (`<numFmt>`, id 164 and up): take its first section (up to the first `;` outside double quotes) and remove text in double quotes, every character following `\`, `_` or `*`, and every `[…]` except those that hold only the letters `h`, `m` or `s` (elapsed time such as `[h]`). When what is left contains `d`, `m`, `y`, `h` or `s` (any case) it is a date format, and date and time when it contains `h` or `s`. So `yyyy-mm-dd`, `dd/mm/yyyy` and `[$-413]d mmmm yyyy;@` are dates, `yyyy-mm-dd hh:mm` is date and time, and `0.0 "kg"`, `[Red]0.00` and `00000000000000` are not.
+
+  The serial number `v` (the `<v>` as an IEEE 754 double) becomes a date: day = floor(`v`). In the 1900 date system (the default) the date is 1899-12-30 plus day days, and `v` below 61 (before 1900-03-01, where Excel counts a 29 February 1900 that did not exist) is a conversion error. In the 1904 date system (`<workbookPr date1904="1"/>` or `"true"` in `xl/workbook.xml`) the date is 1904-01-01 plus day days, and `v` below 0 is a conversion error. A date format gives `YYYY-MM-DD`. A date-and-time format gives `YYYY-MM-DDTHH:MM:SSZ` (Excel has no time zones; the time is taken as UTC) with seconds = round((`v` − day) × 86 400), halves up; 86 400 seconds is 00:00:00 of the next day. Example: 46082 → `2026-03-01`, 46082.5 → `2026-03-01T12:00:00Z`.
+- **Numbers** that are not dates are written from `<v>` (never from what Excel displays):
+  1. read `<v>` as a decimal number (sign, digits, decimal point, exponent) exactly, not through a floating-point value;
+  2. a number with more than 15 significant digits is rounded to 15, halves away from zero (Excel keeps 15 digits: `0.30000000000000004` → `0.3`);
+  3. write it without exponent, with `.` as the decimal separator, without leading zeros, trailing zeros after the point or a trailing point, and with `-` only for a negative number (`-0` → `0`): `2000901000015` → `2000901000015`, `2.000904000012E+12` → `2000904000012`, `12.50` → `12.5`, `1E-3` → `0.001`, `1.5E+20` → `150000000000000000000`;
+  4. **zero padding**: when the number format code is only zeros, at least two (`00000000000000`), and the text is an integer of 0 or more with fewer digits, it gets leading zeros up to that many digits. This keeps barcodes that were formatted to show their leading zero (`2000901000022` with format `00000000000000` → `02000901000022`).
+
+  Every other format is ignored: thousands separators, currency, percentages and the number of decimals shown (`0.95` shown as `95%` gives `0.95`; `2.6` shown as `2.60` gives `2.6`). A `<v>` that is not a number is `workbook_invalid`.
+
+  GTINs typed as numbers therefore keep all their digits: they have at most 14, and Excel stores 15 exactly, even when it shows `2.00091E+12`. A cell whose *text* is `2.00091E+12` (a value that already lost its digits, for example in a CSV opened and saved again) stays an error of the `gtin` column, as in §1.2.
+
+- **Formula injection.** A text that starts with `=`, `+`, `-` or `@` is imported as that text; it is data, never a formula, exactly as in a CSV. Only the cached result of a formula reaches the import, never the formula itself. Every CSV or workbook a node writes later protects such cells as §2.3 says.
+
+### 5.5 Errors, warnings and row numbers
+
+- **Row numbers are Excel's.** The `row` of every ImportRowError about a workbook is the row number Excel shows: the header is row 1, the first data row is row 2. This holds for conversion errors and for every error and warning of the CSV import of those rows (a CSV import of the same rows would report one less). Problems with the header or the file keep `row: null`. `column` is what a CSV import reports for that column.
+- **`detail` starts with a locator** when the error or warning is about a cell: `row <n>, column <header> (<letter>): `, where `<header>` is the header text of that column as written in row 1 (trimmed) and `<letter>` the column letter, for example `row 12, column ean (C): the check digit is wrong`. About a column without a row: `column <header> (<letter>): `, or `column <letter>: ` when it has no header; about a row without a column: `row <n>: `. The text after the locator is the node's own.
+- **Conversion errors** (an error value, a formula without a cached value, a date out of range): `severity` `error`, `obx_error` `validation_failed`, `column` the header text of that column as written in row 1, trimmed (`null` when it has none), `value` the error text (`#N/A`) or the formula (`=G2*2`), one per cell in column order. The row is then imported as an empty row, so it is skipped as a whole, like every row with an error ([rule 2](#4-processing-rules)); its other cells are not validated. A conversion error in row 1 (columns 1 to W) has `row: 1` and gives that column an empty name.
+- **Values right of the header** (§5.3): one warning per column, `severity` `warning`, `obx_error` `validation_failed`, `row` and `column` `null`, `detail` starting with `column <letter>: `.
+- **Workbook errors**: a workbook that cannot be imported gives one ImportRowError with `row` and `column` `null`, `severity` `error` and one of the codes below, and nothing of that file is imported (the rest of the import goes on as with an unreadable CSV). A node that checks an upload while it is being sent (the admin UI) MAY answer at once with a problem+json document with that code and status. A file above the node's upload limit is `payload_too_large`, as for any upload.
+
+| `obx_error` | HTTP | When |
+|---|---|---|
+| `workbook_invalid` | 422 | not a readable `.xlsx`: not a zip (a renamed CSV), an encrypted workbook or a legacy `.xls` (an OLE compound file), an encrypted zip entry, no `[Content_Types].xml` or no workbook part, a main part that is not a workbook or template (`…spreadsheetml.sheet.main+xml`, `…spreadsheetml.template.main+xml`), Strict Open XML, XML that is not well-formed, a `DOCTYPE` in any part, a number cell whose `<v>` is not a number, a shared string that does not exist |
+| `workbook_unsafe` | 422 | macros or links to the outside: a part named `vbaProject.bin` anywhere, a content type containing `macroEnabled` or `vbaProject`, a part under `xl/macrosheets/`, `xl/activeX/` or `xl/externalLinks/`, `xl/connections.xml`, or a relationship of the workbook part with `TargetMode="External"`. Save the file as "Excel Workbook (.xlsx)" without them |
+| `workbook_sheet_missing` | 422 | no sheet found by §5.2 |
+| `workbook_too_large` | 422 | a limit of §5.6 |
+
+### 5.6 Limits and safety
+
+The limits are fixed, so every node gives the same answer. A node checks in this order; the first check that fails gives the code:
+
+1. **Size**: the file is within the node's upload limit for a CSV, else `payload_too_large`.
+2. **Signature**: the file starts with `PK\x03\x04`. A file starting with `D0 CF 11 E0 A1 B1 1A E1` (an encrypted workbook or a legacy `.xls`) and every other file is `workbook_invalid`.
+3. **Zip**: the central directory can be read and no entry is encrypted, else `workbook_invalid`.
+4. **Zip bomb**, from the central directory, before anything is inflated: at most 1 000 entries; the declared uncompressed sizes add up to at most 256 MiB; no entry declares more than 10 MiB uncompressed while that is more than 100 times its compressed size. Else `workbook_too_large`. Because declared sizes can lie, a node also counts the bytes it inflates and stops with `workbook_too_large` when an entry inflates beyond its declared size or the parts it inflated pass 256 MiB together.
+5. **Unsafe parts** (`workbook_unsafe`): by entry names and `[Content_Types].xml`, before those parts are read; a node never inflates them.
+6. **Structure** (`workbook_invalid`): `_rels/.rels` names the main part (relationship type `…/officeDocument`), `[Content_Types].xml` gives it a workbook content type, and its root element is `workbook` in the transitional namespace `http://schemas.openxmlformats.org/spreadsheetml/2006/main`. Every XML part the node reads is well-formed and has no `DOCTYPE`; entities other than the five XML ones (`&amp;` …) are never expanded.
+7. **External relationships** of the workbook part: `workbook_unsafe`.
+8. **The sheet** (§5.2): `workbook_sheet_missing`.
+9. **Cells** of the chosen sheet: a non-empty cell (an error value counts) below row 100 001 (more than 100 000 data rows) or right of column 1 000 (`ALL`) is `workbook_too_large`.
+10. **Conversion** (§5.3, §5.4).
+
+Further:
+- A node reads only `[Content_Types].xml`, `_rels/.rels`, the workbook part and its relationships, `styles.xml`, `sharedStrings.xml` and worksheets; images, printer settings, drawings, comments and embedded objects are never inflated.
+- Parts are looked up by name in the zip and never written to disk under their entry name (so there is no zip-slip).
+- Nothing is fetched: no external links, hyperlinks, external relationships, DTDs or external entities.
+
+### 5.7 After the conversion
+
+The rows are `products.csv` or `assets.csv` and are imported as such (§1 to §4), including `dry_run`, `mirror`, `default_language`, images and `assets.csv` next to the workbook, label completeness warnings and the change feed. A workbook import and a CSV import of the same rows write the same objects, report the same counts and produce the same `/changes` entries; only `file`, `row` and `detail` of their ImportRowErrors differ (§5.5).

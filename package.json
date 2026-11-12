@@ -12,10 +12,12 @@
     "check:site": "node tools/build-site.mjs --check",
     "templates": "node tools/templates.mjs",
     "check:templates": "node tools/templates.mjs --check",
+    "xlsx-fixtures": "node tools/xlsx-fixtures.mjs",
+    "check:xlsx": "node tools/xlsx-fixtures.mjs --check",
     "licenses": "node tools/licenses.mjs",
     "fixtures": "python3 fixtures/generate.py",
     "package": "sh tools/package.sh",
-    "check": "npm run lint && npm run validate && npm run licenses && npm run check:site && npm run check:templates",
+    "check": "npm run lint && npm run validate && npm run licenses && npm run check:site && npm run check:templates && npm run check:xlsx",
     "test:site": "playwright test"
   },
   "devDependencies": {
