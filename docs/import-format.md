@@ -99,7 +99,7 @@ Codes separated by `|`, in label order. Aligned with ISO 3758 (GINETEX symbols).
 
 ### 1.6 <a id="article-data"></a>Article data columns
 
-The fields are described in [protocol.md §5.9](protocol.md#59-article-data). A cell that does not follow these rules is an error `validation_failed` for that row, with the column in the error.
+The fields are described in [protocol.md §5.9](protocol.md#59-article-data). A cell that does not follow these rules is an error `validation_failed` for that row, with the column in the error; the whole row is skipped (its product and its variant part), as for every row error.
 
 - **`footwear_materials`**: `part: value` pairs separated by `;`, parts `upper`, `lining_and_sock`, `outer_sole`, values `leather`, `coated_leather`, `textile`, `other` (lowercased, spaces → `_`). A part that is not in the cell is `null`.
 - **`certifications`**: entries separated by `;`, each `scheme:licence_number`, optionally followed by `(material)` or `(product)`: `rws:CU 123456 (material)`. The scheme is lowercased (spaces → `_`); the licence number is everything after the first `:`, trimmed, and may contain spaces; without `:` the licence number is `null`. The scope is `product` unless `(material)` is given. Entries keep their order.

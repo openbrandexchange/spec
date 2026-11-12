@@ -174,7 +174,7 @@ Added in 0.2 ([proposal 0002](proposals/0002-product-data.md)). Every field is o
 
 #### <a id="footwear"></a>5.9.2 Footwear
 
-**`footwear_materials`** (footwear only, `null` otherwise) gives the material of the three parts of a shoe in the four categories of Directive 94/11/EC:
+**`footwear_materials`** (footwear only, `null` otherwise; `null` too when no part is stated) gives the material of the three parts of a shoe in the four categories of Directive 94/11/EC:
 
 ```json
 "footwear_materials": { "upper": "leather", "lining_and_sock": "textile", "outer_sole": "other" }
