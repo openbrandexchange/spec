@@ -525,7 +525,9 @@ def write_import_cases(gtins):
     out = os.path.join(HERE, "imports")
     os.makedirs(out, exist_ok=True)
     for old in os.listdir(out):
-        os.remove(os.path.join(out, old))
+        # imports/xlsx/ is written by tools/xlsx-fixtures.mjs, not here
+        if os.path.isfile(os.path.join(out, old)):
+            os.remove(os.path.join(out, old))
     cabin, plus = gtins[("KO-1008", "BLK", "CABIN")], gtins[("KO-1008", "BLK", "CABIN PLUS")]
     bag, boot = gtins[("KO-1009", "CHR", "ONE SIZE")], gtins[("KO-1010", "BRN", "41")]
     f1008 = dict(EXTRA["KO-1008"]["features"])
