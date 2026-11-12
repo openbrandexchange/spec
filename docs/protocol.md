@@ -35,6 +35,109 @@ Out of scope: prices, stock, orders, EDI, video/3D assets (reserved), federation
 - **Null vs absent.** Response objects include every property of their schema; unknown values are `null` (except where a schema says a property is only present in some responses). Inside `measurements` and `features` only the stated members are present (an object without members is `null`), and the fibre flags `recycled` and `organic` are present only when `true` ([5.9](#59-article-data)).
 - Every response SHOULD carry `OBX-Version: 0.2`.
 
+### <a id="pagination"></a>2.1 Pagination
+
+**Every list is paginated with an opaque cursor; one response is one page.** A client that reads only the first response sees only the first page.
+
+| Endpoint | `limit` | Response | More pages | Last page |
+|---|---|---|---|---|
+| `GET /obx/v1/products` ([§7](#7-reading-objects)) | 1–100, default 25 | `{"items": [...], "next_cursor": "…" \| null}` | `next_cursor` is a string | `next_cursor` is `null` |
+| `GET /obx/v1/changes` ([§6](#6-the-change-feed)) | 1–500, default 100 | [ChangesPage](../schemas/ChangesPage.json): `changes`, `next_cursor`, `has_more`, `phase` | `has_more` is `true` | `has_more` is `false`; `next_cursor` is still present and is where the next poll starts |
+
+- **Keyset, not offsets.** `/products` pages are ordered by `id` ascending and the next page starts after the last `id` of the previous one, so pages do not shift when products are added or removed while a client pages: every product that exists during the whole walk appears exactly once. The change feed's cursor is a position in the feed (§6.4).
+- **Follow the cursor, not the count.** Nodes MAY return fewer items than `limit` (also zero) on any page that is not the last. Clients MUST NOT treat a short page as the end; only `next_cursor: null` (lists) or `has_more: false` (feed) is.
+- **Same query on every page.** Send the cursor with the same other parameters as the first request (`brand_id`, `updated_since`); changing them between pages is not defined in 0.2. `limit` may change.
+- **Opaque.** Clients MUST NOT parse, build or modify cursors (§2). An unusable cursor is answered `400` (`cursor_invalid`, or `invalid_request`); a feed cursor older than the node keeps is `410 cursor_expired`: restart `/changes` without a cursor.
+- **Limits** are in the discovery document: `limits.products_page_max`, `limits.changes_page_max`.
+- `GET /obx/v1/brands` is not paginated. `GET /obx/v1/products` is for browsing and targeted reads; to keep a copy, read `/changes`, which also delivers deletes. For one big download use exports (§8).
+
+Every product, all pages (curl and jq):
+
+```sh
+cursor=""
+: > products.ndjson
+while :; do
+  page=$(curl -sf -G -H "Authorization: Bearer $TOKEN" "$HOST/obx/v1/products" \
+         --data-urlencode "limit=100" ${cursor:+--data-urlencode "cursor=$cursor"}) || exit 1
+  echo "$page" | jq -c '.items[]' >> products.ndjson
+  cursor=$(echo "$page" | jq -r '.next_cursor // empty')
+  [ -z "$cursor" ] && break
+done
+```
+
+JavaScript (`fetch`):
+
+```js
+async function* allProducts(host, token, params = {}) {
+  let cursor = null;
+  do {
+    const q = new URLSearchParams({ limit: "100", ...params });
+    if (cursor) q.set("cursor", cursor);
+    const res = await fetch(`${host}/obx/v1/products?${q}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) throw new Error(`${res.status} ${(await res.json()).obx_error}`);
+    const page = await res.json();
+    yield* page.items;
+    cursor = page.next_cursor; // null on the last page
+  } while (cursor);
+}
+
+for await (const p of allProducts(process.env.HOST, process.env.TOKEN)) console.log(p.style_number);
+```
+
+Go, with the [obx-go](https://github.com/openbrandexchange/obx-go) SDK (`client.Sync` does the same for the change feed; a version with only `net/http` is in the [quickstart](quickstart.md#4-pagination-every-list-has-more-pages)):
+
+```go
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"os"
+
+	"github.com/openbrandexchange/obx-go/client"
+	"github.com/openbrandexchange/obx-go/obx"
+)
+
+func main() {
+	c, err := client.New(client.Config{
+		BaseURL:      os.Getenv("HOST"),
+		ClientID:     os.Getenv("CLIENT_ID"),
+		ClientSecret: os.Getenv("CLIENT_SECRET"),
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	n := 0 // EachProduct follows next_cursor until it is null
+	err = c.EachProduct(context.Background(), client.ProductsQuery{Limit: 100},
+		func(p *obx.ProductDetail) error {
+			n++ // handle p here
+			return nil
+		})
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(n, "products")
+}
+```
+
+The change feed loop is the same with `has_more` as the stop condition and the cursor saved after every page; see the [quickstart](quickstart.md#4-pagination-every-list-has-more-pages).
+
+### <a id="notifications"></a>2.2 Get notified instead of polling
+
+A node with the `webhooks` capability (§9) tells a consumer when there is something to read, so it does not have to poll every minute:
+
+1. Subscribe once: `POST /obx/v1/webhooks` with `{"url": "https://store.example/hooks/obx", "events": ["changes.available", "grant.updated"]}`. The answer carries the signing `secret`, only this once.
+2. When the feed has new entries for the subscriber, the node posts a [WebhookEvent](../schemas/WebhookEvent.json):
+   ```json
+   {"id": "evt_1", "type": "changes.available", "created_at": "2026-09-28T10:00:00Z", "data": {"latest_seq": 1044}}
+   ```
+3. The receiver verifies `OBX-Webhook-Signature` (§9), answers 2xx within 10 s, de-duplicates on `id` and then **reads `/changes` from its stored cursor until `has_more` is `false`**.
+
+The webhook is a wake-up call and carries no catalog data; `/changes` stays the source of truth. Consumers SHOULD keep a slow poll as a safety net (a lost delivery then only delays the update).
+
 ## 3. Discovery
 
 `GET https://<host>/.well-known/obx` (public, `Access-Control-Allow-Origin: *`; it is the only endpoint with CORS headers, see [security.md §4](security.md#4-urls-and-downloads)) returns the [DiscoveryDocument](../schemas/DiscoveryDocument.json): protocol version, the publisher (name, logo, accent colour, contact, welcome text), `api_base` (`https://<host>/obx/v1`), the OAuth2 token endpoint and scopes, the access-request URL, the ingest URL, `capabilities`, the published brands, content `languages` (first = default) and `limits`.
@@ -279,7 +382,7 @@ Each [Change](../schemas/Change.json) has `seq`, `type` (`brand`, `product`, `va
 - **Without a cursor** the node starts a **snapshot**: one `upsert` for every object currently visible to the caller, ordered brands, products, variants, assets (by `id` within a type), `phase: "snapshot"`. The node remembers the highest `seq` at the start (the high-water mark).
 - When the snapshot is exhausted the feed continues **live** from the high-water mark. Pages never mix phases; the last snapshot page has `has_more: true`, so the first page with `phase: "live"` tells the consumer the snapshot is complete. A consumer MAY then delete local objects from this node that it did not see during the snapshot (mark and sweep). Snapshot entries carry the object's latest `seq`.
 - **With a cursor** the node returns entries after it. Entries appear in `seq` order.
-- When `has_more` is `false`, poll again later with `next_cursor` (RECOMMENDED no more than once per 60 s, or immediately on a `changes.available` webhook).
+- While `has_more` is `true`, request the next page immediately with `next_cursor` ([§2.1](#pagination)). When `has_more` is `false`, poll again later with `next_cursor` (RECOMMENDED no more than once per 60 s, or immediately on a `changes.available` webhook, [§2.2](#notifications)).
 
 ### 6.2 What a consumer sees
 - Only entries of brands in its grant, and its own `grant` entries.
@@ -310,7 +413,7 @@ A `grant` entry (`data`: the new Grant) with `resync: true` means the visible se
 | `GET /obx/v1/assets/{id}` | one Asset (fresh signed URLs) |
 | `GET /obx/v1/assets/{id}/renditions/{name}` | bytes (section 5.5) |
 
-**Pagination.** List endpoints take `limit` and an opaque `cursor` and return `{"items": [...], "next_cursor": "…" | null}`.
+**Pagination.** List endpoints take `limit` and an opaque `cursor` and return `{"items": [...], "next_cursor": "…" | null}`; keep requesting with `cursor=<next_cursor>` until it is `null` ([§2.1](#pagination), with complete loops).
 
 **GTIN lookup.** `POST /obx/v1/products:by-gtin` with `{"gtins": [...]}` (max 2000; more is `400 limit_exceeded`) or `GET ?gtin=a,b,c` (max 100). Each input is trimmed (leading and trailing whitespace) and echoed that way in `input` (`" 2000 200101031"` → `"2000 200101031"`); for matching, inner spaces are then removed; 8, 12, 13 or 14 digits are normalised to GTIN-14 and compared with `Variant.gtin`; check digits are not validated here. Anything else is `invalid`. Duplicate inputs after normalisation are reported once (first occurrence). The [GtinLookupResult](../schemas/GtinLookupResult.json) has one result per distinct input in input order (`matched`, `unmatched`, `invalid`) and every matched product once as ProductDetail.
 
@@ -328,7 +431,7 @@ Exports expire (`expires_at` ≥ 24 h after finishing; afterwards `410 export_ex
 
 Consumers subscribe with `POST /obx/v1/webhooks` (`url`, `events`), list with `GET`, delete with `DELETE /obx/v1/webhooks/{id}` and send a test with `POST /obx/v1/webhooks/{id}/test`. At most 5 subscriptions per client. Events: `changes.available` (`{latest_seq}`), `grant.updated` (`{grant}`), `export.completed` (`{export_id, status}`), `webhook.test` (`{}`).
 
-**Webhooks are a wake-up call, never the source of truth**: always fetch through the API.
+**Webhooks are a wake-up call, never the source of truth**: always fetch through the API. A `changes.available` event means: read `/changes` from your stored cursor until `has_more` is `false` ([§2.2](#notifications)).
 
 **Delivery.** `POST` of a [WebhookEvent](../schemas/WebhookEvent.json) with headers:
 - `OBX-Webhook-Id`: the event id (use it to de-duplicate),

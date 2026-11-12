@@ -26,6 +26,15 @@ info:
       `RateLimit-Remaining`, `RateLimit-Reset`); 429 carries `Retry-After`.
     - A retailer never sees more than it could see in the brand's portal: only published
       objects of brands in its grant.
+    - **Pagination: every list is paginated.** One response is one page. `GET /products`
+      returns `{items, next_cursor}`: repeat the request with `cursor=<next_cursor>` until
+      `next_cursor` is `null`. `GET /changes` returns `next_cursor` and `has_more`: repeat
+      while `has_more` is `true`, then keep `next_cursor` for the next poll. Never stop on a
+      short page. Cursors are opaque. Complete loops in curl, JavaScript and Go:
+      [protocol.md §2.1 Pagination](https://github.com/openbrandexchange/spec/blob/main/docs/protocol.md#pagination).
+    - **Get notified instead of polling:** subscribe a webhook to `changes.available`
+      (capability `webhooks`), then read `/changes` from your cursor when it arrives:
+      [protocol.md §2.2](https://github.com/openbrandexchange/spec/blob/main/docs/protocol.md#notifications).
   license:
     name: CC-BY-4.0
     url: https://creativecommons.org/licenses/by/4.0/
@@ -244,22 +253,29 @@ paths:
         the CURRENT representation. Deletes are tombstones for anything no longer visible to
         the caller. Tombstones are kept at least 90 days; an older cursor yields 410
         `cursor_expired` (restart without cursor). A `grant` entry with `resync: true` means
-        restart without a cursor. `next_cursor` is always returned; poll again later
-        (RECOMMENDED: not more often than every 60 s when `has_more` is false, or on a
-        `changes.available` webhook).
+        restart without a cursor.
+
+        **Pagination.** One response is one page. `next_cursor` is always returned. While
+        `has_more` is `true`, call again immediately with `cursor=<next_cursor>`; when it is
+        `false` you are up to date: store `next_cursor` and poll again later with it
+        (RECOMMENDED: not more often than every 60 s, or right after a `changes.available`
+        webhook). A page MAY hold fewer entries than `limit` (even none) and still have
+        `has_more: true`. Loop examples: [protocol.md §2.1](https://github.com/openbrandexchange/spec/blob/main/docs/protocol.md#pagination);
+        webhooks instead of polling: [§2.2](https://github.com/openbrandexchange/spec/blob/main/docs/protocol.md#notifications).
       parameters:
         - name: cursor
           in: query
           required: false
+          description: The `next_cursor` of the previous page; omit to start a snapshot. Opaque.
           schema: {$ref: '../schemas/Common.json#/$defs/Cursor'}
         - name: limit
           in: query
           required: false
-          description: Page size, 1-500 (default 100). Nodes MAY return fewer.
+          description: Page size, 1-500 (default 100; the node's maximum is `limits.changes_page_max` in discovery). Nodes MAY return fewer.
           schema: {type: integer, minimum: 1, maximum: 500, default: 100}
       responses:
         '200':
-          description: A page of changes.
+          description: 'A page of changes. More pages follow while `has_more` is `true` ([pagination](https://github.com/openbrandexchange/spec/blob/main/docs/protocol.md#pagination)).'
           headers:
             RateLimit-Limit: {$ref: '#/components/headers/RateLimit-Limit'}
             RateLimit-Remaining: {$ref: '#/components/headers/RateLimit-Remaining'}
@@ -319,9 +335,15 @@ paths:
       operationId: listProducts
       summary: Products with variants and assets
       description: |
-        Keyset-paginated, ordered by `id` ascending. For synchronisation use `/changes`;
-        this endpoint is for browsing and targeted reads. Objects outside the caller's grant
-        are never returned (unknown ids in `ids` are silently omitted).
+        **Paginated.** One response is one page of at most `limit` products, ordered by `id`
+        ascending (keyset pagination). Repeat the request with `cursor=<next_cursor>` and the
+        same other parameters until `next_cursor` is `null`; do not stop on a short page.
+        Every product that exists during the whole walk appears exactly once. Loop examples
+        in curl, JavaScript and Go: [protocol.md §2.1](https://github.com/openbrandexchange/spec/blob/main/docs/protocol.md#pagination).
+
+        For synchronisation use `/changes` (it also delivers deletes); this endpoint is for
+        browsing and targeted reads. Objects outside the caller's grant are never returned
+        (unknown ids in `ids` are silently omitted).
       parameters:
         - name: ids
           in: query
@@ -337,10 +359,11 @@ paths:
         - $ref: '#/components/parameters/Cursor'
         - name: limit
           in: query
+          description: Page size, 1-100 (default 25; the node's maximum is `limits.products_page_max` in discovery). Nodes MAY return fewer.
           schema: {type: integer, minimum: 1, maximum: 100, default: 25}
       responses:
         '200':
-          description: A page of products.
+          description: 'A page of products. More pages follow while `next_cursor` is not `null` ([pagination](https://github.com/openbrandexchange/spec/blob/main/docs/protocol.md#pagination)).'
           content:
             application/json:
               schema:
@@ -349,13 +372,14 @@ paths:
                 properties:
                   items:
                     type: array
+                    description: This page's products (possibly fewer than `limit`, also on pages that are not the last).
                     items: {$ref: '../schemas/ProductDetail.json'}
                   next_cursor:
-                    description: null on the last page.
+                    description: Pass it as `cursor` to get the next page. `null` on the last page, and only there.
                     oneOf:
                       - {$ref: '../schemas/Common.json#/$defs/Cursor'}
                       - {type: 'null'}
-        '400': {$ref: '#/components/responses/BadRequest'}
+        '400': {$ref: '#/components/responses/CursorInvalid'}
         '401': {$ref: '#/components/responses/Unauthorized'}
         '429': {$ref: '#/components/responses/TooManyRequests'}
   /obx/v1/products/{id}:
@@ -688,7 +712,9 @@ paths:
       summary: Subscribe
       description: |
         Capability `webhooks`. Events for consumers: `changes.available`, `grant.updated`,
-        `export.completed`. The URL MUST be https and MUST NOT resolve to a private, loopback or
+        `export.completed`. Subscribe to `changes.available` instead of polling `/changes`
+        every minute: on each event, read `/changes` from your stored cursor until `has_more`
+        is `false` ([protocol.md §2.2](https://github.com/openbrandexchange/spec/blob/main/docs/protocol.md#notifications)). The URL MUST be https and MUST NOT resolve to a private, loopback or
         link-local address (422 `unsafe_url`). Max 5 subscriptions per client.
       requestBody:
         required: true
@@ -765,8 +791,12 @@ webhooks:
         `OBX-Webhook-Timestamp` (unix seconds), `OBX-Webhook-Signature: v1=<hex>` where
         hex = HMAC-SHA256(secret, `<timestamp>.<raw body>`). Receivers MUST verify in constant
         time and reject timestamps more than 300 s away. Respond 2xx within 10 s; otherwise the
-        node retries with exponential backoff for up to 24 h. Webhooks are wake-up calls:
-        always fetch state via /changes.
+        node retries with exponential backoff for up to 24 h. De-duplicate on `OBX-Webhook-Id`.
+
+        **Webhooks are wake-up calls: always fetch state via /changes.** On
+        `changes.available` (`{"latest_seq": 1044}`) read `/changes` from your stored cursor
+        until `has_more` is `false`; the event carries no catalog data
+        ([protocol.md §2.2](https://github.com/openbrandexchange/spec/blob/main/docs/protocol.md#notifications)).
       parameters:
         - name: OBX-Webhook-Id
           in: header
@@ -785,6 +815,10 @@ webhooks:
         content:
           application/json:
             schema: {$ref: '../schemas/WebhookEvent.json'}
+            examples:
+              changesAvailable:
+                summary: New entries in the change feed (read /changes now)
+                value: {$ref: '../fixtures/examples/WebhookEvent.changes-available.json'}
       responses:
         '200':
           description: Delivered (any 2xx).
@@ -827,6 +861,7 @@ components:
       name: cursor
       in: query
       required: false
+      description: The `next_cursor` of the previous page; omit for the first page. Opaque.
       schema: {$ref: '../schemas/Common.json#/$defs/Cursor'}
     IdempotencyKey:
       name: Idempotency-Key
