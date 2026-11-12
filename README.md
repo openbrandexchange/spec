@@ -2,6 +2,11 @@
 
 **Open Brand Exchange (OBX)** is a free, open way for **brands** to deliver their final product content to their **retailers**: product data per size with GTIN, materials and care, and the final images with their order, view, usage rights and AI provenance. One publication, every retailer; no per-retailer integrations, no platform lock-in.
 
+| Version | Categories |
+|---|---|
+| **0.2** (current) | Fashion, shoes, bags and luggage ([proposal 0002](docs/proposals/0002-product-data.md)) |
+| 0.3 (in development) | Home and sport (draft proposal 0003) |
+
 A brand runs (or has someone host) an **OBX node**. The node gives the brand three things:
 
 1. **A retailer portal.** Retailers request access, log in, search and filter the catalog, paste a list of EANs, and download images (original, web, square) and article data as zip or CSV. The brand sees who downloads what.
