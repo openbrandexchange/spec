@@ -313,6 +313,23 @@ DEFAULT_PROVENANCE = {"ai_generated": False, "ai_edited": False, "source": "phot
                       "c2pa_manifest_url": None, "generator": None}
 
 
+VOCAB = {k: {e["code"]: e for e in json.load(open(os.path.join(HERE, "..", "vocabularies", k + ".json"), encoding="utf-8"))["entries"]}
+         for k in ("parts", "materials", "qualifiers", "care")}
+QUALIFIERS_01 = ("recycled", "organic")  # 0.1 keys: recycled_polyester -> polyester + qualifier recycled
+
+
+def term(kind, code):
+    """A term {code, name}: the vocabulary's name for a known code, else null (protocol.md 5.9.1)."""
+    entry = VOCAB[kind].get(code)
+    return {"code": code, "name": entry["name"] if entry else None}
+
+
+def care_entry(code):
+    entry = VOCAB["care"].get(code)
+    return {"code": code, "category": entry["category"] if entry else None, "symbol": entry["symbol"] if entry else None,
+            "name": entry["name"] if entry else None, "text": None}
+
+
 def parse_materials(s):
     parts = []
     for chunk in s.split(";"):
@@ -321,20 +338,18 @@ def parse_materials(s):
         out = []
         for f in fibers.split(","):
             pct, _, fiber = f.strip().partition("% ")
-            flags = {}
+            qualifier = None
             fiber = fiber.strip()
-            while fiber.endswith(")"):
-                fiber, _, flag = fiber[:-1].rpartition("(")
-                fiber = fiber.strip()
-                flags[flag.strip()] = True
-            for prefix in ("recycled", "organic"):  # 0.1 keys: recycled_polyester -> polyester + recycled
+            if fiber.endswith(")"):
+                fiber, _, qualifier = fiber[:-1].rpartition("(")
+                fiber, qualifier = fiber.strip(), qualifier.strip()
+            for prefix in QUALIFIERS_01:
                 if fiber.startswith(prefix + "_"):
                     fiber = fiber[len(prefix) + 1:]
-                    flags[prefix] = True
-            entry = {"fiber": fiber, "percentage": int(pct)}
-            entry.update({k: True for k in ("recycled", "organic") if flags.get(k)})
-            out.append(entry)
-        parts.append({"part": part.strip(), "fibers": out})
+                    qualifier = prefix
+            out.append({"material": term("materials", fiber), "percentage": int(pct),
+                        "qualifier": term("qualifiers", qualifier) if qualifier else None})
+        parts.append({"part": term("parts", part.strip()), "fibers": out})
     return parts
 
 
@@ -478,7 +493,7 @@ def expected_product(style, image_meta, gtins):
         "season": season, "collection": coll, "materials": parse_materials(mats),
         "contains_animal_origin": EXTRA[style].get("contains_animal_origin"),
         "footwear_materials": EXTRA[style].get("footwear_materials"),
-        "care": [{"code": c, "text": None} for c in care.split("|")],
+        "care": [care_entry(c) for c in care.split("|")],
         "country_of_origin": origin, "certifications": EXTRA[style].get("certifications"), "dpp_url": None,
         "features": {k: EXTRA[style]["features"][k] for k in FEATURE_KEYS if k in EXTRA[style].get("features", {})} or None,
         "attributes": None,
@@ -551,7 +566,7 @@ def write_import_cases(gtins):
          [("variant", "upsert", cabin)], {}, {cabin: {"measurements": dict(m_cabin, weight_kg=2.7)}}),
         ("4-fibre-flags.csv", ["brand", "style_number", "name:en", "materials"],
          [["Kestrel Trail", "KT-2001", "Trail Running Shorts", "outer: 100% polyester (recycled); lining: 88% polyamide, 12% elastane"]],
-         "The flag form gives the same materials as the 0.1 key recycled_polyester in the fixture: unchanged, no change entries.",
+         "The qualifier form gives the same materials as the 0.1 key recycled_polyester in the fixture: unchanged, no change entries.",
          {"rows": 1, "created": 0, "updated": 0, "unchanged": 1, "errors": 0}, [], [], {}, {}),
         ("5-invalid.csv", ["brand", "style_number", "name:en", "gtin", "color_code", "feature:wheels", "height_cm", "color_family", "footwear_materials"],
          [["Kestrel", "KO-1008", name, "", "", "3", "", "", ""],
@@ -638,7 +653,7 @@ def write_ingest():
     bad = gs[:12] + str((int(gs[12]) + 1) % 10)  # wrong check digit
     product = {"brand_external_id": "kestrel-lab", "style_number": "KL-9001",
                "name": {"en": "Lab Test Shorts", "nl": "Testshort"}, "item_type": "shorts", "target_group": "unisex",
-               "season": "SS27", "materials": [{"part": "main", "fibers": [{"fiber": "cotton", "percentage": 100}]}],
+               "season": "SS27", "materials": [{"part": {"code": "main"}, "fibers": [{"material": {"code": "cotton"}, "percentage": 100}]}],
                "care": [{"code": "wash_30"}]}
     changed = dict(product, description={"en": "Now with pockets.", "nl": "Nu met zakken."})
 

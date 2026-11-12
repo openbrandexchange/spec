@@ -4,8 +4,8 @@
 
 | Version | Categories |
 |---|---|
-| **0.2** (current) | Fashion, shoes, bags and luggage ([proposal 0002](docs/proposals/0002-product-data.md)) |
-| 0.3 (in development) | Home and sport ([draft proposal 0003](docs/proposals/0003-home-and-sport.md)) |
+| **0.3** (current) | Fashion, shoes, bags and luggage ([proposal 0002](docs/proposals/0002-product-data.md)); materials and care as terms with names per language ([proposal 0004](docs/proposals/0004-terms-with-names.md)) |
+| 0.4 (in development) | Home and sport ([draft proposal 0003](docs/proposals/0003-home-and-sport.md)) |
 
 A brand runs (or has someone host) an **OBX node**. The node gives the brand three things:
 
@@ -76,7 +76,7 @@ npm run package      # the release bundle in dist/ (what the release workflow pu
 
 ## Status and licence
 
-Version **0.2.0** ([changelog](CHANGELOG.md)): product data for fashion, shoes, bags and luggage ([proposal 0002](docs/proposals/0002-product-data.md)), additive to 0.1. Before 1.0, minor versions may still contain breaking changes, each with a migration note ([versioning](docs/versioning.md)). Three portals in three runtimes, the Go SDK and the conformance suite implement it ([implementations](docs/implementations.md)).
+Version **0.3.0** ([changelog](CHANGELOG.md)): product data for fashion, shoes, bags and luggage ([proposal 0002](docs/proposals/0002-product-data.md)); materials and care carry a stable code and a name per language ([proposal 0004](docs/proposals/0004-terms-with-names.md)), a breaking change from 0.2. Before 1.0, minor versions may still contain breaking changes, each with a migration note ([versioning](docs/versioning.md)). Three portals in three runtimes, the Go SDK and the conformance suite implement it ([implementations](docs/implementations.md)).
 
 Open Brand Exchange is published by the Open Brand Exchange Foundation (in formation). It is designed to be vendor-neutral, and the copyright, the name and the domain are to be transferred to a Dutch foundation (*stichting*); see [governance](docs/governance.md). Contact: hello@openbrandexchange.com.
 

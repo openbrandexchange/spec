@@ -65,6 +65,7 @@ function build(out) {
   mkdirSync(join(out, "schemas", schemaDir), { recursive: true });
   for (const f of readdirSync(join(root, "schemas")).filter((f) => f.endsWith(".json"))) cpSync(join(root, "schemas", f), join(out, "schemas", schemaDir, f));
   for (const d of archivedSchemaDirs) cpSync(join(root, "schemas", d), join(out, "schemas", d), { recursive: true });
+  cpSync(join(root, "vocabularies"), join(out, "vocabularies", schemaDir), { recursive: true });
   writeFileSync(join(out, "index.html"), indexPage(redocVersion));
   writeFileSync(join(out, "README.md"), readme());
 }
@@ -167,6 +168,7 @@ Built by \`npm run build:site\` (tools/build-site.mjs) from \`openapi/\` and \`s
 | \`openapi/*.yaml\` | single-file OpenAPI bundles (no external \`$ref\`s), for tools and code generators |
 | \`schemas/${schemaDir}/*.json\` | the JSON Schemas at the path of their \`$id\` (\`https://openbrandexchange.com/schemas/${schemaDir}/…\`) |${archivedSchemaDirs.map((d) => `
 | \`schemas/${d}/*.json\` | the schemas of release ${d.slice(1)}, unchanged, so their \`$id\`s keep resolving |`).join("")}
+| \`vocabularies/${schemaDir}/*.json\` | the codes of materials and care with their names per language |
 | \`assets/redoc.standalone.js\` | the Redoc viewer (MIT, \`assets/redoc.LICENSE\`; bundled libraries in \`redoc.standalone.js.LICENSE.txt\`), served locally instead of from a CDN |
 
 For the website: copy this folder as it is, for example to \`/reference/\`, and serve \`schemas/\` at \`/schemas/\` so the schema \`$id\`s resolve. The pages work without JavaScript (the content is pre-rendered); with JavaScript the viewer adds search and navigation. Every page, the overview included, carries its own Content-Security-Policy in a \`<meta>\` element (the API pages allow their one inline start-up script by hash), so a host should not add a stricter policy header for this folder.

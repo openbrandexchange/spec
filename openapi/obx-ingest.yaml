@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: OBX Ingest API (write side)
-  version: 0.2.0
+  version: 0.3.0
   summary: How a brand's own systems publish content to any OBX node.
   description: |
     **Optional; normative for nodes that offer it** (capability `ingest`). The OBX Protocol

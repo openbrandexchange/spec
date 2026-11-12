@@ -1,7 +1,7 @@
 #!/bin/sh
 # shellcheck disable=SC2086 # $paths is a list of top-level paths without spaces, split on purpose
 # Builds the release bundle in dist/ from the committed tree (HEAD):
-#   obx-spec-<version>.tar.gz and .zip  (docs, governance, openapi, schemas, fixtures, site, templates, licence files)
+#   obx-spec-<version>.tar.gz and .zip  (docs, governance, openapi, schemas, vocabularies, fixtures, site, templates, licence files)
 #   obx-spec-<version>.sbom.cdx.json     (CycloneDX SBOM)
 #   SHA256SUMS
 # Refuses to run with uncommitted changes in the packaged paths (set ALLOW_DIRTY=1 to override).
@@ -9,7 +9,7 @@ set -eu
 cd "$(dirname "$0")/.."
 version=$(node -p "require('./package.json').version")
 name="obx-spec-$version"
-paths="README.md CHANGELOG.md LICENSE NOTICE SECURITY.md CONTRIBUTING.md CODE_OF_CONDUCT.md docs governance openapi schemas fixtures site templates"
+paths="README.md CHANGELOG.md LICENSE NOTICE SECURITY.md CONTRIBUTING.md CODE_OF_CONDUCT.md docs governance openapi schemas vocabularies fixtures site templates"
 if [ -z "${ALLOW_DIRTY:-}" ] && [ -n "$(git status --porcelain -- $paths)" ]; then
   echo "uncommitted changes in the packaged files; commit them first (or ALLOW_DIRTY=1)" >&2
   exit 1

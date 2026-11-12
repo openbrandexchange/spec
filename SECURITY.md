@@ -28,8 +28,9 @@ We follow coordinated disclosure: we publish an advisory once a fix or mitigatio
 
 | Version | Supported |
 |---|---|
-| 0.2.x | yes |
-| 0.1.x | yes |
+| 0.3.x | yes |
+| 0.2.x | no |
+| 0.1.x | no |
 | older drafts | no |
 
 The security requirements for implementations are in [docs/security.md](docs/security.md).

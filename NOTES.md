@@ -83,3 +83,12 @@ The design is [proposal 0002](docs/proposals/0002-product-data.md). Where it was
 40. **One header normalisation**: §1.1 trims white space (space, tab, CR, LF) and counts each run of white space and `-` as one `_`, for CSV headers and for the sheet choice alike, so `Style  Number` and a header cell with a line break work in both.
 41. **Folders**: the "only `*.csv`" fallback is for folders without `products.csv` and `products.xlsx`; it never picks a workbook, and a folder with `products.xlsx` and another CSV reads the workbook.
 42. **`payload_too_large`** for a workbook above the node's CSV limit is refused like any workbook error (failed run, one ImportRowError), when the upload itself was accepted.
+
+## Decisions for v0.3.0 (terms with names, proposal 0004)
+
+43. **Materials and care are terms**: `part`, `material` and `qualifier` are `{code, name}`; care entries carry `category`, `symbol` and `name`. Breaking, allowed before 1.0; only 0.3 is supported; the 0.1 and 0.2 schemas stay frozen in `schemas/v0.1/` and `schemas/v0.2/` so their `$id`s keep resolving.
+44. **The vocabulary is data in the spec** (`vocabularies/*.json`, en/nl/de/fr). A node returns the vocabulary's names for known codes and what it was given for others; a missing language is omitted, never `""`.
+45. **One qualifier per fibre** (`organic`, `recycled`, `regenerative`, open list); the 0.2 flags are gone. The 0.1 keys `recycled_*`/`organic_*` are still normalised on write.
+46. **`symbol` is GINETEX notation** (`1_C_40`), informative, `null` where the data pools have no code.
+47. Proposal 0003 (home and sport) moves to 0.4.
+48. **A node that upgrades to 0.3 expires every cursor it issued before** (`410 cursor_expired`, protocol.md §6): a consumer that kept a 0.2 cursor would otherwise keep 0.2 shapes for unchanged objects. The existing restart-without-cursor path is the migration; consumers need no new code.

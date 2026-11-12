@@ -124,7 +124,7 @@ Use a plain **HTTP Request** step. Authentication: header `Authorization` = `Bea
 1. **Product** (for example when a product changes in your PIM): method `PUT`, URL `{OBX_URL}/obx/v1/ingest/products/{style number}`, JSON body:
    ```json
    {"style_number": "KO-1001", "name": {"en": "Merino Crew Sweater", "nl": "Merino trui met ronde hals"},
-    "item_type": "sweater", "season": "AW26", "materials": [{"part": "main", "fibers": [{"fiber": "merino_wool", "percentage": 100}]}]}
+    "item_type": "sweater", "season": "AW26", "materials": [{"part": {"code": "main"}, "fibers": [{"material": {"code": "merino_wool"}, "percentage": 100}]}]}
    ```
 2. **Size / colour**: `PUT {OBX_URL}/obx/v1/ingest/variants/{GTIN}` with `{"product_external_id": "KO-1001", "gtin": "2000100101025", "color": {"code": "NVY", "name": {"en": "Navy"}}, "size": "M"}`.
 3. **Image**: first `PUT {OBX_URL}/obx/v1/ingest/assets/KO-1001_NVY_1` with `{"product_external_id": "KO-1001", "color_code": "NVY", "role": "packshot", "view": "front", "position": 1}`, then `PUT {OBX_URL}/obx/v1/ingest/assets/KO-1001_NVY_1/files/original` with the **binary** file as body (n8n: "Send Binary Data"; Make: "Request content" = the file data; Zapier: Webhooks "Custom Request" with the file). On nodes that do not render images themselves (`GET {OBX_URL}/obx/v1/ingest` shows `"server_generated": false`) use `obx` (or the admin's Imports screen) instead: they make the web versions on your computer and upload them with the original. A scheduled import delivers originals only, so on such a node its images are served in their original size until the web versions are added.

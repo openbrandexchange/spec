@@ -188,7 +188,7 @@ function parseCSV(text) {
 const MEASUREMENT_COLUMNS = ["height_cm", "width_cm", "depth_cm", "weight_kg", "volume_l", "volume_expanded_l", "handle_drop_cm", "strap_length_cm", "laptop_max_inch", "heel_height_cm", "shaft_height_cm", "inseam_cm"];
 const PRODUCT_COLUMNS = new RegExp(`^(brand|product_id|style_number|name|description|item_type|item_subtype|target_group|season|collection|gpc_brick|materials|contains_animal_origin|footwear_materials|care|country_of_origin|certifications|dpp_url|status|variant_id|gtin|sku|color_code|color_name|color_family|supplier_color|size|size_length|size_system|${MEASUREMENT_COLUMNS.join("|")}|variant_status|image_files)(:[a-z]{2,3}(-[A-Z]{2})?)?$|^(attr|feature):[a-z][a-z0-9_]{0,63}$`);
 const ASSET_COLUMNS = /^(file|asset_id|product_id|style_number|color_code|position|role|view|alt_text|license|license_text|channels|territories|embargo_until|expires_at|credit|model_release|ai_generated|ai_edited|source|c2pa|c2pa_manifest_url|generator|status)(:[a-z]{2,3}(-[A-Z]{2})?)?$/;
-const FIBER = String.raw`\d+(\.\d+)?%\s+[a-z][a-z0-9_]*(\s*\((recycled|organic)\))*`;
+const FIBER = String.raw`\d+(\.\d+)?%\s+[a-z][a-z0-9_]*(\s*\([a-z][a-z0-9_]*\))?`;
 const PART = String.raw`\s*(([a-z][a-z0-9_]*)\s*:\s*)?${FIBER}(\s*,\s*${FIBER})*\s*`;
 const MATERIALS = new RegExp(`^${PART}(;${PART})*$`);
 const ROLES = ["packshot", "model", "detail", "ghost", "flatlay", "scene", "swatch", "size_chart", "other"];
@@ -246,20 +246,47 @@ productRows.slice(1).forEach((row, i) => {
   if (!styles.has(col(row, "style_number"))) styles.set(col(row, "style_number"), new Set());
   styles.get(col(row, "style_number")).add(col(row, "color_code"));
 });
-// The 0.2 columns, parsed as docs/import-format.md says, must give valid objects, and for the
+// ---------------------------------------------------------------- vocabularies
+// vocabularies/*.json: the codes of materials and care with their names (protocol.md 5.9.1).
+// Every code matches the key pattern and is unique, every name is a valid LocalizedText,
+// main has no name, care entries have a valid category and symbol.
+export const VOCAB = {};
+for (const kind of ["parts", "materials", "qualifiers", "care"]) {
+  const where = `vocabularies/${kind}.json`;
+  const doc = readJSON(join(root, "vocabularies", `${kind}.json`));
+  VOCAB[kind] = new Map();
+  for (const e of doc.entries) {
+    checked++;
+    if (!/^[a-z][a-z0-9_]{0,63}$/.test(e.code)) fail(where, `bad code ${e.code}`);
+    if (VOCAB[kind].has(e.code)) fail(where, `duplicate code ${e.code}`);
+    VOCAB[kind].set(e.code, e);
+    if (kind === "parts" && e.code === "main") { if (e.name !== null) fail(where, "main must have the name null"); }
+    else if (!validators.LocalizedText(e.name)) fail(where, `${e.code}: name is not a LocalizedText`);
+    else for (const lang of ["en", "nl", "de"]) if (!e.name[lang]) fail(where, `${e.code}: no name in ${lang}`);
+    if (kind === "care") check("Care", [{ code: e.code, category: e.category, symbol: e.symbol, name: e.name, text: null }], `${where} ${e.code}`);
+  }
+}
+export function term(kind, code) {
+  const e = VOCAB[kind].get(code);
+  return { code, name: e ? e.name : null };
+}
+export function careEntry(code) {
+  const e = VOCAB.care.get(code);
+  return { code, category: e?.category ?? null, symbol: e?.symbol ?? null, name: e?.name ?? null, text: null };
+}
+
+// The import columns, parsed as docs/import-format.md says, must give valid objects, and for the
 // products with an expected object, exactly the values in fixtures/expected.
 export function parseMaterialsCell(cell) {
   return cell.split(";").map((chunk) => {
     const m = /^\s*(?:([a-z][a-z0-9_]*)\s*:)?(.*)$/.exec(chunk);
     const fibers = m[2].split(",").map((f) => {
-      let [, pct, fiber, flags] = /^\s*(\d+(?:\.\d+)?)%\s+([a-z][a-z0-9_]*)((?:\s*\((?:recycled|organic)\))*)\s*$/.exec(f);
-      const set = new Set([...flags.matchAll(/recycled|organic/g)].map((x) => x[0]));
-      for (const prefix of ["recycled", "organic"]) if (fiber.startsWith(`${prefix}_`)) { fiber = fiber.slice(prefix.length + 1); set.add(prefix); }
-      const out = { fiber, percentage: Number(pct) };
-      for (const k of ["recycled", "organic"]) if (set.has(k)) out[k] = true;
-      return out;
+      let [, pct, fiber, qualifier] = /^\s*(\d+(?:\.\d+)?)%\s+([a-z][a-z0-9_]*)(?:\s*\(([a-z][a-z0-9_]*)\))?\s*$/.exec(f);
+      // 0.1 keys: recycled_polyester -> polyester with qualifier recycled
+      for (const prefix of ["recycled", "organic"]) if (fiber.startsWith(`${prefix}_`)) { fiber = fiber.slice(prefix.length + 1); qualifier = prefix; }
+      return { material: term("materials", fiber), percentage: Number(pct), qualifier: qualifier ? term("qualifiers", qualifier) : null };
     });
-    return { part: m[1] ?? "main", fibers };
+    return { part: term("parts", m[1] ?? "main"), fibers };
   });
 }
 const BOOL = { true: true, yes: true, ja: true, 1: true, false: false, no: false, nee: false, 0: false };
@@ -306,6 +333,7 @@ productRows.slice(1).forEach((row, i) => {
     materials: get("materials") ? parseMaterialsCell(get("materials")) : null,
     contains_animal_origin: cao ? (BOOL[cao.toLowerCase()] ?? cao) : null,
     footwear_materials: get("footwear_materials") ? parseFootwear(get("footwear_materials")) : null,
+    care: get("care") ? get("care").split("|").map(careEntry) : null,
     certifications: get("certifications") ? parseCertifications(get("certifications")) : null,
     features: Object.keys(features).length ? features : null,
   };
@@ -361,7 +389,7 @@ export function labelWarnings(rows, hdr) {
     const w = (column, code) => out.push({ file: "products.csv", row: i + 1, column, severity: "warning", obx_error: code });
     if (TEXTILE_TYPES.has(type)) {
       if (!mats) w("materials", "fibre_composition_missing");
-      else if (!get("contains_animal_origin") && mats.some((p) => p.fibers.some((f) => ANIMAL.test(f.fiber)))) w("contains_animal_origin", "animal_origin_unknown");
+      else if (!get("contains_animal_origin") && mats.some((p) => p.fibers.some((f) => ANIMAL.test(f.material.code)))) w("contains_animal_origin", "animal_origin_unknown");
     }
     if (FOOTWEAR_TYPES.has(type)) {
       const fw = get("footwear_materials") ? parseFootwear(get("footwear_materials")) : null;
