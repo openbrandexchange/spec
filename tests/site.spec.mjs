@@ -74,8 +74,8 @@ for (const p of PAGES) {
   });
 }
 
-test("schemas are served at their $id path", async ({ request }) => {
-  for (const v of ["v0.3"]) {
+test("schemas are served at their $id path, the earlier ones too", async ({ request }) => {
+  for (const v of ["v0.3", "v0.2", "v0.1"]) {
     const res = await request.get(`schemas/${v}/Product.json`);
     expect(res.ok()).toBeTruthy();
     const schema = await res.json();

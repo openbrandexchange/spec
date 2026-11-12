@@ -400,7 +400,7 @@ When a single write changes several objects (for example unpublishing a product)
 ### 6.4 Retention and cursors
 - Tombstones MUST be kept at least 90 days (`limits.tombstone_retention_days`). A cursor older than what the node retains yields `410 cursor_expired`: restart without a cursor.
 - Nodes MAY compact the log by dropping an entry when a later entry for the same object exists, but only for entries older than 7 days.
-- Cursors MUST survive restarts and deploys (no offsets into mutable lists). Snapshot cursors MAY expire after 24 hours (`410 cursor_expired`). A malformed cursor or one from another node is `400 cursor_invalid`.
+- Cursors MUST survive restarts and deploys (no offsets into mutable lists). Snapshot cursors MAY expire after 24 hours (`410 cursor_expired`). A malformed cursor or one from another node is `400 cursor_invalid`. A node that upgrades to a spec version whose object shapes are not compatible with the previous one (0.2 → 0.3) MUST answer every cursor it issued before the upgrade with `410 cursor_expired`, so consumers restart with a snapshot in the new shapes; the discovery document's `spec_version` shows the reason.
 
 ### 6.5 Grant changes
 A `grant` entry (`data`: the new Grant) with `resync: true` means the visible set changed: the consumer MUST restart without a cursor and sweep. `resync: false` entries are informational (for example scopes changed without affecting visibility).

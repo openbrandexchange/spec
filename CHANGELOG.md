@@ -9,7 +9,8 @@ Materials and care as terms with names ([proposal 0004](docs/proposals/0004-term
 ### Breaking
 - **`materials`**: `part`, the fibre's material and its qualifier are terms `{code, name}`, with `name` a LocalizedText per language (`null` for the part `main` and for codes the node has no name for). A fibre is `{"material": {...}, "percentage": 95, "qualifier": {...} | null}`; `fiber` and the flags `recycled`/`organic` are gone. One qualifier per fibre: `organic`, `recycled`, `regenerative`, or another code.
 - **`care`**: every entry has `code`, `category` (ISO 3758 group: `washing`, `bleaching`, `drying`, `ironing`, `professional_care`), `symbol` (GINETEX notation such as `1_C_40`, or `null`), `name` and `text`. `text` is now only the brand's own extra text.
-- Only 0.3 is maintained on `main`: `schemas/v0.1/` is removed and `site/` publishes `/schemas/v0.3/` only. The 0.1 and 0.2 schemas stay available in the tags `v0.1.0` and `v0.2.0`.
+- Only 0.3 is supported: the reference nodes and the conformance suite serve and test 0.3 only. The 0.1 and 0.2 schemas stay frozen in `schemas/v0.1/` and `schemas/v0.2/` and on the website at their `$id` paths.
+- **Cursors from before the upgrade expire**: a node that upgrades to 0.3 MUST answer every `/changes` cursor it issued before the upgrade with `410 cursor_expired` ([protocol.md §6](docs/protocol.md)), so a consumer that kept a 0.2 cursor restarts with a snapshot in the 0.3 shapes instead of keeping 0.2 objects for products that did not change. Discovery `spec_version` shows why.
 
 ### Added
 - **Vocabularies** in [`vocabularies/`](vocabularies): parts, materials, qualifiers and care codes with their names in English, Dutch, German and French, and for care the category and symbol. A node returns these names for known codes; a missing language is omitted, never an empty string.
@@ -21,7 +22,7 @@ Materials and care as terms with names ([proposal 0004](docs/proposals/0004-term
 - Proposal 0003 (home and sport) is retargeted to 0.4.
 
 ### Migration
-Consumers: read `part.code`, `fibers[].material.code` and `fibers[].qualifier.code` instead of `part`, `fiber` and the flags, and show `name` in the shopper's language. Nodes: store one qualifier code per fibre (`recycled: true` → `recycled`, `organic: true` → `organic`) and fill names, categories and symbols from `vocabularies/`; for codes outside the vocabularies keep what was written.
+Consumers: on `410 cursor_expired` restart `/changes` without a cursor, as before (no new code); then read `part.code`, `fibers[].material.code` and `fibers[].qualifier.code` instead of `part`, `fiber` and the flags, and show `name` in the shopper's language. Nodes: store one qualifier code per fibre (`recycled: true` → `recycled`, `organic: true` → `organic`) and fill names, categories and symbols from `vocabularies/`; for codes outside the vocabularies keep what was written; and expire every cursor issued before the upgrade (a version or epoch in the cursor, or an upgrade marker that cursors are compared with).
 
 ### Added (Excel import)
 - **Excel templates** for brands: [`templates/products.xlsx`](templates/products.xlsx) and [`templates/assets.xlsx`](templates/assets.xlsx), generated from the schemas, [import-format.md](docs/import-format.md) and the Kestrel fixtures by `npm run templates`. The columns of the canonical CSV in order, text-formatted cells (so Excel keeps GTINs), dropdowns for every enumerated column, an explanation per column in English and Dutch, how to save as CSV UTF-8 and the image naming rule. `npm run check` fails when they drift.

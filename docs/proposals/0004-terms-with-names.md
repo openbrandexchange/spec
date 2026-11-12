@@ -42,7 +42,7 @@ Goals:
 
 ## Compatibility
 
-Breaking. A 0.2 consumer that reads `part` as a string, or `fiber`, `recycled` and `organic`, breaks on a 0.3 node. There are no 0.1 or 0.2 publishers outside the reference implementations, which all move to 0.3 together; only 0.3 is maintained on `main`. The import CSV is unchanged apart from the qualifier: `100% cotton (organic)` and the 0.1 keys `organic_cotton`/`recycled_polyester` keep working.
+Breaking. A 0.2 consumer that reads `part` as a string, or `fiber`, `recycled` and `organic`, breaks on a 0.3 node. There are no 0.1 or 0.2 publishers outside the reference implementations, which all move to 0.3 together; only 0.3 is supported. The 0.1 and 0.2 schemas stay frozen at their `$id` paths. A node that upgrades expires every cursor it issued before (`410 cursor_expired`), so a consumer that kept a 0.2 cursor restarts with a snapshot in the 0.3 shapes; consumers need no new code for that. The import CSV is unchanged apart from the qualifier: `100% cotton (organic)` and the 0.1 keys `organic_cotton`/`recycled_polyester` keep working.
 
 **Migration for a consumer:** read `part.code`, `fibers[].material.code`, `fibers[].qualifier.code` (instead of `part`, `fiber`, `recycled: true`, `organic: true`) and show the `name` in the shopper's language. **For a node:** store the qualifier code per fibre (`recycled: true` → `recycled`, `organic: true` → `organic`), and fill names, categories and symbols from `vocabularies/`.
 
