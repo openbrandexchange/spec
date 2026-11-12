@@ -212,12 +212,54 @@ const EDGE_WARNINGS = [{ file: F, row: null, column: null, severity: "warning", 
 
 async function date1904() {
   const rows = [
-    { r: 1, cells: [C.inl("A1", "style_number"), C.inl("B1", "name:en"), C.inl("C1", "attr:launch_date")] },
-    { r: 2, cells: [C.inl("A2", "KX-9101"), C.inl("B2", "Date 1904"), C.n("C2", "44620", 1)] },
-    { r: 3, cells: [C.inl("A3", "KX-9102"), C.inl("B3", "ISO date cell"), C.d("C3", "2026-03-01T00:00:00")] },
+    { r: 1, cells: [C.inl("A1", "brand"), C.inl("B1", "style_number"), C.inl("C1", "name:en"), C.inl("D1", "attr:launch_date")] },
+    { r: 2, cells: [C.inl("A2", "Kestrel"), C.inl("B2", "KX-9101"), C.inl("C2", "Date 1904"), C.n("D2", "44620", 1)] },
+    { r: 3, cells: [C.inl("A3", "Kestrel"), C.inl("B3", "KX-9102"), C.inl("C3", "ISO date cell"), C.d("D3", "2026-03-01T00:00:00")] },
+    { r: 4, cells: [C.inl("A4", "Kestrel"), C.inl("B4", "KX-9103"), C.inl("C4", "Last 1904 date"), C.n("D4", "2957003", 1)] },
   ];
   return workbook({ sheets: [{ name: "products", xml: sheetXml(rows) }], date1904: true, styles: styles([{ id: 164, code: "dd/mm/yyyy" }]) });
 }
+const DATE1904_ROWS = [
+  ["brand", "style_number", "name:en", "attr:launch_date"],
+  ["Kestrel", "KX-9101", "Date 1904", "2026-03-01"],
+  ["Kestrel", "KX-9102", "ISO date cell", "2026-03-01"],
+  ["Kestrel", "KX-9103", "Last 1904 date", "9999-12-31"],
+];
+
+/**
+ * Empty header cells, header normalisation, CDATA and dates out of range. The sheet is not named
+ * Products, so it is found by its key column: "  Style - Number " normalises to style_number only when
+ * every run of white space and "-" counts as one "_" (§1.1).
+ */
+async function emptyHeader() {
+  const cdata = (ref, text) => `<c r="${ref}" t="inlineStr"><is><t><![CDATA[${text}]]></t></is></c>`;
+  const rows = [
+    // C1 has no cell, E1 is an error value (a conversion error that leaves the header empty)
+    { r: 1, cells: [C.inl("A1", "Brand"), C.inl("B1", "  Style - Number "), C.inl("D1", "name:en"), C.e("E1", "#REF!"), C.inl("F1", "season"), C.inl("G1", "attr:launch_date")] },
+    { r: 2, cells: [C.inl("A2", "Kestrel"), C.inl("B2", "KX-9201"), C.inl("C2", "spacer"), cdata("D2", "Cdata & <Tee>"), C.inl("E2", "x"), C.inl("F2", "SS26"), C.n("G2", "2958465", 1)] },
+    { r: 3, cells: [C.inl("A3", "Kestrel"), C.inl("B3", "KX-9202"), C.e("C3", "#DIV/0!"), C.inl("D3", "Error under an empty header")] },
+    { r: 4, cells: [C.inl("A4", "Kestrel"), C.inl("B4", "KX-9203"), C.inl("D4", "Year 10000"), C.n("G4", "2958466", 1)] },
+  ];
+  return workbook({
+    sheets: [
+      { name: "Notes", state: "hidden", xml: sheetXml([{ r: 1, cells: [C.inl("A1", "style_number")] }]) },
+      { name: "Export", xml: sheetXml(rows) },
+    ],
+    styles: styles([{ id: 14 }]),
+  });
+}
+const EMPTY_HEADER_ROWS = [
+  ["Brand", "  Style - Number ", "", "name:en", "", "season", "attr:launch_date"],
+  ["Kestrel", "KX-9201", "spacer", "Cdata & <Tee>", "x", "SS26", "9999-12-31"],
+  ["", "", "", "", "", "", ""],
+  ["", "", "", "", "", "", ""],
+];
+const EMPTY_HEADER_ERRORS = [
+  { file: "products.xlsx", row: 1, column: null, severity: "error", obx_error: "validation_failed", detail_prefix: "row 1, column E: ", value: "#REF!" },
+  { file: "products.xlsx", row: 3, column: null, severity: "error", obx_error: "validation_failed", detail_prefix: "row 3, column C: ", value: "#DIV/0!" },
+  { file: "products.xlsx", row: 4, column: "attr:launch_date", severity: "error", obx_error: "validation_failed", detail_prefix: "row 4, column attr:launch_date (G): ", value: "2958466" },
+];
+const EMPTY_HEADER_WARNINGS = ["C", "E"].map((l) => ({ file: "products.xlsx", row: null, column: null, severity: "warning", obx_error: "validation_failed", detail_prefix: `column ${l}: `, value: null }));
 
 // ------------------------------------------------------------------ the refusals
 const refusals = {
@@ -242,6 +284,10 @@ const refusals = {
   // The OLE compound file signature (encrypted .xlsx and legacy .xls start with it), then zeros.
   "encrypted.xlsx": async () => Buffer.concat([Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]), Buffer.alloc(504)]),
   "doctype.xlsx": async () => tiny({ workbookPrefix: '<!DOCTYPE workbook [<!ENTITY a "aaaaaaaaaa"><!ENTITY b "&a;&a;&a;&a;&a;&a;&a;&a;&a;&a;">]>' }),
+  // a macro part and a [Content_Types].xml that is not XML: the entry names are checked first (§5.6 step 5)
+  "unsafe-before-types.xlsx": async () => tiny({ extraParts: { "xl/vbaProject.bin": "not a real VBA project", "[Content_Types].xml": "<Types" } }),
+  // 1E+308 is outside Excel's range (§5.4, numbers, step 3)
+  "number-range.xlsx": async () => tiny({}, [{ r: 1, cells: [C.inl("A1", "style_number"), C.inl("B1", "weight_kg")] }, { r: 2, cells: [C.inl("A2", "KX-9907"), C.n("B2", "1E+308")] }]),
   "no-products-sheet.xlsx": async () => workbook({
     sheets: [
       { name: "Notes", xml: sheetXml([{ r: 1, cells: [C.inl("A1", "Hello")] }, { r: 2, cells: [C.inl("A2", "Nothing to import here")] }]) },
@@ -257,6 +303,8 @@ const REFUSAL_EXPECTED = {
   "not-a-workbook.xlsx": ["workbook_invalid", "A CSV file renamed to .xlsx: the name decides that it is read as a workbook, and it is not a zip file. It is not imported as a CSV.", "zip"],
   "encrypted.xlsx": ["workbook_invalid", "An OLE compound file (a password-protected workbook or a legacy .xls).", "encrypted"],
   "doctype.xlsx": ["workbook_invalid", "xl/workbook.xml has a DOCTYPE with entities: refused, entities are never expanded.", "DOCTYPE"],
+  "unsafe-before-types.xlsx": ["workbook_unsafe", "xl/vbaProject.bin and a [Content_Types].xml that is not well-formed: the entry names are checked before [Content_Types].xml is read, so the answer is workbook_unsafe, not workbook_invalid.", "vbaProject.bin"],
+  "number-range.xlsx": ["workbook_invalid", "A number cell holding 1E+308, outside Excel's range (1E-308 to below 1E+308).", "1E+308"],
   "no-products-sheet.xlsx": ["workbook_sheet_missing", "The only sheet named Products is hidden, and the visible sheet has no style_number column in row 1.", "Products"],
 };
 
@@ -283,6 +331,22 @@ const NUMBER_VECTORS = [
   ["0.1234567890123456789", "General", "0.123456789012346"],
   ["9.9999999999999999", "General", "10"],
   ["42", "@", "42"],
+  ["9.99999999999999E+307", "General", `999999999999999${"0".repeat(293)}`],
+  ["1E+308", "General", null],
+  ["9.999999999999999E+307", "General", null],
+  ["1E-308", "General", `0.${"0".repeat(307)}1`],
+  ["9.9999999999999999E-309", "General", `0.${"0".repeat(307)}1`],
+  ["1E-309", "General", null],
+  ["-1E+308", "General", null],
+  ["0E+99999999999", "General", "0"],
+  ["1E+99999999999", "General", null],
+  ["1E-99999999999", "General", null],
+  ["0.5E+3", "General", "500"],
+  [".5", "General", "0.5"],
+  ["5.", "General", "5"],
+  ["1,5", "General", null],
+  ["0x10", "General", null],
+  ["Infinity", "General", null],
 ].map(([v, format, text]) => ({ v, format, text }));
 const DATE_VECTORS = [
   ["46082", "date", false, "2026-03-01"],
@@ -294,6 +358,13 @@ const DATE_VECTORS = [
   ["60", "date", false, null],
   ["44620", "date", true, "2026-03-01"],
   ["0", "date", true, "1904-01-01"],
+  ["-1", "date", true, null],
+  ["2958465", "date", false, "9999-12-31"],
+  ["2958465.5", "datetime", false, "9999-12-31T12:00:00Z"],
+  ["2958465.999999", "datetime", false, null],
+  ["2958466", "date", false, null],
+  ["2957003", "date", true, "9999-12-31"],
+  ["2957004", "date", true, null],
 ].map(([v, kind, date1904, text]) => ({ v, kind, date1904, text }));
 const FORMAT_VECTORS = [
   [0, "General", null], [1, "0", null], [10, "0.00%", null], [11, "0.00E+00", null], [49, "@", null],
@@ -308,7 +379,7 @@ function expected() {
   const m = specModel();
   const assets = workbookModel("assets", m);
   return {
-    description: "Conformance I-IMP-9 and I-IMP-10 (optional: nodes that accept Excel workbooks, docs/import-format.md §5). For each workbook: send it as the import's products.xlsx (role products) or assets.xlsx (role assets). rows: the canonical rows the conversion gives, header first; rows[i] is Excel row i + 1, so a row that the conversion empties (a conversion error) or that is empty in the sheet is a row of empty strings. csv: the same rows as canonical CSV text (§5.3). errors / warnings: the ImportRowErrors of the conversion (detail starts with detail_prefix). import_errors: every ImportRowError with severity error of a dry-run import of the workbook on a node that holds fixtures/kestrel, sorted by row then column. error: the workbook-level refusal (one ImportRowError with row null, nothing imported); detail_contains is a hint for humans, not checked by obx-conformance. number_vectors / date_vectors / format_vectors: unit test vectors for §5.4.",
+    description: "Conformance I-IMP-9 and I-IMP-10 (optional: nodes that accept Excel workbooks, docs/import-format.md §5). For each workbook: send it as the import's products.xlsx (role products) or assets.xlsx (role assets), nothing else unless send says so (send.images_manifest: these files of fixtures/kestrel/images in the images_manifest, by file name and sha256). rows: the canonical rows the conversion gives, header first; rows[i] is Excel row i + 1, so a row that the conversion empties (a conversion error) or that is empty in the sheet is a row of empty strings. csv: the same rows as canonical CSV text (§5.3). errors / warnings: the ImportRowErrors of the conversion (detail starts with detail_prefix). import_errors: every ImportRowError with severity error of a dry-run import of the workbook on a node that holds fixtures/kestrel, sorted by row then column. error: the workbook-level refusal (§5.5: the import run fails with this code in ImportRun.error, nothing is imported, and its results hold this one ImportRowError with row null); detail_contains is a hint for humans, not checked by obx-conformance. number_vectors / date_vectors / format_vectors: unit test vectors for §5.4.",
     limits: LIMITS,
     cases: [
       {
@@ -318,8 +389,9 @@ function expected() {
       },
       {
         file: "assets-template.xlsx", role: "assets", sheet: "Assets",
-        what: "templates/assets.xlsx as it is: every column of import-format.md 2.3, the rows of fixtures/kestrel/assets.csv.",
-        rows: [assets.header, ...assets.rows], csv: canonicalCSV([assets.header, ...assets.rows]), errors: [], warnings: [],
+        what: "templates/assets.xlsx as it is: every column of import-format.md 2.3, the rows of fixtures/kestrel/assets.csv. Sent with the two images its rows name in the images_manifest (alone, each row would be files_missing, §2.2); on a node that holds the fixtures it is all unchanged.",
+        send: { images_manifest: assets.rows.map((r) => r[0]) },
+        rows: [assets.header, ...assets.rows], csv: canonicalCSV([assets.header, ...assets.rows]), errors: [], warnings: [], import_errors: [],
       },
       {
         file: "edge-cases.xlsx", role: "products", sheet: "Data",
@@ -333,10 +405,13 @@ function expected() {
       },
       {
         file: "date1904.xlsx", role: "products", sheet: "products",
-        what: "The 1904 date system (serial 44620 is 2026-03-01) with a custom date format, and a t=\"d\" cell (ISO date). The sheet name matches Products case-insensitively.",
-        rows: [["style_number", "name:en", "attr:launch_date"], ["KX-9101", "Date 1904", "2026-03-01"], ["KX-9102", "ISO date cell", "2026-03-01"]],
-        csv: canonicalCSV([["style_number", "name:en", "attr:launch_date"], ["KX-9101", "Date 1904", "2026-03-01"], ["KX-9102", "ISO date cell", "2026-03-01"]]),
-        errors: [], warnings: [],
+        what: "The 1904 date system (serial 44620 is 2026-03-01, 2957003 is 9999-12-31, the last date) with a custom date format, and a t=\"d\" cell (ISO date). The sheet name matches Products case-insensitively.",
+        rows: DATE1904_ROWS, csv: canonicalCSV(DATE1904_ROWS), errors: [], warnings: [], import_errors: [],
+      },
+      {
+        file: "empty-header.xlsx", role: "products", sheet: "Export",
+        what: "The visible sheet Export is found by its key column: B1 is \"  Style - Number \", which §1.1 normalises to style_number (each run of white space and \"-\" is one \"_\"). Row 1: C1 is empty and E1 is #REF! (a conversion error at row 1, column null, locator \"row 1, column E: \"), so columns C and E have no header: their values are ignored with one warning each (\"column C: \", \"column E: \"), and the CSV import gives no unknown-column warning for them. Row 2: a CDATA section is text; serial 2958465 is 9999-12-31. Row 3: #DIV/0! under the empty header C (conversion error, locator \"row 3, column C: \"; row skipped). Row 4: serial 2958466 (10000-01-01) is out of range (conversion error; row skipped).",
+        rows: EMPTY_HEADER_ROWS, csv: canonicalCSV(EMPTY_HEADER_ROWS), errors: EMPTY_HEADER_ERRORS, warnings: EMPTY_HEADER_WARNINGS, import_errors: EMPTY_HEADER_ERRORS,
       },
       ...Object.entries(REFUSAL_EXPECTED).map(([file, [code, what, hint]]) => ({ file, role: "products", what, error: { file: F, row: null, column: null, severity: "error", obx_error: code, detail_contains: hint } })),
     ],
@@ -353,6 +428,7 @@ async function build() {
     "assets-template.xlsx": readFileSync(join(root, "templates", "assets.xlsx")),
     "edge-cases.xlsx": await edgeCases(),
     "date1904.xlsx": await date1904(),
+    "empty-header.xlsx": await emptyHeader(),
   };
   for (const [name, fn] of Object.entries(refusals)) files[name] = await fn();
   return { files, expected: JSON.stringify(expected(), null, 2) + "\n" };

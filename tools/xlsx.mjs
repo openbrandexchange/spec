@@ -42,8 +42,10 @@ export const ROLES = { products: { sheet: "products", keys: ["style_number", "st
 // ------------------------------------------------------------------ helpers
 export const colLetter = (n) => { let s = ""; for (; n > 0; n = Math.floor((n - 1) / 26)) s = String.fromCharCode(65 + ((n - 1) % 26)) + s; return s; };
 const colNumber = (letters) => [...letters].reduce((n, c) => n * 26 + c.charCodeAt(0) - 64, 0);
-/** CSV header normalisation (import-format.md §1.1). */
-export const normalizeHeader = (h) => h.trim().toLowerCase().replace(/[ -]/g, "_");
+/** White space in header names (import-format.md §1.1): space, tab, CR, LF. */
+export const trimHeader = (h) => h.replace(/^[ \t\r\n]+|[ \t\r\n]+$/g, "");
+/** CSV header normalisation (import-format.md §1.1): trimmed, lowercase, each run of white space and "-" is one "_". */
+export const normalizeHeader = (h) => trimHeader(h).toLowerCase().replace(/[ \t\r\n-]+/g, "_");
 
 /** Parses one XML part; DOCTYPE is refused (§5.6), entities other than the five predefined ones fail. */
 function parseXML(text, part, handlers) {
@@ -51,6 +53,8 @@ function parseXML(text, part, handlers) {
   p.on("doctype", () => { throw new WorkbookError("workbook_invalid", `${part} has a DOCTYPE`); });
   p.on("error", (e) => { throw new WorkbookError("workbook_invalid", `${part} is not well-formed XML (${e.message})`); });
   for (const [ev, fn] of Object.entries(handlers)) p.on(ev, fn);
+  // §5.4: a CDATA section is text, like the same characters written as text
+  if (handlers.text) p.on("cdata", handlers.text);
   try {
     p.write(text).close();
   } catch (e) {
@@ -85,9 +89,11 @@ export function numberText(lex) {
   const all = m[2] + (m[3] ?? "");
   const z = all.length - all.replace(/^0+/, "").length;
   let digits = all.slice(z);
+  if (digits.replace(/0+$/, "") === "") return "0"; // zero, whatever the exponent
+  // an exponent of more than 9 digits is out of range for every non-zero number (§5.4, numbers, step 3)
+  if (m[4] !== undefined && m[4].replace(/^[+-]?0*/, "").length > 9) return null;
   // the decimal point sits after `point` digits of `digits` (negative: zeros in front)
   let point = m[2].length + Number(m[4] ?? 0) - z;
-  if (digits === "") return "0";
   // round to 15 significant digits
   if (digits.length > 15) {
     const up = digits[15] >= "5";
@@ -100,7 +106,8 @@ export function numberText(lex) {
     digits = kept.join("");
   }
   digits = digits.replace(/0+$/, "");
-  if (digits === "") return "0";
+  // Excel's range (§5.4, numbers, step 3): 1E-308 <= |x| < 1E+308, so 10^(point-1) is the leading digit's place
+  if (point - 1 >= 308 || point - 1 < -308) return null;
   let int, frac;
   if (point <= 0) { int = "0"; frac = "0".repeat(-point) + digits; }
   else if (point >= digits.length) { int = digits + "0".repeat(point - digits.length); frac = ""; }
@@ -153,6 +160,7 @@ export function serialText(lex, kind, date1904) {
   if (secs >= 86400) { days++; secs -= 86400; }
   const epoch = date1904 ? Date.UTC(1904, 0, 1) : Date.UTC(1899, 11, 30);
   const d = new Date(epoch + days * 86400000);
+  if (Number.isNaN(d.getTime()) || d.getUTCFullYear() > 9999) return null; // after 9999-12-31, Excel's last date
   const ymd = `${pad(d.getUTCFullYear(), 4)}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
   if (kind === "date") return ymd;
   return `${ymd}T${pad(Math.floor(secs / 3600))}:${pad(Math.floor(secs / 60) % 60)}:${pad(secs % 60)}Z`;
@@ -167,17 +175,17 @@ export function isoCellText(lex) {
 
 // ------------------------------------------------------------------ the package
 async function openPackage(buf) {
-  // §5.6 step 1: signature
+  // §5.6 step 1 (size) is the node's upload limit; step 2: signature
   const b = Buffer.from(buf);
   if (b.length >= 8 && b.readUInt32BE(0) === 0xd0cf11e0 && b.readUInt32BE(4) === 0xa1b11ae1)
     throw new WorkbookError("workbook_invalid", "the file is an encrypted workbook or a legacy .xls file (OLE compound file)");
   if (b.length < 4 || b.readUInt32BE(0) !== 0x504b0304) throw new WorkbookError("workbook_invalid", "the file is not an .xlsx workbook (not a zip file)");
-  // step 2: readable zip
+  // step 3: readable zip
   let zip;
   try { zip = await JSZip.loadAsync(b, { checkCRC32: true }); }
   catch (e) { throw new WorkbookError("workbook_invalid", `the zip cannot be read (${e.message})`); }
   const entries = Object.values(zip.files).filter((f) => !f.dir);
-  // step 3: limits on the declared sizes
+  // step 4: limits on the declared sizes
   if (entries.length > LIMITS.entries) throw new WorkbookError("workbook_too_large", `${entries.length} zip entries (limit ${LIMITS.entries})`);
   let total = 0;
   for (const f of entries) {
@@ -188,26 +196,33 @@ async function openPackage(buf) {
   if (total > LIMITS.totalBytes) throw new WorkbookError("workbook_too_large", `the parts expand to ${total} bytes (limit ${LIMITS.totalBytes})`);
   const byName = new Map(entries.map((f) => [f.name.toLowerCase(), f]));
   let inflated = 0;
+  const done = new Map(); // a part read twice (a sheet looked at for §5.2 and then converted) counts once
   const read = async (name) => {
     const f = byName.get(name.replace(/^\//, "").toLowerCase());
     if (!f) return null;
+    if (done.has(f.name)) return done.get(f.name);
     const data = await f.async("uint8array");
     inflated += data.length;
-    if (data.length > f._data.uncompressedSize || inflated > LIMITS.totalBytes) throw new WorkbookError("workbook_too_large", `${f.name} expands beyond its declared size`);
+    if (data.length > f._data.uncompressedSize) throw new WorkbookError("workbook_too_large", `${f.name} expands beyond its declared size`);
+    if (inflated > LIMITS.totalBytes) throw new WorkbookError("workbook_too_large", `the parts read expand to more than ${LIMITS.totalBytes} bytes`);
     const text = new TextDecoder("utf-8").decode(data);
+    done.set(f.name, text);
     return text;
   };
   return { entries, read, byName };
 }
 
-function checkUnsafeNames(entries, contentTypes) {
-  // §5.6 step 4: macros, ActiveX, external links, data connections
+/** §5.6 step 5, first part: macros, ActiveX, external links, data connections by entry name. */
+function checkUnsafeNames(entries) {
   for (const f of entries) {
     const n = f.name.toLowerCase();
     if (n.split("/").pop() === "vbaproject.bin") throw new WorkbookError("workbook_unsafe", `the workbook contains macros (${f.name})`);
     for (const pre of ["xl/macrosheets/", "xl/activex/", "xl/externallinks/"]) if (n.startsWith(pre)) throw new WorkbookError("workbook_unsafe", `the workbook contains ${pre.slice(3, -1)} (${f.name})`);
     if (n === "xl/connections.xml") throw new WorkbookError("workbook_unsafe", "the workbook contains data connections (xl/connections.xml)");
   }
+}
+/** §5.6 step 5, second part: the content types of [Content_Types].xml. */
+function checkUnsafeTypes(contentTypes) {
   for (const t of contentTypes) if (/macroenabled|vbaproject/i.test(t)) throw new WorkbookError("workbook_unsafe", `the workbook is macro-enabled (${t})`);
 }
 
@@ -354,14 +369,15 @@ function cellValue(c, fmt, date1904, shared) {
     }
     default: {
       if (c.v === null || c.v.trim() === "") return { text: "" };
+      // a date cell holds a number too: one that is not a number, or is outside Excel's range, is workbook_invalid
+      let t = numberText(c.v);
+      if (t === null) throw new WorkbookError("workbook_invalid", `a number cell holds "${c.v.length > 40 ? c.v.slice(0, 40) + "…" : c.v}", which is not a number Excel can store`);
       const f = fmt(c.s);
       const kind = dateKind(f.id, f.code);
       if (kind) {
-        const t = serialText(c.v, kind, date1904);
-        return t === null ? { error: c.v, reason: "a date before 1900-03-01" } : { text: t };
+        const d = serialText(c.v, kind, date1904);
+        return d === null ? { error: c.v, reason: `a date outside ${date1904 ? "1904-01-01" : "1900-03-01"} to 9999-12-31` } : { text: d };
       }
-      let t = numberText(c.v);
-      if (t === null) throw new WorkbookError("workbook_invalid", `a number cell holds "${c.v}"`);
       const w = zeroPad(f.code);
       if (w && /^\d+$/.test(t) && t.length < w) t = t.padStart(w, "0");
       return { text: t };
@@ -373,13 +389,15 @@ function cellValue(c, fmt, date1904, shared) {
 export async function convertWorkbook(buf, role) {
   const r = ROLES[role];
   if (!r) throw new Error(`unknown role ${role}`);
-  const pkg = await openPackage(buf);
+  const pkg = await openPackage(buf); // §5.6 steps 1 to 4
+  // step 5: unsafe parts, first by entry name (nothing inflated), then by content type; a missing or
+  // unreadable [Content_Types].xml is workbook_invalid (step 6) at that point
+  checkUnsafeNames(pkg.entries);
   const ctText = await pkg.read("[Content_Types].xml");
-  // step 4 needs the content types; a package without them is invalid (step 5)
-  const ct = ctText === null ? null : parseContentTypes(ctText);
-  checkUnsafeNames(pkg.entries, ct ? ct.all : []);
-  // step 5: structure
-  if (!ct) throw new WorkbookError("workbook_invalid", "[Content_Types].xml is missing");
+  if (ctText === null) throw new WorkbookError("workbook_invalid", "[Content_Types].xml is missing");
+  const ct = parseContentTypes(ctText);
+  checkUnsafeTypes(ct.all);
+  // step 6: structure
   const rootRelsText = await pkg.read("_rels/.rels");
   if (rootRelsText === null) throw new WorkbookError("workbook_invalid", "_rels/.rels is missing");
   const main = parseRels(rootRelsText, "_rels/.rels").find((x) => x.type === REL_OFFICE_DOCUMENT && !x.external);
@@ -391,7 +409,7 @@ export async function convertWorkbook(buf, role) {
   const wb = parseWorkbook(wbText, wbPart);
   const relsText = await pkg.read(relsOf(wbPart));
   const rels = relsText === null ? [] : parseRels(relsText, relsOf(wbPart));
-  // step 6: external relationships of the workbook
+  // step 7: external relationships of the workbook
   const ext = rels.find((x) => x.external);
   if (ext) throw new WorkbookError("workbook_unsafe", `the workbook refers to an external resource (${ext.type.split("/").pop()})`);
   const relById = new Map(rels.map((x) => [x.id, x]));
@@ -400,7 +418,7 @@ export async function convertWorkbook(buf, role) {
   const fmt = parseStyles(stylesRel ? await pkg.read(resolve(wbPart, stylesRel.target)) : null);
   const shared = parseSharedStrings(ssRel ? await pkg.read(resolve(wbPart, ssRel.target)) : null);
 
-  // step 7: sheet selection
+  // step 8: sheet selection
   const visible = [];
   for (const s of wb.sheets) {
     const rel = relById.get(s.rid);
@@ -423,7 +441,7 @@ export async function convertWorkbook(buf, role) {
   }
   if (!chosen) throw new WorkbookError("workbook_sheet_missing", `no visible sheet is named ${r.sheet === "products" ? "Products" : "Assets"} or has a ${r.keys[0]} column in row 1`);
 
-  // step 8 and 9: cells
+  // step 9 and 10: cells
   const { rows, merges } = await readSheet(chosen, false);
   for (const ref of merges) {
     const m = /^([A-Z]+)(\d+)(?::([A-Z]+)(\d+))?$/.exec(ref ?? "");
@@ -457,12 +475,13 @@ export async function convertWorkbook(buf, role) {
     const cells = values.get(rn) ?? new Map();
     const bad = [...cells].filter(([cn, v]) => cn <= width && v.error !== undefined).sort((a, b) => a[0] - b[0]);
     if (bad.length) {
-      for (const [cn, v] of bad) errors.push(locate({ row: rn, cn, column: header[cn - 1].trim(), obx_error: "validation_failed", value: v.error, reason: v.reason }));
+      for (const [cn, v] of bad) errors.push(locate({ row: rn, cn, column: trimHeader(header[cn - 1]), obx_error: "validation_failed", value: v.error, reason: v.reason }));
       out.push(header.map(() => ""));
     } else out.push(header.map((_, i) => cells.get(i + 1)?.text ?? ""));
   }
+  // §5.3: values in a column without a header (right of W, or under an empty header cell in row 1)
   const stray = new Set();
-  for (const [, cells] of values) for (const cn of cells.keys()) if (cn > width) stray.add(cn);
+  for (const [rn, cells] of values) for (const cn of cells.keys()) if (cn > width || (rn > 1 && trimHeader(header[cn - 1]) === "")) stray.add(cn);
   for (const cn of [...stray].sort((a, b) => a - b)) warnings.push({ file: r.file, row: null, column: null, severity: "warning", obx_error: "validation_failed", detail: `column ${colLetter(cn)}: has values but no header in row 1; ignored`, value: null });
   return { sheet: chosen.name, rows: out, errors: errors.map((e) => ({ file: r.file, ...e })), warnings };
 }
@@ -470,8 +489,8 @@ export async function convertWorkbook(buf, role) {
 function locate({ row, cn, column, obx_error, value, reason }) {
   return { row, column: column || null, severity: "error", obx_error, detail: `${prefix(row, column, colLetter(cn))}the cell holds ${reason}`, value };
 }
-/** §5.5 locator at the start of every detail about a cell: "row 12, column ean (C): ". */
-export const prefix = (row, column, letter) => `row ${row}, column ${column ? `${column} ` : ""}(${letter}): `;
+/** §5.5 locator at the start of every detail about a cell: "row 12, column ean (C): ", or "row 12, column C: " without a header. */
+export const prefix = (row, column, letter) => (column ? `row ${row}, column ${column} (${letter}): ` : `row ${row}, column ${letter}: `);
 
 /** Canonical CSV text of rows (§5.3): ",", CRLF, quotes only where needed. */
 export function canonicalCSV(rows) {
