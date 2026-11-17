@@ -236,7 +236,7 @@
         "material_unknown",
         "qualifier_deprecated"
       ],
-      "description": "Warning with a stable code: the label completeness warnings material_unknown (a material code outside vocabularies/materials.json) and qualifier_deprecated (a fibre written with the draft single `qualifier`); see docs/import-format.md#label-completeness. Never blocks a write or publishing. Clients MUST ignore unknown codes."
+      "description": "Warning with a stable code: the label completeness warnings, material_unknown (a material code outside vocabularies/materials.json) and qualifier_deprecated (a fibre written with the draft single `qualifier`); see docs/import-format.md#label-completeness. Never blocks a write or publishing. Clients MUST ignore unknown codes."
     }
   }
 }

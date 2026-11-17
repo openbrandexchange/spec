@@ -18,6 +18,7 @@ What 0.3.0 asks of an implementation beyond 0.2 ([CHANGELOG](../CHANGELOG.md)), 
 | Expired or tampered signed URL → `403 forbidden` | rendition, export and download URLs | | P-MEDIA-2, S-URL-1 |
 | Secret rotation → `invalid_token`; `access_revoked` only for revoked access | token check | | P-AUTH-2, A-KEY-1; the SDK fetches a new token on `invalid_token` |
 | `Idempotency-Key`: same body replays, another body → `409 idempotency_key_reused`; also on `POST /exports` | batch, imports, exports | | I-IDEM-1, P-EXP-1 |
+| The draft single `qualifier` is read as `qualifiers: [it]` on write, with the warning `qualifier_deprecated`; never returned | Ingest and admin write paths | sends `qualifiers` only | I-MAT-1 |
 | Warning `material_unknown` | imports and Ingest results | shows it like the label warnings | I-IMP-8 |
 | Language tags with script or numeric region (`zh-Hant`, `es-419`) | validation, `name:<lang>` columns | language picker | types |
 | Verdict `INCOMPLETE`; the delete cascade in P-CAT-4 | | | runner and report |

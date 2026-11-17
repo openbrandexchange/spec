@@ -4582,7 +4582,7 @@ components:
         - fibre_percentages_not_100
         - material_unknown
         - qualifier_deprecated
-      description: "Warning with a stable code: the label completeness warnings material_unknown (a material code outside vocabularies/materials.json) and qualifier_deprecated (a fibre written with the draft single `qualifier`); see docs/import-format.md#label-completeness. Never blocks a write or publishing. Clients MUST ignore unknown codes."
+      description: "Warning with a stable code: the label completeness warnings, material_unknown (a material code outside vocabularies/materials.json) and qualifier_deprecated (a fibre written with the draft single `qualifier`); see docs/import-format.md#label-completeness. Never blocks a write or publishing. Clients MUST ignore unknown codes."
     IngestResult:
       $schema: https://json-schema.org/draft/2020-12/schema
       $id: https://openbrandexchange.com/schemas/v0.3/IngestResult.json
