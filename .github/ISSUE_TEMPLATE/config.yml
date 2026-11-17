@@ -3,6 +3,9 @@ contact_links:
   - name: Report a vulnerability (private)
     url: https://github.com/openbrandexchange/spec/security/advisories/new
     about: Never report security problems in a public issue. You can also write to security@openbrandexchange.com.
-  - name: Other questions
+  - name: Questions and ideas (Discussions)
+    url: https://github.com/openbrandexchange/spec/discussions
+    about: Not sure yet what should change? Ask or share an idea in Discussions first.
+  - name: Other questions (e-mail)
     url: mailto:hello@openbrandexchange.com
-    about: General questions about Open Brand Exchange.
+    about: General questions about Open Brand Exchange that you prefer not to ask in public.

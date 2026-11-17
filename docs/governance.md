@@ -41,6 +41,14 @@ In short, the statutes will fix five things:
 - Substantive RFCs stay open for comments for at least 14 days before a decision. Decisions and their reasons are written in the pull request.
 - Versions follow [versioning.md](versioning.md). A maintainer tags a release after the changelog is complete; nothing is released by merging alone.
 
+## Taking part
+
+Anyone can take part, with a free GitHub account and without writing code:
+
+- **[Discussions](https://github.com/openbrandexchange/spec/discussions)**: questions (*Q&A*), ideas (*Ideas*), implementations (*Show and tell*) and announcements of new versions. Every open proposal has its own thread there, linked at the top of the proposal.
+- **Issues and pull requests** for concrete changes, as in the process above.
+- Decisions are only taken in public: in the pull request or the proposal's thread, with the reasons written down.
+
 ## Contributions
 
 Contributions are accepted under the [Developer Certificate of Origin](https://developercertificate.org/) (`Signed-off-by:` in every commit, see [CONTRIBUTING.md](../CONTRIBUTING.md)); there is no contributor licence agreement. Contributors keep the copyright in their contributions and license them under the repository's licence. The foundation therefore owns only what the publisher (and later the foundation itself) wrote, and relies on the licences for everything else; that is enough, because the licences are irrevocable. Everyone taking part follows the [Code of Conduct](../CODE_OF_CONDUCT.md).

@@ -2,6 +2,8 @@
 
 Status: **accepted in principle** by the owner 2026-11-12 · non-breaking (additive), target spec **0.4.0** · details open for comments ([governance](../governance.md#process))
 
+Discussion: [#6](https://github.com/openbrandexchange/spec/discussions/6) — comments, questions and objections go there.
+
 > **Retargeted to 0.4** (2026-11-17): 0.3.0 ships without this proposal; none of it is in [protocol.md](../protocol.md) 0.3. Where this text says "0.3" for its own parts ("webhooks 0.3", `obx_version` 0.3 as the signal), read 0.4, and where it says "0.2" for the state before it, read 0.3. Two things it touched are settled in 0.3.0 already: a `limit` above the maximum is clamped, and `Idempotency-Key` with a different body is `409 idempotency_key_reused`.
 
 Alongside [proposal 0004](https://github.com/openbrandexchange/spec/blob/obx-0.3-materiaal-objecten/docs/proposals/0004-terms-with-names.md) (materials and care as terms with names, on the 0.3 branch): 0004 changes the shape of `materials` and `care`; this proposal does not filter or search on either, so the two do not overlap. Filters on material codes can follow once 0004's vocabulary is released (open decision 12). Proposal 0003 (home and sport) adds `item_type` keys; the `item_type` filter below is an open vocabulary and needs nothing extra.

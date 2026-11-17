@@ -4,7 +4,8 @@ Thank you for helping. Brands, retailers, software vendors and individuals are a
 
 ## Before you start
 
-- **Questions and ideas:** open an issue with the *Question* or *Spec change* template.
+- **Join the discussion:** [GitHub Discussions](https://github.com/openbrandexchange/spec/discussions) is the place to talk before anything is decided. Ask in *Q&A* ("how do I map our size runs?"), float an idea in *Ideas* ("a field for repair instructions"), and tell what you built in *Show and tell*. You only need a free GitHub account. Every open proposal in [docs/proposals](docs/proposals) gets its own discussion thread, linked from the proposal.
+- **Concrete problems and changes:** open an issue with the *Problem*, *Question* or *Spec change* template once it is clear what should change.
 - **Vulnerabilities:** never in public; see [SECURITY.md](SECURITY.md).
 - **Anything beyond wording** (a new field, endpoint, error code, change of behaviour): open an issue or a pull request with the `RFC` label and a short rationale first. Substantive RFCs stay open for comments for at least 14 days.
 

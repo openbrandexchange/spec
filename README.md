@@ -57,6 +57,16 @@ For an **implementer**: read [`docs/protocol.md`](docs/protocol.md) and [`docs/i
 | [admin-ui](https://github.com/openbrandexchange/admin-ui) | shared web UI: brand admin + retailer portal | Apache-2.0 |
 | [node-go](https://github.com/openbrandexchange/node-go) · [node-php](https://github.com/openbrandexchange/node-php) · [node-ts](https://github.com/openbrandexchange/node-ts) | the brand node in Go, PHP and TypeScript (Cloudflare Workers) | AGPL-3.0 |
 
+## Get involved
+
+Brands, retailers, software vendors and anyone else with an interest in product data are welcome. You don't need to write code.
+
+- **Talk:** [GitHub Discussions](https://github.com/openbrandexchange/spec/discussions): questions in *Q&A*, ideas in *Ideas*, what you built in *Show and tell*. Announcements of new versions are posted there too; click *Watch* on this repository (or *Custom → Discussions*) to follow them.
+- **Comment on proposals:** each open proposal in [docs/proposals](docs/proposals) has a discussion thread. Substantive proposals stay open for comments for at least 14 days before a decision ([governance](docs/governance.md#process)).
+- **Propose a change:** an issue with the *Spec change* template, or a pull request ([CONTRIBUTING.md](CONTRIBUTING.md)).
+- **Implement it:** run the conformance suite ([docs/conformance.md](docs/conformance.md)) and tell us in *Show and tell*; independent implementations are what moves the standard to a steering group ([governance](docs/governance.md)).
+- **Privately:** hello@openbrandexchange.com; security problems only via [SECURITY.md](SECURITY.md).
+
 ## Working on this repository
 
 Needs Node.js 20 or later.
