@@ -1813,7 +1813,8 @@ components:
         - footwear_materials_missing
         - fibre_percentages_not_100
         - material_unknown
-      description: "Warning with a stable code: the label completeness warnings and material_unknown (a material code outside vocabularies/materials.json); see docs/import-format.md#label-completeness. Never blocks a write or publishing. Clients MUST ignore unknown codes."
+        - qualifier_deprecated
+      description: "Warning with a stable code: the label completeness warnings material_unknown (a material code outside vocabularies/materials.json) and qualifier_deprecated (a fibre written with the draft single `qualifier`); see docs/import-format.md#label-completeness. Never blocks a write or publishing. Clients MUST ignore unknown codes."
     IngestResult:
       $schema: https://json-schema.org/draft/2020-12/schema
       $id: https://openbrandexchange.com/schemas/v0.3/IngestResult.json
@@ -1984,6 +1985,13 @@ components:
                   exclusiveMinimum: 0
                   maximum: 100
                   description: Share of the part in percent, or null when the brand does not state one (leather on a bag, a trim, a composition without percentages). Responses always include the property; on write it may be left out (= null).
+                qualifier:
+                  deprecated: true
+                  writeOnly: true
+                  anyOf:
+                    - $ref: "#/components/schemas/term"
+                    - type: "null"
+                  description: "Deprecated, write paths only: the single qualifier of drafts of 0.3. A node reads it as `qualifiers: [it]` when `qualifiers` is absent (null = none; when both are present `qualifiers` wins) and warns `qualifier_deprecated`. A response never contains it."
                 qualifiers:
                   type: array
                   items:
