@@ -1306,7 +1306,7 @@ components:
       name: Idempotency-Key
       in: header
       required: false
-      description: Repeating a request with the same key within 24 h returns the original response (same job).
+      description: Repeating a request with the same key and the same body within 24 h returns the original response (same job). The same key with a different body is 409 `idempotency_key_reused`.
       schema:
         type: string
         maxLength: 200
@@ -1463,8 +1463,8 @@ components:
       description: Brand-side publication state. Only 'published' objects (with published parents) are visible through the OBX Protocol.
     LanguageTag:
       type: string
-      description: BCP 47 language tag, restricted to language or language-REGION.
-      pattern: ^[a-z]{2,3}(-[A-Z]{2})?$
+      description: "BCP 47 language tag in canonical case: language, optional script, optional region (ISO 3166-1 alpha-2 or UN M.49): nl, de-CH, zh-Hant, sr-Latn-RS, es-419. No variants, extensions or private use."
+      pattern: ^[a-z]{2,3}(-[A-Z][a-z]{3})?(-([A-Z]{2}|[0-9]{3}))?$
       examples:
         - nl
         - en
@@ -1627,6 +1627,7 @@ components:
         - workbook_sheet_missing
         - workbook_too_large
         - unsafe_url
+        - idempotency_key_reused
         - csrf_failed
         - invalid_credentials
         - account_blocked
@@ -1764,11 +1765,11 @@ components:
       $schema: https://json-schema.org/draft/2020-12/schema
       $id: https://openbrandexchange.com/schemas/v0.3/LocalizedText.json
       title: LocalizedText
-      description: 'Free text per language, keyed by BCP 47 tag. At least one language. Example: {"nl": "Trui", "en": "Sweater"}.'
+      description: 'Free text per language, keyed by BCP 47 tag in its canonical form: language, optional script, optional region (`nl`, `de-CH`, `zh-Hant`, `sr-Latn-RS`, `es-419`). At least one language. Example: {"nl": "Trui", "en": "Sweater"}.'
       type: object
       minProperties: 1
       patternProperties:
-        ^[a-z]{2,3}(-[A-Z]{2})?$:
+        ^[a-z]{2,3}(-[A-Z][a-z]{3})?(-([A-Z]{2}|[0-9]{3}))?$:
           type: string
           minLength: 1
           maxLength: 20000
@@ -1811,7 +1812,8 @@ components:
         - animal_origin_unknown
         - footwear_materials_missing
         - fibre_percentages_not_100
-      description: Label completeness warning (see docs/import-format.md#label-completeness). Never blocks a write or publishing. Clients MUST ignore unknown codes.
+        - material_unknown
+      description: "Warning with a stable code: the label completeness warnings and material_unknown (a material code outside vocabularies/materials.json); see docs/import-format.md#label-completeness. Never blocks a write or publishing. Clients MUST ignore unknown codes."
     IngestResult:
       $schema: https://json-schema.org/draft/2020-12/schema
       $id: https://openbrandexchange.com/schemas/v0.3/IngestResult.json
@@ -1967,7 +1969,7 @@ components:
           fibers:
             type: array
             minItems: 1
-            description: Percentages of one part SHOULD sum to 100.
+            description: The percentages of one part SHOULD sum to 100 when every fibre states one; a fibre without a percentage has `percentage` null.
             items:
               type: object
               properties:
@@ -1976,9 +1978,12 @@ components:
                     - $ref: "#/components/schemas/term"
                   description: "Material code: the English textile fibre name of Annex I of Reg. (EU) 1007/2011 in lowercase with _ (linen for flax), e.g. cotton, wool, polyester, polyamide, elastane, viscose, lyocell; the list with names is vocabularies/materials.json. Recycled or organic content is a qualifier, not a material."
                 percentage:
-                  type: number
+                  type:
+                    - number
+                    - "null"
                   exclusiveMinimum: 0
                   maximum: 100
+                  description: Share of the part in percent, or null when the brand does not state one (leather on a bag, a trim, a composition without percentages). Responses always include the property; on write it may be left out (= null).
                 qualifiers:
                   type: array
                   items:
@@ -1986,7 +1991,6 @@ components:
                   description: "What the fibre is, apart from which fibre, in the order the brand states it: organic, in_conversion, recycled, pre_consumer, post_consumer, regenerative (vocabularies/qualifiers.json; unknown codes are allowed, a code appears at most once). Empty = none. A node returns [] when the fibre has none; on write the property may be left out (= none)."
               required:
                 - material
-                - percentage
               additionalProperties: false
               patternProperties:
                 ^x-[a-z0-9]+-[a-z0-9_-]+$: true

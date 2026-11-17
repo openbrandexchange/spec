@@ -810,7 +810,7 @@ components:
       name: Idempotency-Key
       in: header
       required: false
-      description: Repeating a request with the same key within 24 h returns the original response (same job).
+      description: 'Repeating a request with the same key and the same body within 24 h returns the original response (same job). The same key with a different body is 409 `idempotency_key_reused`.'
       schema: {type: string, maxLength: 200}
     ContentSha256:
       name: OBX-Content-SHA256

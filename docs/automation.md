@@ -126,7 +126,7 @@ Use a plain **HTTP Request** step. Authentication: header `Authorization` = `Bea
    {"style_number": "KO-1001", "name": {"en": "Merino Crew Sweater", "nl": "Merino trui met ronde hals"},
     "item_type": "sweater", "season": "AW26", "materials": [{"part": {"code": "main"}, "fibers": [{"material": {"code": "merino_wool"}, "percentage": 100}]}]}
    ```
-2. **Size / colour**: `PUT {OBX_URL}/obx/v1/ingest/variants/{GTIN}` with `{"product_external_id": "KO-1001", "gtin": "2000100101025", "color": {"code": "NVY", "name": {"en": "Navy"}}, "size": "M"}`.
+2. **Size / colour**: `PUT {OBX_URL}/obx/v1/ingest/variants/KO-1001-NVY-M` (your own id for the variant: style, colour and size; not the EAN, which may arrive later or change) with `{"product_external_id": "KO-1001", "gtin": "2000100101025", "color": {"code": "NVY", "name": {"en": "Navy"}}, "size": "M"}`.
 3. **Image**: first `PUT {OBX_URL}/obx/v1/ingest/assets/KO-1001_NVY_1` with `{"product_external_id": "KO-1001", "color_code": "NVY", "role": "packshot", "view": "front", "position": 1}`, then `PUT {OBX_URL}/obx/v1/ingest/assets/KO-1001_NVY_1/files/original` with the **binary** file as body (n8n: "Send Binary Data"; Make: "Request content" = the file data; Zapier: Webhooks "Custom Request" with the file). On nodes that do not render images themselves (`GET {OBX_URL}/obx/v1/ingest` shows `"server_generated": false`) use `obx` (or the admin's Imports screen) instead: they make the web versions on your computer and upload them with the original. A scheduled import delivers originals only, so on such a node its images are served in their original size until the web versions are added.
 4. **Take something offline**: `PATCH {OBX_URL}/obx/v1/ingest/products/KO-1001`, header `Content-Type: application/merge-patch+json`, body `{"status": "unpublished"}`.
 
@@ -151,7 +151,7 @@ done
 # 2. One batch of up to 1000 operations (NDJSON), processed in order.
 cat > batch.ndjson <<'EOF'
 {"op":"upsert","kind":"product","external_id":"KO-1001","data":{"style_number":"KO-1001","name":{"en":"Merino Crew Sweater"}}}
-{"op":"upsert","kind":"variant","external_id":"2000100101025","data":{"product_external_id":"KO-1001","gtin":"2000100101025","color":{"code":"NVY"},"size":"M"}}
+{"op":"upsert","kind":"variant","external_id":"KO-1001-NVY-M","data":{"product_external_id":"KO-1001","gtin":"2000100101025","color":{"code":"NVY"},"size":"M"}}
 {"op":"upsert","kind":"asset","external_id":"KO-1001_NVY_1","data":{"product_external_id":"KO-1001","color_code":"NVY","role":"packshot","view":"front","position":1,"files":{"original":{"sha256":"<sha of KO-1001_NVY_1.jpg>"}}}}
 {"op":"unpublish","kind":"product","external_id":"KO-0999"}
 EOF

@@ -2,6 +2,18 @@
 
 What is ready, what only the owner can still do (in order), and what is known not to work yet. Written on **2026-09-28** after a last review of every repository; non-normative, and outdated once the steps below are done. The test results per portal are on the [implementations](implementations.md) page.
 
+## For 0.3.0 (2026-11-17)
+
+This page was written for the first release (0.1.0) on 2026-09-28 and is kept as the record of that review; the commits, test counts and owner actions below are from that day and have not been checked again. 0.1 and 0.2 were withdrawn before anyone used them ([CHANGELOG](../CHANGELOG.md)), so **0.3.0 is the first version a brand or retailer builds on**, and from it on `/obx/v1` only changes by addition ([versioning.md](versioning.md)). That makes the order of the 0.3.0 release matter:
+
+1. **spec**: `npm run check` green on the release commit, then tag `v0.3.0`. Nothing that changes a shape or an id may wait for 0.3.1.
+2. **obx-go**: the suite implements every test id of [conformance.md](conformance.md) for 0.3.0 (new: I-EXT-1, I-IMP-12, the verdict `INCOMPLETE`, the delete cascade in P-CAT-4, the clamp, `invalid_token` after a rotation, `idempotency_key_reused`), and the mock passes it.
+3. **admin-ui**: `dist/` rebuilt from the 0.3 sources and tagged; the three nodes vendor that one tag.
+4. **node-go, node-php, node-ts**: `obx-conformance all` ends in `CONFORMANT` (not `INCOMPLETE`) on each, and the interop run gives identical traces; only then are they tagged and is [implementations.md](implementations.md) updated with the 0.3.0 numbers.
+5. **website**: the 0.3 schemas at `/schemas/v0.3/` and the API reference match the tag.
+
+Until step 4 is done, no node is conformant with 0.3.0 and the tables below say nothing about 0.3.
+
 ## In short
 
 The code is ready for a first brand. The three portals, the SDK and `obx` command, the admin UI, the specification and the website pass their own test suites; all three portals pass the conformance suite (61 of 61 checks, the rate-limit checks included) and the cross-portal interop run; every problem this review found is fixed and pushed ([list](#found-and-fixed-in-the-last-review)).

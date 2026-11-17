@@ -186,9 +186,9 @@ function parseCSV(text) {
   return rows.filter((r) => r.some((c) => c !== ""));
 }
 const MEASUREMENT_COLUMNS = ["height_cm", "width_cm", "depth_cm", "weight_kg", "volume_l", "volume_expanded_l", "handle_drop_cm", "strap_length_cm", "laptop_max_inch", "heel_height_cm", "shaft_height_cm", "inseam_cm"];
-const PRODUCT_COLUMNS = new RegExp(`^(brand|product_id|style_number|name|description|item_type|item_subtype|target_group|season|collection|gpc_brick|materials|contains_animal_origin|footwear_materials|care|country_of_origin|certifications|dpp_url|status|variant_id|gtin|sku|color_code|color_name|color_family|supplier_color|size|size_length|size_system|${MEASUREMENT_COLUMNS.join("|")}|variant_status|image_files)(:[a-z]{2,3}(-[A-Z]{2})?)?$|^(attr|feature):[a-z][a-z0-9_]{0,63}$`);
-const ASSET_COLUMNS = /^(file|asset_id|product_id|style_number|color_code|position|role|view|alt_text|license|license_text|channels|territories|embargo_until|expires_at|credit|model_release|ai_generated|ai_edited|source|c2pa|c2pa_manifest_url|generator|status)(:[a-z]{2,3}(-[A-Z]{2})?)?$/;
-const FIBER = String.raw`\d+(\.\d+)?%\s+[a-z][a-z0-9_]*(\s*\([a-z][a-z0-9_]*\))*`;
+const PRODUCT_COLUMNS = new RegExp(`^(brand|product_id|style_number|name|description|item_type|item_subtype|target_group|season|collection|gpc_brick|materials|contains_animal_origin|footwear_materials|care|country_of_origin|certifications|dpp_url|status|variant_id|gtin|sku|color_code|color_name|color_family|supplier_color|size|size_length|size_system|${MEASUREMENT_COLUMNS.join("|")}|variant_status|image_files)(:[a-z]{2,3}([-_][a-z]{4})?([-_]([a-z]{2}|[0-9]{3}))?)?$|^(attr|feature):[a-z][a-z0-9_]{0,63}$`);
+const ASSET_COLUMNS = /^(file|asset_id|product_id|style_number|color_code|position|role|view|alt_text|license|license_text|channels|territories|embargo_until|expires_at|credit|model_release|ai_generated|ai_edited|source|c2pa|c2pa_manifest_url|generator|status)(:[a-z]{2,3}([-_][a-z]{4})?([-_]([a-z]{2}|[0-9]{3}))?)?$/;
+const FIBER = String.raw`(\d+(\.\d+)?%\s+)?[a-z][a-z0-9_]*(\s*\([a-z][a-z0-9_]*\))*`; // the percentage is optional (null = not stated); decimal point only
 const PART = String.raw`\s*(([a-z][a-z0-9_]*)\s*:\s*)?${FIBER}(\s*,\s*${FIBER})*\s*`;
 const MATERIALS = new RegExp(`^${PART}(;${PART})*$`);
 const ROLES = ["packshot", "model", "detail", "ghost", "flatlay", "scene", "swatch", "size_chart", "other"];
@@ -281,12 +281,12 @@ export function parseMaterialsCell(cell) {
   return cell.split(";").map((chunk) => {
     const m = /^\s*(?:([a-z][a-z0-9_]*)\s*:)?(.*)$/.exec(chunk);
     const fibers = m[2].split(",").map((f) => {
-      let [, pct, fiber, rest] = /^\s*(\d+(?:\.\d+)?)%\s+([a-z][a-z0-9_]*)((?:\s*\([a-z][a-z0-9_]*\))*)\s*$/.exec(f);
+      let [, pct, fiber, rest] = /^\s*(?:(\d+(?:\.\d+)?)%\s+)?([a-z][a-z0-9_]*)((?:\s*\([a-z][a-z0-9_]*\))*)\s*$/.exec(f);
       // One code per bracket: "(recycled) (post_consumer)".
       const qualifiers = [...rest.matchAll(/\(([a-z][a-z0-9_]*)\)/g)].map((m) => m[1]);
       // 0.1 keys: recycled_polyester -> polyester with qualifier recycled (first)
       for (const prefix of ["recycled", "organic"]) if (fiber.startsWith(`${prefix}_`)) { fiber = fiber.slice(prefix.length + 1); qualifiers.unshift(prefix); }
-      return { material: term("materials", fiber), percentage: Number(pct), qualifiers: [...new Set(qualifiers)].map((q) => term("qualifiers", q)) };
+      return { material: term("materials", fiber), percentage: pct === undefined ? null : Number(pct), qualifiers: [...new Set(qualifiers)].map((q) => term("qualifiers", q)) };
     });
     return { part: term("parts", m[1] ?? "main"), fibers };
   });
@@ -323,6 +323,14 @@ export function parseMeasurements(get) {
   }
   return Object.keys(out).length ? out : null;
 }
+// The default variant external id (docs/import-format.md 1.2.1): style-colour-size[-size_length], never the GTIN;
+// what an external id cannot hold (control characters and "/") becomes "_".
+export const defaultVariantId = (style, color, size, length) =>
+  [style, color, size, length].filter((x) => x).join("-").replace(/[\u0000-\u001f\u007f/]/g, "_");
+for (const [args, want] of [[["KO-1004", "IND", "32", "34"], "KO-1004-IND-32-34"], [["KL-8101", "IND", "32/34", ""], "KL-8101-IND-32_34"], [["KO-1005", "COG", "ONE SIZE", ""], "KO-1005-COG-ONE SIZE"], [["KO-1", "BLK", "", ""], "KO-1-BLK"]]) {
+  checked++;
+  if (defaultVariantId(...args) !== want) fail("default variant id", `${JSON.stringify(args)} -> ${defaultVariantId(...args)}`);
+}
 const productsFromCsv = new Map();
 productRows.slice(1).forEach((row, i) => {
   const where = `products.csv row ${i + 1}`;
@@ -340,7 +348,7 @@ productRows.slice(1).forEach((row, i) => {
     features: Object.keys(features).length ? features : null,
   };
   const variant = {
-    external_id: col(row, "gtin"),
+    external_id: defaultVariantId(col(row, "style_number"), col(row, "color_code"), get("size"), get("size_length")),
     color_family: get("color_family") || null,
     size_length: get("size_length") || null,
     measurements: parseMeasurements(get),
@@ -397,7 +405,15 @@ export function labelWarnings(rows, hdr) {
       const fw = get("footwear_materials") ? parseFootwear(get("footwear_materials")) : null;
       if (!fw || Object.values(fw).some((v) => !v)) w("footwear_materials", "footwear_materials_missing");
     }
-    for (const p of mats ?? []) if (Math.abs(p.fibers.reduce((a, f) => a + f.percentage, 0) - 100) > 1e-9) w("materials", "fibre_percentages_not_100");
+    // The sum is checked when every fibre of the part states a percentage; stated percentages above 100 are always wrong.
+    for (const p of mats ?? []) {
+      const sum = p.fibers.reduce((a, f) => a + (f.percentage ?? 0), 0);
+      if (p.fibers.every((f) => f.percentage !== null) ? Math.abs(sum - 100) > 1e-9 : sum > 100 + 1e-9) w("materials", "fibre_percentages_not_100");
+    }
+    // material_unknown: once per code outside vocabularies/materials.json, for every item type.
+    for (const code of new Set((mats ?? []).flatMap((p) => p.fibers.map((f) => f.material.code)))) {
+      if (!VOCAB.materials.has(code)) out.push({ file: "products.csv", row: i + 1, column: "materials", severity: "warning", obx_error: "material_unknown", value: code });
+    }
   });
   return out;
 }

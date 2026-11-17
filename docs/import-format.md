@@ -34,7 +34,7 @@ Product columns (the same values repeated on every row of the product; a differe
 | `season` | no | `season` | free text, e.g. `SS26`, `AW26`, `NOS` |
 | `collection` | no | `collection` | |
 | `gpc_brick` | no | `gpc_brick` | 8 digits |
-| `materials` | no | `materials` | grammar in 1.4, e.g. `outer: 100% polyester (recycled); lining: 88% polyamide, 12% elastane` |
+| `materials` | no | `materials` | grammar in 1.4, e.g. `outer: 100% polyester (recycled); lining: 88% polyamide, 12% elastane`; a material without a percentage is allowed (`outer: leather`) |
 | `contains_animal_origin` | no | `contains_animal_origin` | `yes` / `no` (booleans as in 2.2); empty = not stated (`null`) |
 | `footwear_materials` | no | `footwear_materials` | `upper: leather; lining_and_sock: textile; outer_sole: other` (1.6) |
 | `care` | no | `care` | care codes separated by `\|` (section 1.5) |
@@ -49,8 +49,8 @@ Variant columns:
 
 | Column | Required | Maps to | Notes |
 |---|---|---|---|
-| `variant_id` | no | variant external id | default: `gtin` as written; without GTIN `<style_number>-<color_code>-<size>` |
-| `gtin` | recommended | `gtin` | aliases `ean`, `barcode`. Digits only after removing spaces; 8/12/13/14 digits with a valid check digit. Excel-mangled values (`2.00010010102E+12`) are an error, not a guess. |
+| `variant_id` | no | variant external id | default: `<style_number>-<color_code>-<size>[-<size_length>]`, never the GTIN; a row with a GTIN first looks for the variant that has it ([1.2.1](#variant-identity)) |
+| `gtin` | recommended | `gtin` | aliases `ean`, `barcode`. Digits only after removing spaces; 8/12/13/14 digits with a valid check digit. Excel-mangled values (`2.00010010102E+12`) are an error, not a guess. It may arrive or change later without making a new variant ([1.2.1](#variant-identity)). |
 | `sku` | no | `sku` | |
 | `color_code` | yes, when any variant column is filled | `color.code` | alias `colour_code` |
 | `color_name`, `color_name:<lang>` | no | `color.name` | alias `colour_name` |
@@ -65,19 +65,41 @@ Variant columns:
 
 A row without any variant column (no `gtin`, `variant_id`, `sku`, `color_code`, `size`) only creates/updates the product; values in its `color_family`, `size_length` and measurement cells are ignored with a warning.
 
-Exports (portal "CSV" download) use the same columns in the order of the tables above, with `name:<lang>`, `description:<lang>` and `color_name:<lang>` for every content language instead of the plain columns, a `feature:<key>` column for every key of the [feature registry](protocol.md#features) and for every other feature key the exported products have (after the registry keys, sorted), plus a final `image_files` column (file names of the visible images of that variant's colour, separated by `|`). An exported CSV can be imported again.
+#### <a id="variant-identity"></a>1.2.1 Which variant a row is
+
+A variant's external id is its key for the life of the variant; a GTIN is a value that can arrive late, change or be mistyped. So the GTIN is never the default key, and a row finds its variant in this order:
+
+1. **`variant_id` is filled:** that external id, in this product. Nothing else is tried. (If the row's GTIN belongs to another variant: `gtin_conflict`.)
+2. **The row has a GTIN** and a variant **of this product** already has that GTIN (compared as GTIN-14, so `0871…` and `871…` are the same): the row is that variant. It keeps its external id and its protocol `id`, also when the row's colour, size or `size_length` differ from what is stored (they are updated).
+3. **Otherwise** the default external id, in this product: `<style_number>-<color_code>-<size>[-<size_length>]`: the four cell values as written (after trimming), joined with `-`, where an empty `size` and an empty `size_length` are left out together with their `-`. Every character an external id cannot hold (the control characters U+0000 to U+001F and U+007F, and `/`) is replaced by `_`: size `32/34` gives `KO-1004-IND-32_34`, size `32` with `size_length` `34` gives `KO-1004-IND-32-34`. Nothing else is changed (no lowercasing, spaces stay: `KO-1005-COG-ONE SIZE`). A variant with that external id is updated; otherwise a new variant with that external id is created. A result longer than 200 characters is `validation_failed` (column `variant_id`): give a `variant_id`.
+
+Consequences, all tested by conformance I-IMP-12 ([`fixtures/imports/variant-identity.expected.json`](../fixtures/imports)):
+
+- **A GTIN that arrives later** (a pre-order file without EANs, then the file with them) lands on the variant made by step 3: one `variant` upsert, no second variant, no delete.
+- **A GTIN that changes** (a corrected EAN, a leading zero lost in a spreadsheet) is an update of the variant found by step 3; the old GTIN is free again.
+- **A GTIN of a variant of another product** is `gtin_conflict` for that row (column `gtin`, `value` the GTIN, the `detail` names the other product's style number); the row is skipped. A barcode moves between products only by first removing it from the old variant (an empty `gtin` cell) or deleting that variant. A GTIN of another variant of the same product can only happen in step 1 and is `gtin_conflict` too.
+- **Two rows of one file that are the same variant** (by step 1, 2 or 3): the later row is an error `validation_failed` with column `variant_id` and `value` the external id; the first row stands. Two sizes that differ only in `/` versus `_` therefore need a `variant_id`.
+- The row's own columns `size`, `size_length` and `color_code` follow rule 9 as usual: step 3 uses the cells of the row, not stored values, so a file that addresses existing variants without a `size` column needs `gtin` or `variant_id`.
+- Variants made by an earlier version of this format, whose external id is their GTIN, keep that id: step 2 finds them.
+
+Exports (portal "CSV" download) use the same columns in the order of the tables above, with `name:<lang>`, `description:<lang>` and `color_name:<lang>` for every content language instead of the plain columns, a `feature:<key>` column for every key of the [feature registry](protocol.md#features) and for every other feature key the exported products have (after the registry keys, sorted), plus a final `image_files` column (file names of the visible images of that variant's colour, separated by `|`). The export always fills `variant_id`, so an exported CSV can be imported again and addresses the same variants.
 
 ### 1.3 Languages
-`name:nl`, `name:en`, … set that language. The plain column sets the **import default language**: `options.default_language`, else the node's first content language. Both plain and `:<default>` present → the tagged column wins.
+`name:nl`, `name:en`, … set that language. The tag after the colon is a BCP 47 language tag of the form language, optional script, optional region ([LocalizedText](../schemas/LocalizedText.json): `nl`, `de-CH`, `zh-Hant`, `es-419`); it is matched case-insensitively, `_` is read as `-` (header normalisation turns `-` into `_`), and the node stores the canonical case (`name:ZH_hant` = `zh-Hant`). A tag of another form is an unknown column. The plain column sets the **import default language**: `options.default_language`, else the node's first content language. Both plain and `:<default>` present → the tagged column wins.
 
 ### 1.4 <a id="materials"></a>Materials grammar
 ```
 materials := part (";" part)*
 part      := [part_name ":"] fiber ("," fiber)*        part_name defaults to "main"
-fiber     := number "%" material_code qualifier*      e.g. "95% cotton", "100% polyester (recycled) (post_consumer)"
+fiber     := [number "%"] material_code qualifier*    e.g. "95% cotton", "100% polyester (recycled) (post_consumer)", "leather"
+number    := digits ["." digits]                      a decimal point, never a comma: "95.5% cotton"
 qualifier := "(" qualifier_code ")"                   e.g. "(organic)", "(recycled)", "(regenerative)"
 ```
 Examples: `100% cotton (organic)` · `100% cotton (organic) (regenerative)` · `outer: 65% cotton, 35% polyamide; lining: 100% polyester (recycled)`. Part, material and qualifier codes are lowercase with `_`; a node lowercases and replaces spaces with `_` (`Merino Wool` → `merino_wool`). The file holds codes only: the node adds the names from [`vocabularies/`](../vocabularies) ([protocol.md §5.9.1](protocol.md#composition)). Each qualifier in brackets adds a code to that fibre's `qualifiers`, in order; a repeated code counts once. Brackets hold one code each (`(organic, recycled)` is a `validation_failed` error: the comma separates fibres). Percentages of a part SHOULD sum to 100; for textile item types a part that does not gives the warning `fibre_percentages_not_100` ([rule 10](#label-completeness)).
+
+- **A fibre without a percentage** (`outer: leather`, `lining: 60% cotton, polyester`, or just `leather`) has `percentage: null`: the brand does not state a share. Use it for what has no meaningful percentage (leather on a bag, a trim); the composition of a textile product still needs its percentages by law, and the node does not invent them.
+- **Decimal point only.** The comma separates fibres, so `95,5% cotton, 4,5% elastane` cannot be told apart from four fibres. A fibre that consists of digits only (the `95` and the `4` here) is an error `validation_failed` for the row, column `materials`, and its `detail` MUST start with `materials: decimal comma` (then free text, for example "write 95.5% with a point"). Measurement cells are single numbers and keep accepting a comma (1.6).
+- <a id="material-unknown"></a>**Unknown material codes are kept, with a warning.** A material code that matches the key pattern but is not in [`vocabularies/materials.json`](../vocabularies/materials.json) (`katoen`, `co`, a typing error) is stored as written, with one ImportRowError per such code and product: `severity` `warning`, `obx_error` `material_unknown`, column `materials`, `value` the code, the row of the product's first row. It is reported for every item type, after the product's label completeness warnings (rule 10), in the order the codes first appear. Unknown part and qualifier codes are kept without a warning.
 
 **0.1 fibre keys.** A key `recycled_<fibre>` or `organic_<fibre>` (the 0.1 keys `recycled_cotton`, `recycled_polyester`, `recycled_polyamide`, `organic_cotton`) is normalised to the material with that qualifier: `100% recycled_polyester` = `100% polyester (recycled)`, `100% organic_cotton` = `100% cotton (organic)`. Files written for 0.1 therefore keep working.
 
@@ -176,7 +198,7 @@ Scheduled pull imports (SFTP folder, S3 prefix) treat the folder like an unpacke
 ## 4. Processing rules
 
 1. Parse `products.csv`, then `assets.csv`, then images. Apply per product in file order: product, its variants, then its assets. Within one product and colour, asset positions from one import are applied atomically (swapping two positions in one import is fine).
-2. Each row and each image is independent: an error skips that row or file only, with an [ImportRowError](../schemas/ImportRowError.json) (`file`, `row`, `column`, `severity`, `obx_error`, `detail`, `value`).
+2. Each row and each image is independent: an error skips that row or file only, with an [ImportRowError](../schemas/ImportRowError.json) (`file`, `row`, `column`, `severity`, `obx_error`, `detail`, `value`). Extension members (`x-<vendor>-…`, [protocol.md §2](protocol.md#2-conventions)) have no columns: an import leaves the ones an object has untouched (rule 9).
 3. Writes have ingest semantics ([ingest.md](ingest.md)): idempotent upserts, `unchanged` produces no change entry, the same `/changes` rules.
 4. `mode: upsert` (default) only touches what is in the import. `mode: mirror` also unpublishes products of the brands present in the file that the file does not contain; refused (`mass_unpublish_refused`) when that would be more than half of them, unless `allow_mass_unpublish`.
 5. `dry_run` validates and reports counts and errors without writing.
@@ -191,9 +213,9 @@ Scheduled pull imports (SFTP folder, S3 prefix) treat the folder like an unpacke
 | `fibre_composition_missing` | a textile item type without `materials` | `materials` | the fibre composition of a textile product is mandatory on the label and before purchase, also online: Reg. (EU) No 1007/2011 Art. 9, 11 and 16(1). For bags and luggage it applies when the product is a textile product (at least 80 % textile fibres by weight, Art. 2(2)) |
 | `animal_origin_unknown` | a textile item type with `contains_animal_origin` empty while `materials` has a fibre `leather`, `suede`, `fur`, `down`, `feather`, `wool` (or a kind of wool such as `merino_wool`, `lambswool`, `cashmere`, `alpaca`, `mohair`) or `silk` | `contains_animal_origin` | a textile product with non-textile parts of animal origin must say so on the label: Reg. (EU) No 1007/2011 Art. 12. Wool and silk are textile fibres and do not need the statement themselves; the warning asks the brand to state `yes` or `no` |
 | `footwear_materials_missing` | a footwear item type without `footwear_materials`, or with one of its three parts empty | `footwear_materials` | the material of the upper, the lining and sock and the outer sole is mandatory on footwear labels: Directive 94/11/EC |
-| `fibre_percentages_not_100` | a part of `materials` whose percentages do not sum to 100 (one per part) | `materials` | the composition is given as percentages of the total fibre weight: Reg. (EU) No 1007/2011 Art. 9 (and Art. 11 per component) |
+| `fibre_percentages_not_100` | a part of `materials` in which every fibre states a percentage and they do not sum to 100, or whose stated percentages sum to more than 100 (one per part). A part with a fibre without a percentage ([1.4](#materials)) is otherwise not checked | `materials` | the composition is given as percentages of the total fibre weight: Reg. (EU) No 1007/2011 Art. 9 (and Art. 11 per component) |
 
-The import of [`fixtures/kestrel`](../fixtures/kestrel) gives none of these warnings.
+The import of [`fixtures/kestrel`](../fixtures/kestrel) gives none of these warnings, and no `material_unknown` ([1.4](#material-unknown)), which is a fifth stable warning code next to these four.
 
 ## 5. <a id="excel"></a>Excel workbooks (node feature, non-normative)
 

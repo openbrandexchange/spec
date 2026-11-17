@@ -1,6 +1,8 @@
-# Proposal 0005: browsing, webhooks and notifications (spec 0.3)
+# Proposal 0005: browsing, webhooks and notifications (spec 0.4)
 
-Status: **accepted in principle** by the owner 2026-11-12 · non-breaking (additive), target spec **0.3.0** · details open for comments ([governance](../governance.md#process))
+Status: **accepted in principle** by the owner 2026-11-12 · non-breaking (additive), target spec **0.4.0** · details open for comments ([governance](../governance.md#process))
+
+> **Retargeted to 0.4** (2026-11-17): 0.3.0 ships without this proposal; none of it is in [protocol.md](../protocol.md) 0.3. Where this text says "0.3" for its own parts ("webhooks 0.3", `obx_version` 0.3 as the signal), read 0.4, and where it says "0.2" for the state before it, read 0.3. Two things it touched are settled in 0.3.0 already: a `limit` above the maximum is clamped, and `Idempotency-Key` with a different body is `409 idempotency_key_reused`.
 
 Alongside [proposal 0004](https://github.com/openbrandexchange/spec/blob/obx-0.3-materiaal-objecten/docs/proposals/0004-terms-with-names.md) (materials and care as terms with names, on the 0.3 branch): 0004 changes the shape of `materials` and `care`; this proposal does not filter or search on either, so the two do not overlap. Filters on material codes can follow once 0004's vocabulary is released (open decision 12). Proposal 0003 (home and sport) adds `item_type` keys; the `item_type` filter below is an open vocabulary and needs nothing extra.
 
@@ -359,7 +361,7 @@ Ingest and portal profiles:
 
 | Id | Test |
 |---|---|
-| I-IMP-11 | import `KO-1001_NVY_1.jpg` with new bytes: one asset upsert with `previous_sha256`; the same file again: all unchanged, no entries; a metadata-only change keeps `previous_sha256` |
+| I-IMP-12 | import `KO-1001_NVY_1.jpg` with new bytes: one asset upsert with `previous_sha256`; the same file again: all unchanged, no entries; a metadata-only change keeps `previous_sha256` |
 | A-CAT-2 | "replace image" through the admin catalog API gives the same entry and `previous_sha256` as the Ingest API |
 | A-NOTIF-1 | (if `portal.notifications`) subscription CRUD for a retailer user; brand outside the grant → 422; language not offered → 422; an admin cannot create one for a user |
 | A-NOTIF-2 | immediate: ingest a new Highland product → after `notifications/run` one delivery for the `collections: [Highland]` subscriber, none for `[Trail]`; 30 writes in a minute → one mail |

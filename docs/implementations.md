@@ -2,6 +2,28 @@
 
 The known implementations of Open Brand Exchange, what they pass, where they run and what is still missing. Non-normative; updated by hand. What is left before the first release, and who does it: [go-live](go-live.md).
 
+## Status for spec 0.3.0 (2026-11-17)
+
+**No implementation has been run against the final 0.3.0 conformance suite yet.** Everything from "The pieces" down is the record of the **0.1.0** run of 2026-09-28 (commits and numbers as they were then) and is kept as history until the 0.3.0 run replaces it. The reference nodes, the admin UI and obx-go are on their `obx-0.3-terms` branches; until each of them passes `obx-conformance all` with the verdict `CONFORMANT` ([conformance.md](conformance.md): a skipped REQUIRED test now gives `INCOMPLETE`), none of them may be called conformant with 0.3.
+
+What 0.3.0 asks of an implementation beyond 0.2 ([CHANGELOG](../CHANGELOG.md)), as a checklist:
+
+| Change | Nodes (node-go, node-php, node-ts) | admin-ui | obx-go |
+|---|---|---|---|
+| Materials and care are terms with names; `qualifiers` is a list per fibre | store and return the 0.3 shapes; expire older cursors | forms and labels for the 0.3 shapes | types, CSV writer, P-CAT-5/6 |
+| `percentage` may be `null`; the import grammar takes a fibre without a percentage and refuses a decimal comma | validation, parser, warning rule | materials editor allows an empty percentage | types (`*float64`), `canonicalcsv` |
+| Default variant external id `<style>-<color>-<size>[-<size_length>]`; a row finds its variant by GTIN first | import ([import-format.md §1.2.1](import-format.md#variant-identity)) | the "new variant" form proposes that id | `canonicalcsv`, `obx push`, I-IMP-12, the expected fixtures |
+| Extension members `x-<vendor>-…` are stored and returned; other unknown members are ignored with a warning, never `422` | every write path and every response | leaves them alone when saving a form | I-EXT-1; SDK types keep unknown `x-` members |
+| A `limit` above the maximum is clamped | `/products`, `/changes` | | P-CAT-2 |
+| Expired or tampered signed URL → `403 forbidden` | rendition, export and download URLs | | P-MEDIA-2, S-URL-1 |
+| Secret rotation → `invalid_token`; `access_revoked` only for revoked access | token check | | P-AUTH-2, A-KEY-1; the SDK fetches a new token on `invalid_token` |
+| `Idempotency-Key`: same body replays, another body → `409 idempotency_key_reused`; also on `POST /exports` | batch, imports, exports | | I-IDEM-1, P-EXP-1 |
+| Warning `material_unknown` | imports and Ingest results | shows it like the label warnings | I-IMP-8 |
+| Language tags with script or numeric region (`zh-Hant`, `es-419`) | validation, `name:<lang>` columns | language picker | types |
+| Verdict `INCOMPLETE`; the delete cascade in P-CAT-4 | | | runner and report |
+
+## The 0.1.0 run (history)
+
 Status of **2026-09-28** (evening), spec **0.1.0**. The results below come from runs against spec `1fb2fbf`, [obx-go](https://github.com/openbrandexchange/obx-go) `1ddc0fa` (conformance suite, CLI, interop tool), [admin-ui](https://github.com/openbrandexchange/admin-ui) `v0.1.1` (`d3ee574`, vendored by all three portals), node-go `36e582e`, node-php `117164c` and node-ts `d34633a`. They include the 0.1.0 clarifications and the three import and download rules added last ([import-format.md](import-format.md) rules 8 and 9 and §2.3; conformance I-IMP-5, I-IMP-6 and the `assets.csv` checks in A-PORT-1).
 
 ## The pieces

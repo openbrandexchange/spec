@@ -158,7 +158,7 @@ PRODUCTS = [
      ["30", "32", "34"], [("front", None), ("back", None), ("detail", "detail")]),
     ("kestrel", "KO-1005", ("Leather Weekender Bag", "Leren weekendtas"),
      ("Full-grain leather weekender with cotton lining.", "Weekendtas van volnerf leer met katoenen voering."),
-     "bag", "unisex", "NOS", "Travel", "outer: 100% leather; lining: 100% cotton",
+     "bag", "unisex", "NOS", "Travel", "outer: leather; lining: 100% cotton",
      "do_not_wash|do_not_bleach|do_not_tumble_dry|do_not_iron|do_not_dry_clean", "IT",
      [("COG", "Cognac", "Cognac", "Saddle", "#8B4A1F")],
      ["ONE SIZE"], [("front", None), ("side", None), ("inside", None)]),
@@ -262,6 +262,14 @@ def sku(style, code, size):
     return f"{style}-{code}-{size.replace(' ', '')}" + (f"-{length}" if length else "")
 
 
+def variant_id(style, code, size):
+    """The default variant external id (import-format.md 1.2): style-colour-size[-size_length], never the GTIN;
+    characters an external id cannot hold (control characters and "/") become "_"."""
+    length = EXTRA.get(style, {}).get("size_length", {}).get(size)
+    ext = "-".join(x for x in (style, code, size, length) if x)
+    return "".join("_" if (ch == "/" or ord(ch) < 32 or ord(ch) == 127) else ch for ch in ext)
+
+
 def csv_number(n):
     return str(n)
 
@@ -337,7 +345,8 @@ def parse_materials(s):
         part, _, fibers = chunk.partition(":") if ":" in chunk else ("main", "", chunk)
         out = []
         for f in fibers.split(","):
-            pct, _, fiber = f.strip().partition("% ")
+            f = f.strip()
+            pct, _, fiber = f.partition("% ") if "%" in f else (None, "", f)  # "leather": no percentage stated
             qualifiers = []
             fiber = fiber.strip()
             while fiber.endswith(")"):  # "(recycled) (post_consumer)": one code per bracket
@@ -352,7 +361,7 @@ def parse_materials(s):
             for q in qualifiers:
                 if q not in seen:
                     seen.append(q)
-            out.append({"material": term("materials", fiber), "percentage": int(pct),
+            out.append({"material": term("materials", fiber), "percentage": None if pct is None else int(pct),
                         "qualifiers": [term("qualifiers", q) for q in seen]})
         parts.append({"part": term("parts", part.strip()), "fibers": out})
     return parts
@@ -420,6 +429,7 @@ def main():
 
     write_expected(image_meta, gtins)
     write_import_cases(gtins)
+    write_identity_cases(gtins)
     write_ingest()
     total = sum(os.path.getsize(os.path.join(dp, f)) for dp, _, fs in os.walk(HERE) for f in fs)
     print(f"{len(rows)} variant rows, {len(image_meta)} images, fixtures total {total / 1024:.0f} KiB")
@@ -483,7 +493,7 @@ def expected_product(style, image_meta, gtins):
         for size in sizes:
             g = gtins[(style, code, size)]
             x = EXTRA[style]
-            variants.append({"id": ANY_ID, "external_id": g, "product_id": ANY_ID, "brand_id": ANY_ID, "gtin": gtin14(g),
+            variants.append({"id": ANY_ID, "external_id": variant_id(style, code, size), "product_id": ANY_ID, "brand_id": ANY_ID, "gtin": gtin14(g),
                              "gtin_original": g, "sku": sku(style, code, size),
                              "color": {"code": code, "name": {"en": cen, "nl": cnl}, "supplier_color": sup, "family": COLOR_FAMILY[code]},
                              "size": size, "size_length": x.get("size_length", {}).get(size), "size_system": size_system(style, size),
@@ -549,6 +559,7 @@ def write_import_cases(gtins):
         if os.path.isfile(os.path.join(out, old)):
             os.remove(os.path.join(out, old))
     cabin, plus = gtins[("KO-1008", "BLK", "CABIN")], gtins[("KO-1008", "BLK", "CABIN PLUS")]
+    cabin_id, plus_id = variant_id("KO-1008", "BLK", "CABIN"), variant_id("KO-1008", "BLK", "CABIN PLUS")
     bag, boot = gtins[("KO-1009", "CHR", "ONE SIZE")], gtins[("KO-1010", "BRN", "41")]
     f1008 = dict(EXTRA["KO-1008"]["features"])
     m_cabin = dict(EXTRA["KO-1008"]["measurements"]["CABIN"])
@@ -566,30 +577,35 @@ def write_import_cases(gtins):
          [("product", "upsert", "KO-1008")], {"KO-1008": {"features": {k: v for k, v in f1008.items() if k != "wheels"}}}, {}),
         ("3-measurement-update.csv", ["brand", "style_number", "name:en", "gtin", "color_code", "weight_kg"],
          [["Kestrel", "KO-1008", name, cabin, "BLK", "2,7"]],
-         "One measurement column with a decimal comma changes only that measurement of that variant; the product is unchanged.",
+         "One measurement column with a decimal comma changes only that measurement of that variant; the product is unchanged. "
+         "The row has no variant_id and no size: the variant is found by its GTIN and keeps its external id (1.2.1).",
          {"rows": 1, "created": 0, "updated": 1, "unchanged": 1, "errors": 0}, [],
-         [("variant", "upsert", cabin)], {}, {cabin: {"measurements": dict(m_cabin, weight_kg=2.7)}}),
+         [("variant", "upsert", cabin_id)], {}, {cabin_id: {"measurements": dict(m_cabin, weight_kg=2.7)}}),
         ("4-fibre-flags.csv", ["brand", "style_number", "name:en", "materials"],
          [["Kestrel Trail", "KT-2001", "Trail Running Shorts", "outer: 100% polyester (recycled); lining: 88% polyamide, 12% elastane"]],
          "The qualifier form gives the same materials as the 0.1 key recycled_polyester in the fixture: unchanged, no change entries.",
          {"rows": 1, "created": 0, "updated": 0, "unchanged": 1, "errors": 0}, [], [], {}, {}),
-        ("5-invalid.csv", ["brand", "style_number", "name:en", "gtin", "color_code", "feature:wheels", "height_cm", "color_family", "footwear_materials"],
-         [["Kestrel", "KO-1008", name, "", "", "3", "", "", ""],
-          ["Kestrel", "KO-1009", "Commuter Laptop Messenger", bag, "CHR", "", "30 cm", "", ""],
-          ["Kestrel", "KO-1010", "Leather Chelsea Boot", boot, "BRN", "", "", "navy", ""],
-          ["Kestrel", "KO-1005", "Leather Weekender Bag", "", "", "", "", "", "upper: plastic"]],
-         "Each row has one value outside the rules: every row is skipped with an error, nothing is written, the job succeeds.",
-         {"rows": 4, "created": 0, "updated": 0, "unchanged": 0, "errors": 4},
+        ("5-invalid.csv", ["brand", "style_number", "name:en", "gtin", "color_code", "feature:wheels", "height_cm", "color_family", "footwear_materials", "materials"],
+         [["Kestrel", "KO-1008", name, "", "", "3", "", "", "", ""],
+          ["Kestrel", "KO-1009", "Commuter Laptop Messenger", bag, "CHR", "", "30 cm", "", "", ""],
+          ["Kestrel", "KO-1010", "Leather Chelsea Boot", boot, "BRN", "", "", "navy", "", ""],
+          ["Kestrel", "KO-1005", "Leather Weekender Bag", "", "", "", "", "", "upper: plastic", ""],
+          ["Kestrel Trail", "KT-2001", "Trail Running Shorts", "", "", "", "", "", "", "main: 95,5% polyester, 4,5% elastane"]],
+         "Each row has one value outside the rules: every row is skipped with an error, nothing is written, the job succeeds. "
+         "Row 5 writes percentages with a decimal comma: the comma separates fibres, so the detail of its error starts with detail_prefix.",
+         {"rows": 5, "created": 0, "updated": 0, "unchanged": 0, "errors": 5},
          [{"file": "products.csv", "row": 1, "column": "feature:wheels", "severity": "error", "obx_error": "validation_failed", "value": "3"},
           {"file": "products.csv", "row": 2, "column": "height_cm", "severity": "error", "obx_error": "validation_failed", "value": "30 cm"},
           {"file": "products.csv", "row": 3, "column": "color_family", "severity": "error", "obx_error": "validation_failed", "value": "navy"},
-          {"file": "products.csv", "row": 4, "column": "footwear_materials", "severity": "error", "obx_error": "validation_failed", "value": "upper: plastic"}],
+          {"file": "products.csv", "row": 4, "column": "footwear_materials", "severity": "error", "obx_error": "validation_failed", "value": "upper: plastic"},
+          {"file": "products.csv", "row": 5, "column": "materials", "severity": "error", "obx_error": "validation_failed",
+           "detail_prefix": "materials: decimal comma", "value": "main: 95,5% polyester, 4,5% elastane"}],
          [], {}, {}),
         ("6-restore.csv", None, None,
          "kestrel/products.csv again (the same bytes): restores wheels 4 and weight 2.6; everything else is unchanged.",
          {"rows": len(gtins), "created": 0, "updated": 2, "unchanged": len(PRODUCTS) + len(gtins) - 2, "errors": 0}, [],
-         [("product", "upsert", "KO-1008"), ("variant", "upsert", cabin)],
-         {"KO-1008": {"features": f1008}}, {cabin: {"measurements": m_cabin}}),
+         [("product", "upsert", "KO-1008"), ("variant", "upsert", cabin_id)],
+         {"KO-1008": {"features": f1008}}, {cabin_id: {"measurements": m_cabin}}),
     ]
     expected = []
     for fname, header, rows, what, counts, errors, changes, products, variants in cases:
@@ -606,7 +622,7 @@ def write_import_cases(gtins):
         expected.append({"file": fname, "what": what, "counts": counts, "errors": errors,
                          "changes": [{"type": t, "op": o, "external_id": e} for t, o, e in changes],
                          "products": products, "variants": variants})
-    assert plus not in variants
+    assert plus_id not in variants
     # I-IMP-8: label completeness warnings (dry run, nothing is written)
     header = ["brand", "style_number", "name:en", "item_type", "materials", "contains_animal_origin", "footwear_materials"]
     rows = [["Kestrel", "KL-8001", "Label Test Tee", "t_shirt", "", "no", ""],
@@ -614,7 +630,10 @@ def write_import_cases(gtins):
             ["Kestrel", "KL-8003", "Label Test Sneaker", "sneakers", "upper: 100% polyester", "", ""],
             ["Kestrel", "KL-8004", "Label Test Shirt", "shirt", "main: 60% cotton, 30% polyester", "no", ""],
             ["Kestrel", "KL-8005", "Label Test Sandal", "sandals", "", "", "upper: leather; lining_and_sock: leather"],
-            ["Kestrel", "KL-8006", "Label Test Complete", "t_shirt", "main: 100% cotton", "no", ""]]
+            ["Kestrel", "KL-8006", "Label Test Complete", "t_shirt", "main: 100% cotton", "no", ""],
+            ["Kestrel", "KL-8007", "Label Test Dutch", "t_shirt", "main: 95% katoen, 5% elastane", "no", ""],
+            ["Kestrel", "KL-8008", "Label Test No Percentage", "bag", "outer: leather; lining: 60% cotton, polyester", "yes", ""],
+            ["Kestrel", "KL-8009", "Label Test Too Much", "shirt", "main: 70% cotton, 40% polyester, elastane", "no", ""]]
     buf = io.StringIO()
     w = csv.writer(buf, lineterminator="\r\n")
     w.writerow(header)
@@ -624,18 +643,91 @@ def write_import_cases(gtins):
     write(os.path.join(out, "label-warnings.expected.json"), json.dumps({
         "description": "Conformance I-IMP-8. Send label-warnings.csv as the import's products.csv with dry_run: true (mode upsert). The job succeeds, "
                        "nothing is written (no change entries, KL-8001 to KL-8006 do not exist afterwards), there are no errors, and the ImportRowErrors whose "
-                       "obx_error is one of the four label completeness codes are exactly these, in this order (other warnings are not checked). "
-                       "KL-8006 is complete and gets none.",
+                       "obx_error is one of the four label completeness codes or material_unknown are exactly these, in this order (other warnings "
+                       "are not checked). KL-8006 is complete and gets none. KL-8007 has a material code outside vocabularies/materials.json "
+                       "(material_unknown, value = the code). KL-8008 has fibres without a percentage: its parts are not checked for the sum. "
+                       "KL-8009 states more than 100 % in one part, also with a fibre without a percentage.",
+        "codes": ["fibre_composition_missing", "animal_origin_unknown", "footwear_materials_missing", "fibre_percentages_not_100", "material_unknown"],
         "warnings": [warn(1, "materials", "fibre_composition_missing"),
                      warn(2, "contains_animal_origin", "animal_origin_unknown"),
                      warn(3, "footwear_materials", "footwear_materials_missing"),
                      warn(4, "materials", "fibre_percentages_not_100"),
-                     warn(5, "footwear_materials", "footwear_materials_missing")]}, indent=2, ensure_ascii=False) + "\n")
+                     warn(5, "footwear_materials", "footwear_materials_missing"),
+                     dict(warn(7, "materials", "material_unknown"), value="katoen"),
+                     warn(9, "materials", "fibre_percentages_not_100")]}, indent=2, ensure_ascii=False) + "\n")
     write(os.path.join(out, "expected.json"), json.dumps({
         "description": "Conformance I-IMP-7. Apply the files in order, each sent as the import's products.csv (mode upsert, no images, no assets.csv), "
                        "to a node that holds exactly the import of fixtures/kestrel. counts: ImportRun.counts (other count fields not checked). "
-                       "errors: the ImportRowErrors with severity error, in order (warnings not checked). changes: the /changes entries the import "
+                       "errors: the ImportRowErrors with severity error, in order (warnings not checked); when an error has detail_prefix, "
+                       "its detail starts with that text (detail_prefix is not a member of the ImportRowError). changes: the /changes entries the import "
                        "produced, in order. products/variants: fields of the protocol objects afterwards (by external_id), matched like fixtures/expected.",
+        "cases": expected}, indent=2, ensure_ascii=False) + "\n")
+
+# --------------------------------------------------------------------------- import cases (variant identity)
+
+def write_identity_cases(gtins):
+    """products.csv files for conformance I-IMP-12 (import-format.md 1.2.1): the default variant id never
+    holds the GTIN, a GTIN that arrives later updates the variant in place, a GTIN finds its variant."""
+    out = os.path.join(HERE, "imports")
+    style, name = "KL-8101", "Identity Test Jeans"
+    g = [ean13("2000810101" + f"{i:02d}") for i in (1, 2, 3)]
+    taken = gtins[("KO-1001", "NVY", "M")]
+    ids = [f"{style}-IND-32-32", f"{style}-IND-32-34", f"{style}-IND-32_34"]
+    base = ["brand", "style_number", "name:en", "item_type", "materials", "contains_animal_origin"]
+    prod = ["Kestrel", style, name, "jeans", "main: 100% cotton", "no"]
+
+    def variant(ext, gtin, size, length):
+        return {"external_id": ext, "gtin": gtin14(gtin) if gtin else None, "gtin_original": gtin, "size": size, "size_length": length}
+
+    cases = [
+        ("id-1-without-gtin.csv", base + ["color_code", "size", "size_length"],
+         [prod + ["IND", "32", "32"], prod + ["IND", "32", "34"], prod + ["IND", "32/34", ""], prod + ["IND", "32/34", ""]],
+         "A new product without GTINs and without a variant_id column. The default external id is style-colour-size[-size_length]: "
+         "32 with length 32 and 32 with length 34 are two variants, and the size 32/34 gives ..-32_34 because an external id cannot "
+         "hold a slash. Row 4 resolves to the variant of row 3: an error, the row is skipped.",
+         {"rows": 4, "created": 4, "updated": 0, "unchanged": 0, "errors": 1},
+         [{"file": "products.csv", "row": 4, "column": "variant_id", "severity": "error", "obx_error": "validation_failed", "value": ids[2]}],
+         [("product", "upsert", style)] + [("variant", "upsert", i) for i in ids],
+         [variant(ids[0], None, "32", "32"), variant(ids[1], None, "32", "34"), variant(ids[2], None, "32/34", None)]),
+        ("id-2-late-gtin.csv", base + ["gtin", "color_code", "size", "size_length"],
+         [prod + [g[0], "IND", "32", "32"], prod + [g[1], "IND", "32", "34"], prod + [g[2], "IND", "32/34", ""]],
+         "The same rows, now with their GTINs: each variant is updated in place and keeps its external id and its protocol id; "
+         "no variant is created or deleted.",
+         {"rows": 3, "created": 0, "updated": 3, "unchanged": 1, "errors": 0}, [],
+         [("variant", "upsert", i) for i in ids],
+         [variant(ids[0], g[0], "32", "32"), variant(ids[1], g[1], "32", "34"), variant(ids[2], g[2], "32/34", None)]),
+        ("id-3-gtin-finds-variant.csv", ["brand", "style_number", "name:en", "gtin", "color_code", "size", "size_length"],
+         [["Kestrel", style, name, g[0], "IND", "33", "32"]],
+         "A row whose GTIN belongs to a variant of this product updates that variant, also when its size changed: the variant "
+         "KL-8101-IND-32-32 becomes size 33 and keeps its external id; no variant KL-8101-IND-33-32 is created.",
+         {"rows": 1, "created": 0, "updated": 1, "unchanged": 1, "errors": 0}, [],
+         [("variant", "upsert", ids[0])],
+         [variant(ids[0], g[0], "33", "32"), variant(ids[1], g[1], "32", "34"), variant(ids[2], g[2], "32/34", None)]),
+        ("id-4-gtin-of-other-product.csv", ["brand", "style_number", "name:en", "gtin", "color_code", "size", "size_length"],
+         [["Kestrel", style, name, taken, "IND", "36", "32"]],
+         "The GTIN belongs to a variant of another product (KO-1001): gtin_conflict, the row is skipped, nothing is written.",
+         {"rows": 1, "created": 0, "updated": 0, "unchanged": 0, "errors": 1},
+         [{"file": "products.csv", "row": 1, "column": "gtin", "severity": "error", "obx_error": "gtin_conflict", "value": taken}],
+         [],
+         [variant(ids[0], g[0], "33", "32"), variant(ids[1], g[1], "32", "34"), variant(ids[2], g[2], "32/34", None)]),
+    ]
+    expected = []
+    for fname, header, rows, what, counts, errors, changes, variants in cases:
+        buf = io.StringIO()
+        w = csv.writer(buf, lineterminator="\r\n")
+        w.writerow(header)
+        w.writerows(rows)
+        write(os.path.join(out, fname), buf.getvalue())
+        expected.append({"file": fname, "what": what, "counts": counts, "errors": errors,
+                         "changes": [{"type": t, "op": o, "external_id": e} for t, o, e in changes],
+                         "products": {style: {"variants": variants}}})
+    write(os.path.join(out, "variant-identity.expected.json"), json.dumps({
+        "description": "Conformance I-IMP-12 (docs/import-format.md 1.2.1). Apply the files in order, each sent as the import's products.csv "
+                       "(mode upsert, no images, no assets.csv), to a node that holds the import of fixtures/kestrel. counts, errors and changes "
+                       "as in expected.json. products: the ProductDetail afterwards, matched like fixtures/expected, so `variants` lists every "
+                       "variant of KL-8101 in order (by external_id) and nothing else; the protocol `id` of each variant is the same after "
+                       "every file. Afterwards the runner deletes product KL-8101 through the Ingest API, so the node holds exactly the "
+                       "Kestrel import again.",
         "cases": expected}, indent=2, ensure_ascii=False) + "\n")
 
 # --------------------------------------------------------------------------- ingest scenario

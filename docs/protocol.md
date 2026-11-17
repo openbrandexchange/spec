@@ -28,11 +28,25 @@ Out of scope: prices, stock, orders, EDI, video/3D assets (reserved), federation
 ## 2. Conventions
 
 - HTTPS only (plain HTTP is allowed for `localhost` development). JSON bodies are UTF-8. Field names are `snake_case`. Timestamps are RFC 3339 (UTC RECOMMENDED).
-- **Forward compatibility.** Clients MUST ignore unknown fields, unknown enum values, unknown change `type`s, unknown capability strings and unknown webhook event types. The JSON Schemas in this repository are *closed* so that producers can check their output; consumers MUST NOT reject documents at runtime because of unknown members.
-- **Extensions.** Implementation-specific fields MUST be prefixed `x-<vendor>-` (for example `x-acme-crop`). Standard fields never start with `x-`.
+- **Forward compatibility.** Clients MUST ignore unknown fields, unknown change `type`s, unknown capability strings and unknown webhook event types, and MUST accept unknown values of every enumeration and vocabulary. The JSON Schemas in this repository are *closed* so that producers can check their output; consumers MUST NOT reject documents at runtime because of unknown members or values. From 0.3 on, everything under `/obx/v1` changes only by addition ([versioning.md](versioning.md)), so these rules are all a client needs to keep working. What "accept" means for a value a client does not know:
+
+  | Where | An unknown value means |
+  |---|---|
+  | `Change.type`, webhook event `type` | skip the entry or event (and move the cursor on) |
+  | `Change.op` | skip the entry; never treat it as an upsert or a delete |
+  | `ChangesPage.phase` | treat as `live` |
+  | `Asset.media_type` | skip the asset (do not download it) |
+  | `Asset.role`, `Asset.view` | treat as `other` |
+  | `color.family`, care `category`, `footwear_materials` values, `certifications[].scope`, `provenance.source`, `provenance.c2pa` | treat as `null` (not stated) |
+  | `rights.license` | treat as `custom`: do not assume the `retailer-use` terms |
+  | a value in `rights.channels` | ignore that value; the asset is not licensed for a channel the client cannot name |
+  | a rendition name in `renditions` | ignore that rendition |
+  | a registry key of `features` with an unknown value, an unknown code of a part, material, qualifier, care instruction, `item_type`, `item_subtype`, `target_group` or certification `scheme` | keep the code; show the term's `name` when there is one, else the code |
+  | `obx_error` | act on the HTTP status |
+- **Extensions.** Implementation-specific fields MUST be named `x-<vendor>-<name>` (pattern `^x-[a-z0-9]+-[a-z0-9_-]+$`, for example `x-acme-crop`), with any JSON value. Standard fields never start with `x-`. The schemas say on which objects they are allowed (brand, product, variant, `color`, asset, `rights`, `provenance`, the parts, fibres and terms of `materials`, care entries, certifications, `measurements`). A node MUST store the extension members a brand writes on those objects and MUST return them unchanged in every response that carries the object, `/changes` and exports included ([ingest.md §3.1](ingest.md#31-put--create-or-replace)); a node never invents meaning for another vendor's extension. Consumers ignore the ones they do not know.
 - **Ids.** Every object has a node-assigned opaque `id` (`^[A-Za-z0-9][A-Za-z0-9._~-]{0,127}$`), stable for the life of the object, and the brand's own `external_id`. Clients MUST treat ids and cursors as opaque.
-- **Localised text** is an object keyed by BCP 47 tag: `{"nl": "Trui", "en": "Sweater"}`. Enumerations are stable lowercase keys; labels are presentation and belong to the client. The exception are the terms of `materials` and `care`, which carry their names per language ([5.9.1](#composition)).
-- **Null vs absent.** Response objects include every property of their schema; unknown values are `null` (except where a schema says a property is only present in some responses). Inside `measurements` and `features` only the stated members are present (an object without members is `null`); a term's `name` and a fibre's `qualifier` are `null` when there is none ([5.9.1](#composition)).
+- **Localised text** is an object keyed by BCP 47 tag: `{"nl": "Trui", "en": "Sweater"}`. A tag is a language with an optional script and an optional region, in canonical case: `nl`, `de-CH`, `zh-Hant`, `sr-Latn-RS`, `es-419` ([LocalizedText](../schemas/LocalizedText.json)). Enumerations are stable lowercase keys; labels are presentation and belong to the client. The exception are the terms of `materials` and `care`, which carry their names per language ([5.9.1](#composition)).
+- **Null vs absent.** Response objects include every property of their schema; unknown values are `null` (except where a schema says a property is only present in some responses). Inside `measurements` and `features` only the stated members are present (an object without members is `null`); a term's `name` is `null` when there is none, a fibre's `qualifiers` is `[]` when it has none and its `percentage` is `null` when none is stated ([5.9.1](#composition)).
 - Every response SHOULD carry `OBX-Version: 0.3`.
 
 ### <a id="pagination"></a>2.1 Pagination
@@ -46,9 +60,9 @@ Out of scope: prices, stock, orders, EDI, video/3D assets (reserved), federation
 
 - **Keyset, not offsets.** `/products` pages are ordered by `id` ascending and the next page starts after the last `id` of the previous one, so pages do not shift when products are added or removed while a client pages: every product that exists during the whole walk appears exactly once. The change feed's cursor is a position in the feed (§6.4).
 - **Follow the cursor, not the count.** Nodes MAY return fewer items than `limit` (also zero) on any page that is not the last. Clients MUST NOT treat a short page as the end; only `next_cursor: null` (lists) or `has_more: false` (feed) is.
-- **Same query on every page.** Send the cursor with the same other parameters as the first request (`brand_id`, `updated_since`); changing them between pages is not defined in 0.2. `limit` may change.
+- **Same query on every page.** Send the cursor with the same other parameters as the first request (`brand_id`, `updated_since`); changing them between pages is not defined. `limit` may change.
 - **Opaque.** Clients MUST NOT parse, build or modify cursors (§2). An unusable cursor is answered `400` (`cursor_invalid`, or `invalid_request`); a feed cursor older than the node keeps is `410 cursor_expired`: restart `/changes` without a cursor.
-- **Limits** are in the discovery document: `limits.products_page_max`, `limits.changes_page_max`.
+- **Limits** are in the discovery document: `limits.products_page_max`, `limits.changes_page_max`. A `limit` above the node's maximum is not an error: the node MUST answer with its maximum (it clamps), so a client may always ask for `limit=500`. A `limit` that is not an integer or is below 1 is `400 invalid_request`.
 - `GET /obx/v1/brands` is not paginated. `GET /obx/v1/products` is for browsing and targeted reads; to keep a copy, read `/changes`, which also delivers deletes. For one big download use exports (§8).
 
 Every product, all pages (curl and jq):
@@ -175,6 +189,8 @@ A **grant** belongs to a retailer: the brands it may see (`brand_ids`, `null` = 
 
 When the brand blocks the retailer or revokes the client, every call fails with `401` and `obx_error: access_revoked` (the token endpoint answers `invalid_client`). A consumer MUST then stop syncing; what it does with content already synced is its own policy (RECOMMENDED: keep, and tell a human).
 
+`access_revoked` is only for access that was taken away: a blocked retailer, a revoked or deleted client, a revoked ingest token. **Rotating a client's secret is not a revocation**: access tokens issued with the old secret stop working and are answered `401 invalid_token`, the same as an expired token, so the consumer asks for a new token (with the new secret) and goes on from its cursor. A consumer that still has the old secret then gets `invalid_client` from the token endpoint.
+
 When a grant changes so that the visible set changes (brands added or removed, originals toggled), the node writes a `grant` change with `resync: true` for that retailer (section 6.5).
 
 ## 5. Data model
@@ -208,7 +224,7 @@ Suitcases and other travel luggage are `luggage`, not `bag`: retailers filter th
 ### 5.3 Variant
 A sellable colour/size: `color` (`code`, localised `name`, `supplier_color`, `family`), `size`, `size_length`, `size_system`, `measurements`, `sku`, and the GTIN. Measurements belong to the variant because the sizes of one model differ (a cabin and a large suitcase, shoe sizes); see [5.9](#59-article-data).
 
-**GTIN.** `gtin` is always the 14-digit normalised form (left-padded with zeros); `gtin_original` is the form the brand supplied (GTIN-8, UPC-A, EAN-13 or GTIN-14). The GTIN is the consumer's match key. Within one node a GTIN belongs to at most one variant.
+**GTIN.** `gtin` is always the 14-digit normalised form (left-padded with zeros); `gtin_original` is the form the brand supplied (GTIN-8, UPC-A, EAN-13 or GTIN-14). The GTIN is the consumer's match key. Within one node a GTIN belongs to at most one variant. A variant can exist before its GTIN does (`gtin: null`) and its GTIN can be corrected later: that is an upsert of the same variant (same `id`, same `external_id`), never a delete and a new variant, so a consumer SHOULD keep its own link on the variant `id` and treat the GTIN as a value that may change.
 
 ### 5.4 Asset
 A **final** product image. The node MUST only publish images the brand marked as final (published).
@@ -235,7 +251,7 @@ A **final** product image. The node MUST only publish images the brand marked as
 | `square` | the `web` image centred on a white (`#FFFFFF`) square canvas whose side is the longest side of `web` |
 | `thumb` | `image/jpeg`, longest side ≤ 600 px, never upscaled |
 
-Each [Rendition](../schemas/Rendition.json) has `url`, `url_expires_at`, `content_type`, `width`, `height`, `bytes` and `sha256`. URLs are either **short-lived signed URLs** (usable without `Authorization` until `url_expires_at`; RECOMMENDED lifetime 1 hour, minimum 5 minutes) or require the Bearer token (`url_expires_at: null`). A node MUST NOT hand out permanent public URLs. Clients MUST treat URLs as opaque; when a signed URL expired, re-read the asset (`GET /obx/v1/assets/{id}`).
+Each [Rendition](../schemas/Rendition.json) has `url`, `url_expires_at`, `content_type`, `width`, `height`, `bytes` and `sha256`. URLs are either **short-lived signed URLs** (usable without `Authorization` until `url_expires_at`; RECOMMENDED lifetime 1 hour, minimum 5 minutes) or require the Bearer token (`url_expires_at: null`). A signed URL that has expired, or whose signature does not match (changed path, query or expiry), is answered `403 forbidden` on every node, never `401` (`401 unauthorized` is for a rendition request with neither a signature nor a token); a request with a valid Bearer token is served whatever the signature says. A node MUST NOT hand out permanent public URLs. Clients MUST treat URLs as opaque; when a signed URL expired, re-read the asset (`GET /obx/v1/assets/{id}`).
 
 `GET /obx/v1/assets/{id}/renditions/{name}` MUST support `Range` (206), `If-None-Match` (304), and send `ETag` (the quoted sha256), `OBX-Content-SHA256` (hash of the complete representation), `Accept-Ranges: bytes` and `Content-Disposition: inline; filename="…"` (non-original renditions insert `_web`, `_square` or `_thumb` before a `.jpg` extension). A node without an image library (for example on Cloudflare Workers) obtains web/square/thumb from the client at ingest (see [ingest.md](ingest.md#renditions)); the rules above still apply.
 
@@ -270,7 +286,7 @@ Added in 0.2 ([proposal 0002](proposals/0002-product-data.md)). Every field is o
 
 #### <a id="composition"></a>5.9.1 Composition
 
-- **`materials`**: `[{"part": {"code": "lining", "name": {"en": "Lining", "nl": "Voering"}}, "fibers": [{"material": {"code": "polyester", "name": {"en": "Polyester", "nl": "Polyester"}}, "percentage": 100, "qualifiers": [{"code": "recycled", "name": {"en": "Recycled", "nl": "Gerecycled"}}, {"code": "post_consumer", "name": {"en": "Post-consumer", "nl": "Post-consumer"}}]}]}]`. Since 0.3 ([proposal 0004](proposals/0004-terms-with-names.md)) `part`, `material` and each entry of `qualifiers` are **terms**: a stable `code` that machines match on, and a `name` per language ([LocalizedText](../schemas/LocalizedText.json)) for people. A language without a name is omitted, never an empty string.
+- **`materials`**: `[{"part": {"code": "lining", "name": {"en": "Lining", "nl": "Voering"}}, "fibers": [{"material": {"code": "polyester", "name": {"en": "Polyester", "nl": "Polyester"}}, "percentage": 100, "qualifiers": [{"code": "recycled", "name": {"en": "Recycled", "nl": "Gerecycled"}}, {"code": "post_consumer", "name": {"en": "Post-consumer", "nl": "Post-consumer"}}]}]}]`. Since 0.3 ([proposal 0004](proposals/0004-terms-with-names.md)) `part`, `material` and each entry of `qualifiers` are **terms**: a stable `code` that machines match on, and a `name` per language ([LocalizedText](../schemas/LocalizedText.json)) for people. A language without a name is omitted, never an empty string. `percentage` is the fibre's share of the part, above 0 and at most 100, or `null` when the brand does not state one (leather on a bag, a trim, a composition given without percentages); a node never invents or spreads percentages. The percentages of a part SHOULD sum to 100 when all its fibres state one.
 - **Where names come from.** The codes and their names are in [`vocabularies/`](../vocabularies) (`parts.json`, `materials.json`, `qualifiers.json`, `care.json`). For a code in a vocabulary a node SHOULD return the vocabulary's name (a node with its own reviewed translations MAY return those, in the same languages or more); for another code it returns the name it was given on write, or `null`. On write paths (Ingest API, imports, admin) `name` MAY be left out. A consumer SHOULD show the name in the shopper's language and fall back to its own text for the code.
 - **Part codes**: `main` (the product has one composition; its name is `null`, a label shows its fibres without a heading), `outer`, `lining`, `filling`, `padding`, `trim`, `pocket_lining`, `shell` (luggage), `handle`, `strap`, and for footwear `upper`, `sole`, `insole`. Unknown codes are allowed.
 - **Material codes** are the English textile fibre names of Annex I of Regulation (EU) No 1007/2011, lowercase with `_` (`cotton`, `wool`, `polyester`, `polyamide`, `elastane`, `viscose`, `lyocell`, `linen` for flax, ...). More specific codes such as `merino_wool` and `lambswool` remain allowed (they are kinds of `wool`). Non-textile materials (`leather`, `rubber`, `metal`, ...) have no Annex I name and keep their codes.
@@ -373,7 +389,7 @@ What EU law requires a seller to show, and where OBX carries it. Only the first 
 | Certifications (GOTS, OEKO-TEX, GRS, ...) | voluntary; private schemes with their own rules | the scheme's own rules | `certifications` |
 | Digital Product Passport | not yet required for textiles: the delegated act for textiles is planned for Q4 2027 | Regulation (EU) 2024/1781 (ESPR) | `dpp_url` |
 
-Regulation (EU) No 1007/2011 applies to textile products, which include products made of at least 80 % textile fibres by weight. Measurements, features, colour family and the second size are product information without an EU labelling requirement. Imports and the Ingest API warn when a product misses what its label needs (`fibre_composition_missing`, `animal_origin_unknown`, `footwear_materials_missing`, `fibre_percentages_not_100`; [import-format.md rule 10](import-format.md#label-completeness)); a warning never blocks publishing.
+Regulation (EU) No 1007/2011 applies to textile products, which include products made of at least 80 % textile fibres by weight. Measurements, features, colour family and the second size are product information without an EU labelling requirement. Imports and the Ingest API warn when a product misses what its label needs (`fibre_composition_missing`, `animal_origin_unknown`, `footwear_materials_missing`, `fibre_percentages_not_100`, and `material_unknown` for a material code outside the vocabulary; [import-format.md rule 10](import-format.md#label-completeness)); a warning never blocks publishing.
 
 ## 6. The change feed
 
@@ -428,7 +444,7 @@ A finished export has:
 - a **manifest** (`GET /obx/v1/exports/{id}/manifest`, NDJSON of [ExportManifestLine](../schemas/ExportManifestLine.json)): first a `header` line with counts and a `changes_cursor` positioned at the export's snapshot moment (continue incrementally with `/changes` from there), then `brand`, `product`, `variant`, `asset` lines, then `file` lines;
 - **parts** (`GET /obx/v1/exports/{id}/parts/{n}`): independent zip files (not a split archive), each ≤ 2 GiB, with entries at `<style_number>/<rendition>/<filename>` (sanitised: no `..`, no absolute paths, `/` as separator).
 
-Exports expire (`expires_at` ≥ 24 h after finishing; afterwards `410 export_expired`). Nodes MAY limit concurrent exports per client (`409 conflict`). `Idempotency-Key` is supported.
+Exports expire (`expires_at` ≥ 24 h after finishing; afterwards `410 export_expired`). Nodes MAY limit concurrent exports per client (`409 conflict`). `POST /exports` supports `Idempotency-Key` on every node with the `exports` capability: the same key with the same body within 24 hours returns the same export (also while it is still running, instead of `409 conflict`); the same key with a different body is `409 idempotency_key_reused`.
 
 ## 9. Webhooks (capability `webhooks`)
 
@@ -456,10 +472,10 @@ Errors are `application/problem+json` (RFC 9457) [Problem](../schemas/Problem.js
 | `invalid_request` | 400 | malformed request (JSON, NDJSON, multipart, query) |
 | `validation_failed` | 422 | body is well-formed but invalid; see `errors[]` |
 | `unauthorized` | 401 | no credentials |
-| `invalid_token` | 401 | expired or unknown token |
-| `access_revoked` | 401 | client revoked, retailer blocked or ingest token revoked |
+| `invalid_token` | 401 | expired or unknown token, or a token from before the client's secret was rotated: get a new token |
+| `access_revoked` | 401 | client revoked, retailer blocked or ingest token revoked: stop (never after a secret rotation, [§4.3](#43-grants-revocation)) |
 | `insufficient_scope` | 403 | token lacks the scope |
-| `forbidden` | 403 | not allowed (role, brand restriction, feature disabled by the brand) |
+| `forbidden` | 403 | not allowed (role, brand restriction, feature disabled by the brand), or a signed URL that expired or does not match its signature ([§5.5](#55-renditions)) |
 | `not_found` | 404 | does not exist or is not visible to the caller |
 | `method_not_allowed` | 405 | method not supported on an existing path (SHOULD; a node MAY answer `404 not_found` instead) |
 | `conflict` | 409 | state conflict (not pending, still has children, concurrent job) |
@@ -487,6 +503,7 @@ Errors are `application/problem+json` (RFC 9457) [Problem](../schemas/Problem.js
 | `workbook_sheet_missing` | 422 | Excel import: no visible sheet named `Products`/`Assets` or with the key column in row 1 |
 | `workbook_too_large` | 422 | Excel import: a size limit of the workbook (zip bomb, rows, columns) is exceeded |
 | `unsafe_url` | 422 | URL resolves to a private/loopback/link-local address or is not https |
+| `idempotency_key_reused` | 409 | the `Idempotency-Key` was used before, within 24 hours, with a different request body |
 | `csrf_failed` | 403 | admin API: missing or wrong `X-CSRF-Token` |
 | `invalid_credentials` | 401 | admin API: wrong e-mail or password |
 | `account_blocked` | 403 | admin API: account or retailer blocked |
