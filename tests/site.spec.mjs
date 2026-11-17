@@ -11,7 +11,7 @@ const PAGES = [
 
 test("overview page links to every reference and passes axe", async ({ page }) => {
   await page.goto("/");
-  await expect(page).toHaveTitle(/API reference 0\.2\.0/);
+  await expect(page).toHaveTitle(/API reference 0\.3\.0/);
   for (const p of PAGES) await expect(page.locator(`a[href="${p.path}"]`)).toBeVisible();
   await expect(page.locator('a[href="schemas/v0.3/Product.json"]')).toBeVisible();
   const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();

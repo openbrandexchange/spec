@@ -275,7 +275,7 @@ paths:
           schema: {type: integer, minimum: 1, default: 100}
       responses:
         '200':
-          description: 'A page of changes. More pages follow while `has_more` is `true` ([pagination](https://github.com/openbrandexchange/spec/blob/main/docs/protocol.md#pagination)).'
+          description: 'A page of changes. More pages follow while `has_more` is `true` (protocol.md §2.1 Pagination).'
           headers:
             RateLimit-Limit: {$ref: '#/components/headers/RateLimit-Limit'}
             RateLimit-Remaining: {$ref: '#/components/headers/RateLimit-Remaining'}
@@ -363,7 +363,7 @@ paths:
           schema: {type: integer, minimum: 1, default: 25}
       responses:
         '200':
-          description: 'A page of products. More pages follow while `next_cursor` is not `null` ([pagination](https://github.com/openbrandexchange/spec/blob/main/docs/protocol.md#pagination)).'
+          description: 'A page of products. More pages follow while `next_cursor` is not `null` (protocol.md §2.1 Pagination).'
           content:
             application/json:
               schema:
