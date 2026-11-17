@@ -86,9 +86,10 @@ The design is [proposal 0002](docs/proposals/0002-product-data.md). Where it was
 
 ## Decisions for v0.3.0 (terms with names, proposal 0004)
 
-43. **Materials and care are terms**: `part`, `material` and `qualifier` are `{code, name}`; care entries carry `category`, `symbol` and `name`. Breaking, allowed before 1.0; 0.1 and 0.2 are withdrawn: nobody had used them (no consumers, no published integrations), so their schemas are removed from `main` and the website; the tags `v0.1.0` and `v0.2.0` stay in git. From 0.3 on, earlier minors stay online at their `$id` paths.
+43. **Materials and care are terms**: `part`, `material` and each of `qualifiers` are `{code, name}`; care entries carry `category`, `symbol` and `name`. Breaking, allowed before 1.0; 0.1 and 0.2 are withdrawn: nobody had used them (no consumers, no published integrations), so their schemas are removed from `main` and the website; the tags `v0.1.0` and `v0.2.0` stay in git. From 0.3 on, earlier minors stay online at their `$id` paths.
 44. **The vocabulary is data in the spec** (`vocabularies/*.json`, en/nl/de/fr). A node returns the vocabulary's names for known codes and what it was given for others; a missing language is omitted, never `""`.
-45. **One qualifier per fibre** (`organic`, `recycled`, `regenerative`, open list); the 0.2 flags are gone. The 0.1 keys `recycled_*`/`organic_*` are still normalised on write.
+45. **Qualifiers are a list per fibre** (`organic`, `in_conversion`, `recycled`, `pre_consumer`, `post_consumer`, `regenerative`, open list), `[]` when none, repeats dropped, order kept; the 0.2 flags are gone. In the import each code has its own brackets (`(recycled) (post_consumer)`), because the comma separates fibres. The 0.1 keys `recycled_*`/`organic_*` are still normalised on write.
 46. **`symbol` is GINETEX notation** (`1_C_40`), informative, `null` where the data pools have no code.
 47. Proposal 0003 (home and sport) moves to 0.4.
 48. **A node that upgrades to 0.3 expires every cursor it issued before** (`410 cursor_expired`, protocol.md §6): a consumer that kept a 0.2 cursor would otherwise keep 0.2 shapes for unchanged objects. The existing restart-without-cursor path is the migration; consumers need no new code.
+49. **Portal filter on qualifiers** (Node Admin API, not the protocol): `qualifier` on `/admin/api/portal/products` and in download filters, facet `qualifiers`; a product matches when any fibre of any part has any chosen code. The protocol filter on materials waits for proposal 0005 decision 12.

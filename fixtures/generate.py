@@ -146,7 +146,7 @@ PRODUCTS = [
      ["S", "M", "L", "XL"], [("front", None), ("back", None)]),
     ("kestrel", "KO-1003", ("Organic Cotton Tee", "T-shirt van biologisch katoen"),
      ("Relaxed T-shirt in organic cotton jersey.", "Losvallend T-shirt van biologisch katoenen jersey."),
-     "t_shirt", "women", "SS26", "Essentials", "main: 100% cotton (organic)",
+     "t_shirt", "women", "SS26", "Essentials", "main: 100% cotton (organic) (regenerative)",
      "wash_40|do_not_bleach|tumble_dry_low|iron_medium|dry_clean_p", "PT",
      [("WHT", "White", "Wit", "Chalk", "#F7F7F2"), ("BLK", "Black", "Zwart", "Jet", "#1A1A1A"), ("RST", "Rust", "Roest", "Burnt Rust", "#A0472A")],
      ["XS", "S", "M", "L"], [("front", None), ("back", None)]),
@@ -176,7 +176,7 @@ PRODUCTS = [
      ["CABIN", "CABIN PLUS"], [("front", None), ("side", None), ("inside", None)]),
     ("kestrel", "KO-1009", ("Commuter Laptop Messenger", "Laptoptas voor forenzen"),
      ("Water-repellent messenger with a padded 15.6 inch laptop compartment and a detachable shoulder strap.", "Waterafstotende schoudertas met gevoerd laptopvak voor 15,6 inch en afneembare schouderband."),
-     "bag", "unisex", "NOS", "Travel", "outer: 100% polyester (recycled); lining: 100% polyamide",
+     "bag", "unisex", "NOS", "Travel", "outer: 100% polyester (recycled) (post_consumer); lining: 100% polyamide",
      "hand_wash|do_not_bleach|do_not_tumble_dry|do_not_iron|do_not_dry_clean", "VN",
      [("CHR", "Charcoal", "Antraciet", "Slate", "#3C3F44")],
      ["ONE SIZE"], [("front", None), ("back", None), ("inside", None)]),
@@ -338,17 +338,22 @@ def parse_materials(s):
         out = []
         for f in fibers.split(","):
             pct, _, fiber = f.strip().partition("% ")
-            qualifier = None
+            qualifiers = []
             fiber = fiber.strip()
-            if fiber.endswith(")"):
-                fiber, _, qualifier = fiber[:-1].rpartition("(")
-                fiber, qualifier = fiber.strip(), qualifier.strip()
+            while fiber.endswith(")"):  # "(recycled) (post_consumer)": one code per bracket
+                fiber, _, q = fiber[:-1].rpartition("(")
+                fiber = fiber.strip()
+                qualifiers.insert(0, q.strip())
             for prefix in QUALIFIERS_01:
                 if fiber.startswith(prefix + "_"):
                     fiber = fiber[len(prefix) + 1:]
-                    qualifier = prefix
+                    qualifiers.insert(0, prefix)
+            seen = []
+            for q in qualifiers:
+                if q not in seen:
+                    seen.append(q)
             out.append({"material": term("materials", fiber), "percentage": int(pct),
-                        "qualifier": term("qualifiers", qualifier) if qualifier else None})
+                        "qualifiers": [term("qualifiers", q) for q in seen]})
         parts.append({"part": term("parts", part.strip()), "fibers": out})
     return parts
 

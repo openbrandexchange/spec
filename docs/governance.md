@@ -27,7 +27,12 @@ In short, the statutes will fix five things:
 
 - **Today** the maintainers of the `spec` repository decide, led by the publisher.
 - **After the foundation is set up**, the board appoints the maintainers and sets the process below; the board does not overrule a technical decision the maintainers took by this process, except under the double lock (for example a licence change).
-- **Once there are three independent implementations** (from organisations that do not share ownership) that pass the protocol profile, the foundation adds a technical steering group with one seat per such implementer and at least one brand and one retailer representative. It decides by consensus, falling back to a two-thirds majority.
+- **A steering group only when the standard has really been adopted.** The foundation adds a technical steering group only when all of these hold at the same time, as confirmed by the board:
+  1. at least **three independent implementations** pass the full conformance suite (protocol and ingest profiles) of the current minor version. Independent means built and maintained by organisations that do not share ownership or control with each other, nor with the founder or a company of his: the reference implementations in the `openbrandexchange` organisation do not count;
+  2. each of them has been **in production for at least twelve months**;
+  3. together they serve at least **ten brands and five retailers** that are live in the public directory.
+
+  The steering group has one seat per such implementer, at least two brands and two retailers that are not linked to an implementer, and the founder for as long as he chairs the board. It decides by consensus, falling back to a two-thirds majority with at least two thirds of the seats present; a breaking change also needs the founder's consent until 1.0. Until then the founder decides on changes, after public discussion (see the process below).
 
 ### Process
 

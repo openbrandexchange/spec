@@ -188,7 +188,7 @@ function parseCSV(text) {
 const MEASUREMENT_COLUMNS = ["height_cm", "width_cm", "depth_cm", "weight_kg", "volume_l", "volume_expanded_l", "handle_drop_cm", "strap_length_cm", "laptop_max_inch", "heel_height_cm", "shaft_height_cm", "inseam_cm"];
 const PRODUCT_COLUMNS = new RegExp(`^(brand|product_id|style_number|name|description|item_type|item_subtype|target_group|season|collection|gpc_brick|materials|contains_animal_origin|footwear_materials|care|country_of_origin|certifications|dpp_url|status|variant_id|gtin|sku|color_code|color_name|color_family|supplier_color|size|size_length|size_system|${MEASUREMENT_COLUMNS.join("|")}|variant_status|image_files)(:[a-z]{2,3}(-[A-Z]{2})?)?$|^(attr|feature):[a-z][a-z0-9_]{0,63}$`);
 const ASSET_COLUMNS = /^(file|asset_id|product_id|style_number|color_code|position|role|view|alt_text|license|license_text|channels|territories|embargo_until|expires_at|credit|model_release|ai_generated|ai_edited|source|c2pa|c2pa_manifest_url|generator|status)(:[a-z]{2,3}(-[A-Z]{2})?)?$/;
-const FIBER = String.raw`\d+(\.\d+)?%\s+[a-z][a-z0-9_]*(\s*\([a-z][a-z0-9_]*\))?`;
+const FIBER = String.raw`\d+(\.\d+)?%\s+[a-z][a-z0-9_]*(\s*\([a-z][a-z0-9_]*\))*`;
 const PART = String.raw`\s*(([a-z][a-z0-9_]*)\s*:\s*)?${FIBER}(\s*,\s*${FIBER})*\s*`;
 const MATERIALS = new RegExp(`^${PART}(;${PART})*$`);
 const ROLES = ["packshot", "model", "detail", "ghost", "flatlay", "scene", "swatch", "size_chart", "other"];
@@ -281,10 +281,12 @@ export function parseMaterialsCell(cell) {
   return cell.split(";").map((chunk) => {
     const m = /^\s*(?:([a-z][a-z0-9_]*)\s*:)?(.*)$/.exec(chunk);
     const fibers = m[2].split(",").map((f) => {
-      let [, pct, fiber, qualifier] = /^\s*(\d+(?:\.\d+)?)%\s+([a-z][a-z0-9_]*)(?:\s*\(([a-z][a-z0-9_]*)\))?\s*$/.exec(f);
-      // 0.1 keys: recycled_polyester -> polyester with qualifier recycled
-      for (const prefix of ["recycled", "organic"]) if (fiber.startsWith(`${prefix}_`)) { fiber = fiber.slice(prefix.length + 1); qualifier = prefix; }
-      return { material: term("materials", fiber), percentage: Number(pct), qualifier: qualifier ? term("qualifiers", qualifier) : null };
+      let [, pct, fiber, rest] = /^\s*(\d+(?:\.\d+)?)%\s+([a-z][a-z0-9_]*)((?:\s*\([a-z][a-z0-9_]*\))*)\s*$/.exec(f);
+      // One code per bracket: "(recycled) (post_consumer)".
+      const qualifiers = [...rest.matchAll(/\(([a-z][a-z0-9_]*)\)/g)].map((m) => m[1]);
+      // 0.1 keys: recycled_polyester -> polyester with qualifier recycled (first)
+      for (const prefix of ["recycled", "organic"]) if (fiber.startsWith(`${prefix}_`)) { fiber = fiber.slice(prefix.length + 1); qualifiers.unshift(prefix); }
+      return { material: term("materials", fiber), percentage: Number(pct), qualifiers: [...new Set(qualifiers)].map((q) => term("qualifiers", q)) };
     });
     return { part: term("parts", m[1] ?? "main"), fibers };
   });

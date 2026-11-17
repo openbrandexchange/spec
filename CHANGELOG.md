@@ -2,27 +2,29 @@
 
 All notable changes to the Open Brand Exchange specification. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [docs/versioning.md](docs/versioning.md).
 
-## [0.3.0] - 2026-11-12
+## [0.3.0] - 2026-11-17
 
 Materials and care as terms with names ([proposal 0004](docs/proposals/0004-terms-with-names.md)). **Breaking** (allowed before 1.0, [versioning](docs/versioning.md)). It also carries the Excel import and the documentation below, which were unreleased on 0.2.
 
 ### Breaking
-- **`materials`**: `part`, the fibre's material and its qualifier are terms `{code, name}`, with `name` a LocalizedText per language (`null` for the part `main` and for codes the node has no name for). A fibre is `{"material": {...}, "percentage": 95, "qualifier": {...} | null}`; `fiber` and the flags `recycled`/`organic` are gone. One qualifier per fibre: `organic`, `recycled`, `regenerative`, or another code.
+- **`materials`**: `part`, the fibre's material and its qualifier are terms `{code, name}`, with `name` a LocalizedText per language (`null` for the part `main` and for codes the node has no name for). A fibre is `{"material": {...}, "percentage": 95, "qualifiers": [{...}, ...]}`; `fiber` and the flags `recycled`/`organic` are gone. A fibre has any number of qualifiers (`[]` when none): `organic`, `in_conversion`, `recycled`, `pre_consumer`, `post_consumer`, `regenerative`, or another code.
 - **`care`**: every entry has `code`, `category` (ISO 3758 group: `washing`, `bleaching`, `drying`, `ironing`, `professional_care`), `symbol` (GINETEX notation such as `1_C_40`, or `null`), `name` and `text`. `text` is now only the brand's own extra text.
 - **0.1 and 0.2 are withdrawn.** They were never used (no consumers, no published integrations), so their schemas are removed from `main`, from `site/` and so from the website (`/schemas/v0.1/`, `/schemas/v0.2/`); the tags `v0.1.0` and `v0.2.0` stay in git. The reference nodes and the conformance suite serve and test 0.3 only. From 0.3 on, the promise of [versioning.md](docs/versioning.md) holds: earlier minors stay online at their `$id` paths.
 - **Cursors from before the upgrade expire**: a node that upgrades to 0.3 MUST answer every `/changes` cursor it issued before the upgrade with `410 cursor_expired` ([protocol.md §6](docs/protocol.md)), so a consumer that kept a 0.2 cursor restarts with a snapshot in the 0.3 shapes instead of keeping 0.2 objects for products that did not change. Discovery `spec_version` shows why.
 
 ### Added
 - **Vocabularies** in [`vocabularies/`](vocabularies): parts, materials, qualifiers and care codes with their names in English, Dutch, German and French, and for care the category and symbol. A node returns these names for known codes; a missing language is omitted, never an empty string.
-- Import format: `(<qualifier>)` after a fibre, e.g. `(regenerative)`; the `(recycled)`/`(organic)` forms and the 0.1 keys `recycled_*`/`organic_*` keep working.
+- Import format: `(<qualifier>)` after a fibre, once per code, e.g. `100% polyester (recycled) (post_consumer)`; the `(recycled)`/`(organic)` forms and the 0.1 keys `recycled_*`/`organic_*` keep working.
 - Conformance P-CAT-6 checks names, categories and symbols against the vocabularies.
+- Qualifier codes `in_conversion`, `pre_consumer` and `post_consumer`; [docs/vocabularies.md](docs/vocabularies.md) says how a code is added.
+- Node Admin API: the retailer portal filters on qualifiers (`qualifier` on `/admin/api/portal/products` and in download filters, facet `qualifiers`).
 
 ### Changed
 - `OBX-Version: 0.3`; schemas at `/schemas/v0.3/`.
 - Proposal 0003 (home and sport) is retargeted to 0.4.
 
 ### Migration
-Consumers: on `410 cursor_expired` restart `/changes` without a cursor, as before (no new code); then read `part.code`, `fibers[].material.code` and `fibers[].qualifier.code` instead of `part`, `fiber` and the flags, and show `name` in the shopper's language. Nodes: store one qualifier code per fibre (`recycled: true` → `recycled`, `organic: true` → `organic`) and fill names, categories and symbols from `vocabularies/`; for codes outside the vocabularies keep what was written; and expire every cursor issued before the upgrade (a version or epoch in the cursor, or an upgrade marker that cursors are compared with).
+Consumers: on `410 cursor_expired` restart `/changes` without a cursor, as before (no new code); then read `part.code`, `fibers[].material.code` and `fibers[].qualifiers[].code` instead of `part`, `fiber` and the flags, and show `name` in the shopper's language. Nodes: store the qualifier codes per fibre (`recycled: true` → `recycled`, `organic: true` → `organic`) and fill names, categories and symbols from `vocabularies/`; for codes outside the vocabularies keep what was written; and expire every cursor issued before the upgrade (a version or epoch in the cursor, or an upgrade marker that cursors are compared with).
 
 ### Added (Excel import)
 - **Excel templates** for brands: [`templates/products.xlsx`](templates/products.xlsx) and [`templates/assets.xlsx`](templates/assets.xlsx), generated from the schemas, [import-format.md](docs/import-format.md) and the Kestrel fixtures by `npm run templates`. The columns of the canonical CSV in order, text-formatted cells (so Excel keeps GTINs), dropdowns for every enumerated column, an explanation per column in English and Dutch, how to save as CSV UTF-8 and the image naming rule. `npm run check` fails when they drift.

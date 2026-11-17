@@ -2245,6 +2245,15 @@ paths:
               type: string
           style: form
           explode: true
+        - name: qualifier
+          in: query
+          description: Material qualifier code (`organic`, `recycled`, ...; vocabularies/qualifiers.json). A product matches when any fibre of any part of its `materials` has any of the given codes. Like the other filters, values of one parameter are OR-ed and different parameters AND-ed.
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: true
         - name: updated_since
           in: query
           description: '"New since": products that got new/changed data or images since this time.'
@@ -2332,6 +2341,15 @@ paths:
           explode: true
         - name: target_group
           in: query
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: true
+        - name: qualifier
+          in: query
+          description: Material qualifier code (`organic`, `recycled`, ...; vocabularies/qualifiers.json). A product matches when any fibre of any part of its `materials` has any of the given codes. Like the other filters, values of one parameter are OR-ed and different parameters AND-ed.
           schema:
             type: array
             items:
@@ -4057,6 +4075,11 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/FacetValue"
+        qualifiers:
+          type: array
+          description: "Material qualifiers in the products (`value` the code, `label` the name per language from the vocabulary, `count` the products with that qualifier on any fibre). Optional: a UI hides the filter when a node does not send it."
+          items:
+            $ref: "#/components/schemas/FacetValue"
     Selection:
       type: object
       required:
@@ -4120,6 +4143,10 @@ components:
               items:
                 type: string
             target_group:
+              type: array
+              items:
+                type: string
+            qualifier:
               type: array
               items:
                 type: string
@@ -4772,11 +4799,11 @@ components:
                   type: number
                   exclusiveMinimum: 0
                   maximum: 100
-                qualifier:
-                  anyOf:
-                    - $ref: "#/components/schemas/term"
-                    - type: "null"
-                  description: "What the fibre is, apart from which fibre: organic, recycled, regenerative (vocabularies/qualifiers.json; unknown codes are allowed). null = none."
+                qualifiers:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/term"
+                  description: "What the fibre is, apart from which fibre, in the order the brand states it: organic, in_conversion, recycled, pre_consumer, post_consumer, regenerative (vocabularies/qualifiers.json; unknown codes are allowed, a code appears at most once). Empty = none. A node returns [] when the fibre has none; on write the property may be left out (= none)."
               required:
                 - material
                 - percentage

@@ -74,10 +74,10 @@ Exports (portal "CSV" download) use the same columns in the order of the tables 
 ```
 materials := part (";" part)*
 part      := [part_name ":"] fiber ("," fiber)*        part_name defaults to "main"
-fiber     := number "%" material_code [qualifier]      e.g. "95% cotton", "100% polyester (recycled)"
+fiber     := number "%" material_code qualifier*      e.g. "95% cotton", "100% polyester (recycled) (post_consumer)"
 qualifier := "(" qualifier_code ")"                   e.g. "(organic)", "(recycled)", "(regenerative)"
 ```
-Examples: `100% cotton (organic)` · `outer: 65% cotton, 35% polyamide; lining: 100% polyester (recycled)`. Part, material and qualifier codes are lowercase with `_`; a node lowercases and replaces spaces with `_` (`Merino Wool` → `merino_wool`). The file holds codes only: the node adds the names from [`vocabularies/`](../vocabularies) ([protocol.md §5.9.1](protocol.md#composition)). A qualifier in brackets sets that fibre's `qualifier`; one per fibre (two are a `validation_failed` error). Percentages of a part SHOULD sum to 100; for textile item types a part that does not gives the warning `fibre_percentages_not_100` ([rule 10](#label-completeness)).
+Examples: `100% cotton (organic)` · `100% cotton (organic) (regenerative)` · `outer: 65% cotton, 35% polyamide; lining: 100% polyester (recycled)`. Part, material and qualifier codes are lowercase with `_`; a node lowercases and replaces spaces with `_` (`Merino Wool` → `merino_wool`). The file holds codes only: the node adds the names from [`vocabularies/`](../vocabularies) ([protocol.md §5.9.1](protocol.md#composition)). Each qualifier in brackets adds a code to that fibre's `qualifiers`, in order; a repeated code counts once. Brackets hold one code each (`(organic, recycled)` is a `validation_failed` error: the comma separates fibres). Percentages of a part SHOULD sum to 100; for textile item types a part that does not gives the warning `fibre_percentages_not_100` ([rule 10](#label-completeness)).
 
 **0.1 fibre keys.** A key `recycled_<fibre>` or `organic_<fibre>` (the 0.1 keys `recycled_cotton`, `recycled_polyester`, `recycled_polyamide`, `organic_cotton`) is normalised to the material with that qualifier: `100% recycled_polyester` = `100% polyester (recycled)`, `100% organic_cotton` = `100% cotton (organic)`. Files written for 0.1 therefore keep working.
 
