@@ -215,7 +215,7 @@ Scheduled pull imports (SFTP folder, S3 prefix) treat the folder like an unpacke
 | `footwear_materials_missing` | a footwear item type without `footwear_materials`, or with one of its three parts empty | `footwear_materials` | the material of the upper, the lining and sock and the outer sole is mandatory on footwear labels: Directive 94/11/EC |
 | `fibre_percentages_not_100` | a part of `materials` in which every fibre states a percentage and they do not sum to 100, or whose stated percentages sum to more than 100 (one per part). A part with a fibre without a percentage ([1.4](#materials)) is otherwise not checked | `materials` | the composition is given as percentages of the total fibre weight: Reg. (EU) No 1007/2011 Art. 9 (and Art. 11 per component) |
 
-The import of [`fixtures/kestrel`](../fixtures/kestrel) gives none of these warnings, and no `material_unknown` ([1.4](#material-unknown)), which is a fifth stable warning code next to these four.
+The import of [`fixtures/kestrel`](../fixtures/kestrel) gives none of these warnings, and no `material_unknown` ([1.4](#material-unknown)), which is a fifth stable warning code next to these four. A sixth, `qualifier_deprecated`, occurs only on the Ingest API and admin write paths, for a fibre written with the draft single `qualifier` ([ingest.md §3.1](ingest.md)); an import file has no such form.
 
 ## 5. <a id="excel"></a>Excel workbooks (node feature, non-normative)
 
