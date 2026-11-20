@@ -381,6 +381,145 @@ paths:
               schema: {$ref: '#/components/schemas/Settings'}
         '401': {$ref: '#/components/responses/Unauthorized'}
 
+  /admin/api/settings/favicon:
+    put:
+      tags: [Settings]
+      operationId: uploadFavicon
+      summary: Upload the portal favicon (PNG or WebP, square, max 1 MB)
+      description: The image MUST be square (else 422 `validation_failed`) and SHOULD be at least 180×180 px. Sets `branding.favicon_url`.
+      parameters:
+        - $ref: '#/components/parameters/Csrf'
+      requestBody:
+        required: true
+        content:
+          image/png:
+            schema: {type: string, contentMediaType: image/png}
+          image/webp:
+            schema: {type: string, contentMediaType: image/webp}
+      responses:
+        '200':
+          description: Updated settings.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Settings'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '413': {$ref: '#/components/responses/PayloadTooLarge'}
+        '415': {$ref: '#/components/responses/UnsupportedMediaType'}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
+    delete:
+      tags: [Settings]
+      operationId: deleteFavicon
+      summary: Remove the favicon (the UI falls back to its default)
+      parameters:
+        - $ref: '#/components/parameters/Csrf'
+      responses:
+        '200':
+          description: Updated settings.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Settings'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+  /admin/api/settings/images:
+    get:
+      tags: [Settings]
+      operationId: listBrandingImages
+      summary: Branding images (login background, home blocks)
+      description: Not paginated (a node holds at most 200), newest first.
+      responses:
+        '200':
+          description: All branding images.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    maxItems: 200
+                    items: {$ref: '#/components/schemas/BrandingImage'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+    post:
+      tags: [Settings]
+      operationId: uploadBrandingImage
+      summary: Upload a branding image (PNG, JPEG or WebP, max 10 MB, max 8,000 px per side)
+      description: |
+        Nodes MUST check the content (magic bytes), not only the declared type: anything else
+        is 415, more than 10 MB 413, a side above 8,000 px 422 `validation_failed`. Nodes store
+        the original and serve it unchanged; they MAY also serve a resized variant (at most
+        2,560 px, JPEG or WebP) at the same URL. At most 200 images per node: beyond that 409
+        `limit_exceeded`. Ids are never reused.
+      parameters:
+        - $ref: '#/components/parameters/Csrf'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: {type: string, contentMediaType: application/octet-stream}
+      responses:
+        '201':
+          description: Stored.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/BrandingImage'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '413': {$ref: '#/components/responses/PayloadTooLarge'}
+        '415': {$ref: '#/components/responses/UnsupportedMediaType'}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
+  /admin/api/settings/images/{id}:
+    delete:
+      tags: [Settings]
+      operationId: deleteBrandingImage
+      summary: Delete a branding image
+      description: 409 `conflict` while `branding.login` or `branding.home` still references it.
+      parameters:
+        - $ref: '#/components/parameters/Csrf'
+        - $ref: '#/components/parameters/ImageIdPath'
+      responses:
+        '204':
+          description: Deleted.
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /admin/api/public/images/{id}:
+    get:
+      tags: [Session]
+      operationId: getPublicBrandingImage
+      summary: A branding image (public; it appears on the login page)
+      description: |
+        No authentication. Nodes MUST send the stored content type,
+        `X-Content-Type-Options: nosniff` and `Cache-Control: public, max-age=31536000, immutable`
+        (in demo mode `private, max-age=300`, like other demo files). 404 for an unknown or
+        deleted id.
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/ImageIdPath'
+      responses:
+        '200':
+          description: The image.
+          headers:
+            Cache-Control:
+              schema: {type: string}
+          content:
+            image/png:
+              schema: {type: string, contentMediaType: image/png}
+            image/jpeg:
+              schema: {type: string, contentMediaType: image/jpeg}
+            image/webp:
+              schema: {type: string, contentMediaType: image/webp}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '429': {$ref: '#/components/responses/TooManyRequests'}
+
   # ------------------------------------------------------------------ catalog (ingest semantics)
   /admin/api/catalog/brands:
     get:
@@ -2096,6 +2235,11 @@ components:
       in: path
       required: true
       schema: {$ref: '../schemas/Common.json#/$defs/Id'}
+    ImageIdPath:
+      name: id
+      in: path
+      required: true
+      schema: {$ref: '#/components/schemas/ImageId'}
     TokenPath:
       name: token
       in: path
@@ -2161,6 +2305,16 @@ components:
         default_language: {$ref: '../schemas/Common.json#/$defs/LanguageTag'}
         access_requests_enabled: {type: boolean}
         setup_required: {type: boolean}
+        favicon_url: {type: [string, 'null']}
+        theme:
+          oneOf:
+            - {$ref: '#/components/schemas/BrandingTheme'}
+            - {type: 'null'}
+        login:
+          description: With `background_image_url` resolved.
+          oneOf:
+            - {$ref: '#/components/schemas/BrandingLogin'}
+            - {type: 'null'}
         brands:
           type: array
           description: Published brands (for the request-access form).
@@ -2170,6 +2324,299 @@ components:
             properties:
               id: {type: string}
               name: {type: string}
+    HexColor:
+      type: [string, 'null']
+      pattern: '^#[0-9a-fA-F]{6}$'
+      description: '`#rrggbb`; null uses the node default.'
+    ImageId:
+      type: string
+      pattern: '^[A-Za-z0-9_-]{1,64}$'
+      description: A branding image id from `POST /admin/api/settings/images` (nodes generate `img_` + random characters). Opaque; never reused.
+    NullableImageId:
+      description: A branding image id, or null for none. Nodes MUST reject ids they do not hold (422 `validation_failed` with a pointer).
+      oneOf:
+        - {$ref: '#/components/schemas/ImageId'}
+        - {type: 'null'}
+    ResolvedImageUrl:
+      type: [string, 'null']
+      readOnly: true
+      description: 'The image''s URL (`/admin/api/public/images/{id}`), set by the node in PublicBranding and PortalViewer responses (it MAY also set it in settings responses). Ignored on write.'
+    PortalText:
+      description: A text shown in the portal, per language (at most 2,000 characters each), or null. The UI shows the reader's language, else the brand's default language, else any.
+      oneOf:
+        - type: object
+          minProperties: 1
+          patternProperties:
+            '^[a-z]{2,3}(-[A-Z][a-z]{3})?(-([A-Z]{2}|[0-9]{3}))?$': {type: string, minLength: 1, maxLength: 2000}
+          additionalProperties: false
+        - {type: 'null'}
+    PortalLongText:
+      description: Like PortalText but at most 10,000 characters per language. Plain text; a blank line starts a new paragraph. Never HTML or Markdown.
+      oneOf:
+        - type: object
+          minProperties: 1
+          patternProperties:
+            '^[a-z]{2,3}(-[A-Z][a-z]{3})?(-([A-Z]{2}|[0-9]{3}))?$': {type: string, minLength: 1, maxLength: 10000}
+          additionalProperties: false
+        - {type: 'null'}
+    PortalLink:
+      type: [string, 'null']
+      maxLength: 2000
+      pattern: '^(/(?![/\\])|https://[^/\s])\S*$'
+      description: 'A portal path starting with a single `/` (`/catalog?category=jeans`, `/products/KO-1001`) or an `https://` URL; nothing else (no `//host`, `http:`, `javascript:`, `mailto:`). The UI opens portal paths in the portal and `https://` URLs in a new tab with `rel="noopener noreferrer"`.'
+    PortalFont:
+      type: [string, 'null']
+      enum: [system, inter, dm-sans, manrope, work-sans, jost, space-grotesk, fraunces, playfair-display, libre-baskerville, cormorant-garamond, null]
+      description: A font bundled with the admin UI (all SIL OFL, served from the portal itself); `system` is the platform's UI font; null uses the default.
+    BrandingTheme:
+      type: object
+      additionalProperties: true
+      description: Look of the portal. Every member is optional; null or absent uses the node default (the look before 0.3.1). Nodes MUST store and return members they do not know unchanged; the UI ignores them.
+      properties:
+        color_scheme: {type: [string, 'null'], enum: [light, dark, auto, null], description: '`auto` follows the reader''s system setting.'}
+        colors:
+          type: [object, 'null']
+          additionalProperties: true
+          properties:
+            primary: {$ref: '#/components/schemas/HexColor', description: 'Buttons, links, active states. Wins over `branding.accent_color` when set.'}
+            secondary: {$ref: '#/components/schemas/HexColor', description: Highlights and badges.}
+            background: {$ref: '#/components/schemas/HexColor', description: Page background.}
+            surface: {$ref: '#/components/schemas/HexColor', description: Cards and panels.}
+            text: {$ref: '#/components/schemas/HexColor', description: Body text.}
+        heading_font: {$ref: '#/components/schemas/PortalFont'}
+        body_font: {$ref: '#/components/schemas/PortalFont'}
+        radius: {type: [string, 'null'], enum: [none, small, medium, large, null], description: 'Corner radius of buttons, cards and images.'}
+        grid_density: {type: [string, 'null'], enum: [compact, comfortable, editorial, null], description: 'Product grid: `editorial` shows fewer, larger images.'}
+        card_style: {type: [string, 'null'], enum: [plain, bordered, elevated, null]}
+        image_fit: {type: [string, 'null'], enum: [contain, cover, null], description: How product images fill their tile.}
+        image_background: {$ref: '#/components/schemas/HexColor', description: Behind product images.}
+    BrandingLogin:
+      type: object
+      additionalProperties: true
+      description: The login and request-access pages. Unknown members are stored and returned unchanged.
+      properties:
+        layout: {type: [string, 'null'], enum: [centered, split, null], description: '`split`: the background image fills one half (the start side, left in left-to-right languages), the form the other; on narrow screens the image is a band above the form.'}
+        background_image: {$ref: '#/components/schemas/NullableImageId'}
+        background_image_url: {$ref: '#/components/schemas/ResolvedImageUrl'}
+        title: {$ref: '#/components/schemas/PortalText'}
+        text: {$ref: '#/components/schemas/PortalText'}
+    BrandingHome:
+      type: object
+      additionalProperties: true
+      description: The retailer start page. No or no blocks means the catalogue is the start page. Not public (absent from PublicBranding).
+      properties:
+        blocks:
+          type: [array, 'null']
+          maxItems: 30
+          description: Shown top to bottom. Block ids MUST be unique within the list.
+          items: {$ref: '#/components/schemas/HomeBlock'}
+    HomeBlock:
+      description: |
+        One block of the start page, chosen by `type`. A block of a type this schema does not
+        list is valid: nodes MUST store and return it unchanged and the UI skips it. Members
+        a block type does not list are kept the same way. Every member except `id` and
+        `type` is optional; the UI leaves out what is empty.
+      oneOf:
+        - {$ref: '#/components/schemas/HeroBlock'}
+        - {$ref: '#/components/schemas/TilesBlock'}
+        - {$ref: '#/components/schemas/TextBlock'}
+        - {$ref: '#/components/schemas/ImageTextBlock'}
+        - {$ref: '#/components/schemas/ProductsBlock'}
+        - {$ref: '#/components/schemas/AnnouncementBlock'}
+        - {$ref: '#/components/schemas/ContactBlock'}
+        - {$ref: '#/components/schemas/UnknownBlock'}
+      discriminator:
+        propertyName: type
+        mapping:
+          hero: '#/components/schemas/HeroBlock'
+          tiles: '#/components/schemas/TilesBlock'
+          text: '#/components/schemas/TextBlock'
+          image_text: '#/components/schemas/ImageTextBlock'
+          products: '#/components/schemas/ProductsBlock'
+          announcement: '#/components/schemas/AnnouncementBlock'
+          contact: '#/components/schemas/ContactBlock'
+    HomeBlockId:
+      type: string
+      minLength: 1
+      maxLength: 40
+      description: Chosen by the client, unique within the page.
+    HeroBlock:
+      type: object
+      additionalProperties: true
+      required: [id, type]
+      description: A large image with a title, text and one button.
+      properties:
+        id: {$ref: '#/components/schemas/HomeBlockId'}
+        type: {type: string, const: hero}
+        image: {$ref: '#/components/schemas/NullableImageId'}
+        image_url: {$ref: '#/components/schemas/ResolvedImageUrl'}
+        title: {$ref: '#/components/schemas/PortalText'}
+        text: {$ref: '#/components/schemas/PortalText'}
+        button_label: {$ref: '#/components/schemas/PortalText'}
+        link: {$ref: '#/components/schemas/PortalLink'}
+        align: {type: [string, 'null'], enum: [left, center, null]}
+        height: {type: [string, 'null'], enum: [medium, large, null]}
+        overlay: {type: [string, 'null'], enum: [none, dark, light, null], description: A shade over the image so the text stays readable.}
+    TilesBlock:
+      type: object
+      additionalProperties: true
+      required: [id, type]
+      description: 'Image tiles that link somewhere, typically to catalogue filters (collections, categories).'
+      properties:
+        id: {$ref: '#/components/schemas/HomeBlockId'}
+        type: {type: string, const: tiles}
+        title: {$ref: '#/components/schemas/PortalText'}
+        columns: {type: [integer, 'null'], enum: [2, 3, 4, null], description: Columns on wide screens.}
+        items:
+          type: array
+          minItems: 1
+          maxItems: 12
+          items:
+            type: object
+            additionalProperties: true
+            properties:
+              image: {$ref: '#/components/schemas/NullableImageId'}
+              image_url: {$ref: '#/components/schemas/ResolvedImageUrl'}
+              title: {$ref: '#/components/schemas/PortalText'}
+              link: {$ref: '#/components/schemas/PortalLink'}
+    TextBlock:
+      type: object
+      additionalProperties: true
+      required: [id, type]
+      properties:
+        id: {$ref: '#/components/schemas/HomeBlockId'}
+        type: {type: string, const: text}
+        title: {$ref: '#/components/schemas/PortalText'}
+        body: {$ref: '#/components/schemas/PortalLongText'}
+    ImageTextBlock:
+      type: object
+      additionalProperties: true
+      required: [id, type]
+      description: An image beside a title, text and one button.
+      properties:
+        id: {$ref: '#/components/schemas/HomeBlockId'}
+        type: {type: string, const: image_text}
+        image: {$ref: '#/components/schemas/NullableImageId'}
+        image_url: {$ref: '#/components/schemas/ResolvedImageUrl'}
+        title: {$ref: '#/components/schemas/PortalText'}
+        text: {$ref: '#/components/schemas/PortalText'}
+        button_label: {$ref: '#/components/schemas/PortalText'}
+        link: {$ref: '#/components/schemas/PortalLink'}
+        image_side: {type: [string, 'null'], enum: [left, right, null]}
+    ProductsBlock:
+      type: object
+      additionalProperties: true
+      required: [id, type]
+      description: |
+        A row of products the reader may see, loaded by the UI with the normal portal product
+        endpoints: `style_numbers` (in that order; unknown or invisible ones are left out),
+        else `query`, else the most recently updated products. When both are set,
+        `style_numbers` wins. Never more than `max`.
+      properties:
+        id: {$ref: '#/components/schemas/HomeBlockId'}
+        type: {type: string, const: products}
+        title: {$ref: '#/components/schemas/PortalText'}
+        style_numbers:
+          type: [array, 'null']
+          maxItems: 24
+          items: {type: string, minLength: 1, maxLength: 100}
+        query:
+          type: [string, 'null']
+          maxLength: 2000
+          pattern: '^[^?#\s]*$'
+          description: 'Query string of `GET /admin/api/portal/products` without the leading `?`, e.g. `qualifier=organic&season=AW26`. `cursor` and `limit` are ignored.'
+        max: {type: [integer, 'null'], minimum: 1, maximum: 24, description: 'Default 8.'}
+    AnnouncementBlock:
+      type: object
+      additionalProperties: true
+      required: [id, type]
+      description: A short notice in a coloured band.
+      properties:
+        id: {$ref: '#/components/schemas/HomeBlockId'}
+        type: {type: string, const: announcement}
+        text: {$ref: '#/components/schemas/PortalText'}
+        tone: {type: [string, 'null'], enum: [neutral, info, success, null]}
+    ContactBlock:
+      type: object
+      additionalProperties: true
+      required: [id, type]
+      description: The brand's contact for retailers (account manager).
+      properties:
+        id: {$ref: '#/components/schemas/HomeBlockId'}
+        type: {type: string, const: contact}
+        title: {$ref: '#/components/schemas/PortalText'}
+        name: {type: [string, 'null'], maxLength: 200}
+        email:
+          oneOf:
+            - {$ref: '../schemas/Common.json#/$defs/Email'}
+            - {type: 'null'}
+        phone: {type: [string, 'null'], maxLength: 50}
+    UnknownBlock:
+      type: object
+      additionalProperties: true
+      required: [id, type]
+      description: A block of a type from a later version. Stored and returned unchanged; the UI skips it.
+      properties:
+        id: {$ref: '#/components/schemas/HomeBlockId'}
+        type:
+          type: string
+          pattern: '^[a-z][a-z0-9_]{0,39}$'
+          not: {enum: [hero, tiles, text, image_text, products, announcement, contact]}
+    BrandingImage:
+      type: object
+      required: [id, url, width, height, bytes, content_type]
+      properties:
+        id: {$ref: '#/components/schemas/ImageId'}
+        url: {type: string, description: '`/admin/api/public/images/{id}` (relative to the node).'}
+        width: {type: integer, minimum: 1, maximum: 8000}
+        height: {type: integer, minimum: 1, maximum: 8000}
+        bytes: {type: integer, minimum: 1}
+        content_type: {type: string, enum: [image/png, image/jpeg, image/webp]}
+        used: {type: boolean, description: 'In lists only: true while `branding.login` or `branding.home` references it.'}
+        created_at: {type: string, format: date-time}
+    BrandingSettings:
+      type: object
+      description: |
+        `Settings.branding`. Updated with a JSON merge patch like the rest of the settings; a
+        client that edits `home.blocks` sends the whole array (merge patch replaces arrays).
+        Nodes MUST reject a `branding` larger than 64 KiB (serialised JSON) with 422
+        `validation_failed`.
+      properties:
+        display_name: {type: string, minLength: 1, maxLength: 200}
+        logo_url: {type: [string, 'null'], readOnly: true, description: 'Set via PUT /admin/api/settings/logo.'}
+        favicon_url: {type: [string, 'null'], readOnly: true, description: 'Set via PUT /admin/api/settings/favicon.'}
+        accent_color: {type: [string, 'null'], pattern: '^#[0-9a-fA-F]{6}$', description: 'Still honoured; `theme.colors.primary` wins when set.'}
+        welcome_text:
+          oneOf:
+            - {$ref: '../schemas/LocalizedText.json'}
+            - {type: 'null'}
+        portal_name:
+          description: 'Overrides the local portal word ("Beeldbank", "Händlerportal" ...) per language; null uses the glossary word. See PublicBranding.portal_name. The settings update is a JSON merge patch (RFC 7396): `{"branding":{"portal_name":{"de":null}}}` removes the German text only, `{"branding":{"portal_name":null}}` removes the whole override. A client that edits the texts as a whole sends `null` for every language it removed.'
+          oneOf:
+            - {$ref: '../schemas/LocalizedText.json'}
+            - {type: 'null'}
+        theme:
+          oneOf:
+            - {$ref: '#/components/schemas/BrandingTheme'}
+            - {type: 'null'}
+        login:
+          oneOf:
+            - {$ref: '#/components/schemas/BrandingLogin'}
+            - {type: 'null'}
+        home:
+          oneOf:
+            - {$ref: '#/components/schemas/BrandingHome'}
+            - {type: 'null'}
+    PortalBranding:
+      description: PublicBranding plus the start page, for signed-in readers. Every image id in `home` is resolved (`image_url` next to `image`).
+      allOf:
+        - {$ref: '#/components/schemas/PublicBranding'}
+        - type: object
+          properties:
+            home:
+              oneOf:
+                - {$ref: '#/components/schemas/BrandingHome'}
+                - {type: 'null'}
     SetupInput:
       type: object
       required: [setup_code, company, admin]
@@ -2245,21 +2692,7 @@ components:
                 - {$ref: '../schemas/Common.json#/$defs/Email'}
                 - {type: 'null'}
             country: {type: [string, 'null'], pattern: '^[A-Z]{2}$'}
-        branding:
-          type: object
-          properties:
-            display_name: {type: string, minLength: 1, maxLength: 200}
-            logo_url: {type: [string, 'null'], readOnly: true, description: 'Set via PUT /admin/api/settings/logo.'}
-            accent_color: {type: [string, 'null'], pattern: '^#[0-9a-fA-F]{6}$'}
-            welcome_text:
-              oneOf:
-                - {$ref: '../schemas/LocalizedText.json'}
-                - {type: 'null'}
-            portal_name:
-              description: 'Overrides the local portal word ("Beeldbank", "Händlerportal" ...) per language; null uses the glossary word. See PublicBranding.portal_name. The settings update is a JSON merge patch (RFC 7396): `{"branding":{"portal_name":{"de":null}}}` removes the German text only, `{"branding":{"portal_name":null}}` removes the whole override. A client that edits the texts as a whole sends `null` for every language it removed.'
-              oneOf:
-                - {$ref: '../schemas/LocalizedText.json'}
-                - {type: 'null'}
+        branding: {$ref: '#/components/schemas/BrandingSettings'}
         portal:
           type: object
           properties:
@@ -2607,7 +3040,7 @@ components:
             original_download: {type: boolean}
             article_data_export: {type: boolean}
             api_self_service: {type: boolean}
-        branding: {$ref: '#/components/schemas/PublicBranding'}
+        branding: {$ref: '#/components/schemas/PortalBranding'}
         languages:
           type: array
           items: {$ref: '../schemas/Common.json#/$defs/LanguageTag'}

@@ -2,6 +2,12 @@
 
 All notable changes to the Open Brand Exchange specification. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [docs/versioning.md](docs/versioning.md).
 
+## [Unreleased]
+
+### Added
+- **Node Admin API: portal appearance** (additive; the protocol does not change; [node-admin.md](docs/node-admin.md#portal-appearance)). `branding` gets `theme` (colour scheme, five colours, heading and body font from a fixed list of bundled OFL fonts, radius, grid density, card style, image fit and background), `login` (layout `centered`/`split`, background image, title, text), `home` (a start page of at most 30 blocks: `hero`, `tiles`, `text`, `image_text`, `products`, `announcement`, `contact`; unknown block types and members are stored and returned unchanged) and the read-only `favicon_url`. Texts per language, links only to portal paths or `https://`. `PublicBranding` adds `favicon_url`, `theme` and `login`; the portal viewer's `branding` adds `home`, with image URLs resolved. New endpoints: `POST`/`GET /admin/api/settings/images`, `DELETE /admin/api/settings/images/{id}`, the public `GET /admin/api/public/images/{id}` (immutable caching) and `PUT`/`DELETE /admin/api/settings/favicon`. Every new member is optional; `null` keeps the current look.
+- Fixture [`fixtures/examples/BrandingSettings.full.json`](fixtures/examples/BrandingSettings.full.json): the Kestrel showroom in English, Dutch and German. `bun run check` validates it, and fixtures named after other `node-admin.yaml` components, against the OpenAPI schema, plus the link, block and limit rules.
+
 ## [0.3.0] - 2026-11-17
 
 Materials and care as terms with names ([proposal 0004](docs/proposals/0004-terms-with-names.md)). **Breaking** (allowed before 1.0, [versioning](docs/versioning.md)). It also carries the Excel import and the documentation below, which were unreleased on 0.2.

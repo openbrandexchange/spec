@@ -25,6 +25,7 @@ This repository is the **source of truth** that every implementation follows. **
 | [`docs/protocol.md`](docs/protocol.md) | the readable specification, including the article data and its legal basis (§5.9) |
 | [`docs/ingest.md`](docs/ingest.md) · [`docs/import-format.md`](docs/import-format.md) · [`docs/automation.md`](docs/automation.md) | publishing and automating |
 | [`docs/security.md`](docs/security.md) · [`docs/conformance.md`](docs/conformance.md) | requirements and tests |
+| [`docs/node-admin.md`](docs/node-admin.md) | the Node Admin API behind the shared portal UI: portal appearance (theme, login page, start page blocks, images) |
 | [`docs/implementations.md`](docs/implementations.md) · [`docs/go-live.md`](docs/go-live.md) | the portals that implement it, what they pass, where they run, known gaps; what is left before the first release |
 | [`docs/directory.md`](docs/directory.md) · [`docs/versioning.md`](docs/versioning.md) · [`docs/governance.md`](docs/governance.md) | ecosystem |
 | [`fixtures/`](fixtures) | the fictional "Kestrel Outfitters" catalog, expected API output and an ingest replay script |

@@ -16,7 +16,7 @@ Everything here is **fictional**: "Kestrel Outfitters" is not a real company, th
 | `ingest/expected-results.json` | expected `result` (and `obx_error`) per operation |
 | `ingest/expected-changes.json` | expected live `/changes` entries per operation (`after_op`), in order |
 | `ingest/files/` | the images the script references by sha256 (upload them as blobs first) |
-| `examples/*.json` | one or more valid example documents per schema (file name prefix = schema name) and a webhook signature test vector |
+| `examples/*.json` | one or more valid example documents per schema (file name prefix = schema name, or a component of `openapi/node-admin.yaml` such as `BrandingSettings`) and a webhook signature test vector |
 
 ## Replaying the ingest script
 

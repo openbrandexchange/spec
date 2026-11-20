@@ -82,6 +82,48 @@ function walkGtins(value, where) {
   }
 }
 
+// ---------------------------------------------------------------- Node Admin schemas
+// The component schemas of node-admin.yaml as one JSON Schema, so fixtures named after a
+// component that is not in schemas/ (BrandingSettings.full.json) validate in the loop below.
+const adminId = "https://openbrandexchange.com/openapi/node-admin.json";
+const toJSONSchema = (n) => Array.isArray(n) ? n.map(toJSONSchema)
+  : n && typeof n === "object" ? Object.fromEntries(Object.entries(n).filter(([k]) => k !== "discriminator").map(([k, v]) =>
+    k === "$ref" && typeof v === "string" ? [k, v.replace(/^#\/components\/schemas\//, "#/$defs/").replace(/^\.\.\/schemas\//, schemaBase)] : [k, toJSONSchema(v)]))
+  : n;
+const adminSchemas = parseYAML(readFileSync(join(root, "openapi", "node-admin.yaml"), "utf8")).components.schemas;
+ajv.addSchema({ $id: adminId, $defs: toJSONSchema(adminSchemas) });
+const adminValidator = (name) => ajv.getSchema(`${adminId}#/$defs/${name}`);
+for (const file of readdirSync(join(root, "fixtures", "examples"))) {
+  const name = file.split(".")[0];
+  if (!validators[name] && adminSchemas[name]) validators[name] = adminValidator(name);
+}
+// Portal appearance rules that the fixture alone does not exercise.
+{
+  const blocks = (b) => ({ home: { blocks: b } });
+  const cases = [
+    ["unknown block type is kept", blocks([{ id: "a", type: "lookbook", pages: [1, 2] }]), true],
+    ["unknown member in a known block is kept", blocks([{ id: "a", type: "text", x_layout: "wide" }]), true],
+    ["unknown theme member is kept", { theme: { motion: "reduced" } }, true],
+    ["known block type with a wrong member", blocks([{ id: "a", type: "hero", align: "right" }]), false],
+    ["block without id", blocks([{ type: "text" }]), false],
+    ["javascript: link", blocks([{ id: "a", type: "hero", link: "javascript:alert(1)" }]), false],
+    ["http: link", blocks([{ id: "a", type: "hero", link: "http://example.org/" }]), false],
+    ["protocol-relative link", blocks([{ id: "a", type: "hero", link: "//example.org/" }]), false],
+    ["backslash link", blocks([{ id: "a", type: "hero", link: "/\\example.org/" }]), false],
+    ["https link", blocks([{ id: "a", type: "hero", link: "https://kestrel.example/lookbook" }]), true],
+    ["portal path", blocks([{ id: "a", type: "hero", link: "/products/KO-1001" }]), true],
+    ["13 tiles", blocks([{ id: "a", type: "tiles", items: Array(13).fill({}) }]), false],
+    ["31 blocks", blocks(Array.from({ length: 31 }, (_, i) => ({ id: `b${i}`, type: "text" }))), false],
+    ["unknown font", { theme: { body_font: "comic-sans" } }, false],
+    ["short colour", { theme: { colors: { primary: "#fff" } } }, false],
+    ["text over 2,000 characters", { login: { title: { en: "x".repeat(2001) } } }, false],
+  ];
+  for (const [what, value, valid] of cases) {
+    checked++;
+    if (validators.BrandingSettings(value) !== valid) fail("node-admin.yaml BrandingSettings", `${what}: expected ${valid ? "valid" : "invalid"}`);
+  }
+}
+
 // ---------------------------------------------------------------- examples
 const exDir = join(root, "fixtures", "examples");
 for (const file of readdirSync(exDir).sort()) {
