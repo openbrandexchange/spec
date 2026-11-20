@@ -159,7 +159,7 @@ ${items}
 function readme() {
   return `# site/: generated, do not edit
 
-Built by \`npm run build:site\` (tools/build-site.mjs) from \`openapi/\` and \`schemas/\`; CI fails when it is out of date.
+Built by \`bun run build:site\` (tools/build-site.mjs) from \`openapi/\` and \`schemas/\`; CI fails when it is out of date.
 
 | Path | What |
 |---|---|
@@ -208,7 +208,7 @@ if (args.has("--update-redoc")) {
   const differ = [...new Set([...a, ...b])].filter((f) => !a.includes(f) || !b.includes(f) || !readFileSync(join(site, f)).equals(readFileSync(join(tmp, f))));
   rmSync(tmp, { recursive: true, force: true });
   if (differ.length) {
-    console.error(`✗ site/ is out of date (${differ.length} file(s): ${differ.slice(0, 8).join(", ")}${differ.length > 8 ? ", …" : ""}). Run: npm run build:site`);
+    console.error(`✗ site/ is out of date (${differ.length} file(s): ${differ.slice(0, 8).join(", ")}${differ.length > 8 ? ", …" : ""}). Run: bun run build:site`);
     process.exit(1);
   }
   console.log(`✓ site/ matches the sources (${b.length} files).`);

@@ -16,17 +16,16 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: oven-sh/setup-bun@v2
         with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
+          bun-version: "1.3.14"
+      - run: bun install --frozen-lockfile
       # Redocly lint, Ajv validation (schemas, fixtures, OpenAPI examples), glossary,
       # links, versions, licences, and that site/ matches openapi/ and schemas/.
-      - run: npm run check
+      - run: bun run check
       # Every npm package is a build tool (nothing from node_modules is shipped), so the
       # audit covers the dev dependencies too.
-      - run: npm audit --audit-level=high
+      - run: bun audit --audit-level=high
       - name: fixtures still match their generator
         # PNG bytes (and so every hash) depend on the zlib version, so only the files
         # without image hashes are compared; the committed fixtures stay canonical.
@@ -42,13 +41,12 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: oven-sh/setup-bun@v2
         with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-      - run: npx playwright install --with-deps chromium
-      - run: npm run test:site
+          bun-version: "1.3.14"
+      - run: bun install --frozen-lockfile
+      - run: bunx playwright install --with-deps chromium
+      - run: bun run test:site
         env:
           CI: "true"
       - if: failure()
@@ -65,12 +63,11 @@ jobs:
     needs: check
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: oven-sh/setup-bun@v2
         with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-      - run: npm run package
+          bun-version: "1.3.14"
+      - run: bun install --frozen-lockfile
+      - run: bun run package
       - uses: actions/upload-artifact@v7
         with:
           name: obx-spec-bundle

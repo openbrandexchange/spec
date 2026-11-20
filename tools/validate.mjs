@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Validates the spec repository: JSON Schemas compile, every fixture/example validates,
 // the canonical CSV fixtures follow docs/import-format.md, and docs list the same error
-// codes as the schema. Exit code 1 on any failure. Run: npm run validate (or bun tools/validate.mjs).
+// codes as the schema. Exit code 1 on any failure. Run: bun run validate (or bun tools/validate.mjs).
 import Ajv2020 from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
 import { readFileSync, readdirSync, existsSync, statSync } from "node:fs";

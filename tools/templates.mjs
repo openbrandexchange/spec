@@ -725,10 +725,10 @@ async function main() {
     const buf = await buildWorkbook(model);
     problems.push(...(await checkWorkbook(buf, model)).map((p) => `templates/${kind}.xlsx: ${p}`));
     if (check) {
-      if (!existsSync(outPath(kind))) { problems.push(`templates/${kind}.xlsx is missing; run npm run templates`); continue; }
+      if (!existsSync(outPath(kind))) { problems.push(`templates/${kind}.xlsx is missing; run bun run templates`); continue; }
       const [a, b] = [await parts(readFileSync(outPath(kind))), await parts(buf)];
       const diff = [...new Set([...Object.keys(a), ...Object.keys(b)])].filter((n) => a[n] !== b[n]);
-      if (diff.length) problems.push(`templates/${kind}.xlsx is stale (${diff.join(", ")} differ); run npm run templates`);
+      if (diff.length) problems.push(`templates/${kind}.xlsx is stale (${diff.join(", ")} differ); run bun run templates`);
     } else {
       mkdirSync(join(root, "templates"), { recursive: true });
       writeFileSync(outPath(kind), buf);

@@ -501,13 +501,13 @@ async function main() {
   if (check) {
     for (const [name, buf] of Object.entries(files)) {
       const p = join(dir, name);
-      if (!existsSync(p)) { problems.push(`fixtures/imports/xlsx/${name} is missing; run npm run xlsx-fixtures`); continue; }
-      if ((await parts(readFileSync(p))) !== (await parts(buf))) problems.push(`fixtures/imports/xlsx/${name} is stale; run npm run xlsx-fixtures`);
+      if (!existsSync(p)) { problems.push(`fixtures/imports/xlsx/${name} is missing; run bun run xlsx-fixtures`); continue; }
+      if ((await parts(readFileSync(p))) !== (await parts(buf))) problems.push(`fixtures/imports/xlsx/${name} is stale; run bun run xlsx-fixtures`);
     }
     const extra = readdirSync(dir).filter((f) => f.endsWith(".xlsx") && !(f in files));
     if (extra.length) problems.push(`fixtures/imports/xlsx/ has files the generator does not write: ${extra.join(", ")}`);
     const p = join(dir, "expected.json");
-    if (!existsSync(p) || readFileSync(p, "utf8") !== exp) problems.push("fixtures/imports/xlsx/expected.json is stale; run npm run xlsx-fixtures");
+    if (!existsSync(p) || readFileSync(p, "utf8") !== exp) problems.push("fixtures/imports/xlsx/expected.json is stale; run bun run xlsx-fixtures");
   } else {
     mkdirSync(dir, { recursive: true });
     for (const [name, buf] of Object.entries(files)) writeFileSync(join(dir, name), buf);

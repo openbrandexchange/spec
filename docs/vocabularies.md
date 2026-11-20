@@ -27,7 +27,7 @@ A qualifier is a claim the brand can prove; proof (a certificate) goes in `certi
 
 1. Open a pull request on the `spec` repository that adds the entry to the right `vocabularies/*.json` file: `code`, and `name` in at least English (`en`). Dutch, German and French are welcome; a missing language is left out, never an empty string. Care entries also need `category` and `symbol` (`null` when the GINETEX notation has no code).
 2. Explain in the pull request what the code means and where it comes from (a regulation, a certification scheme, a data pool), and why an existing code does not cover it.
-3. `npm run check` must pass (it validates the vocabularies and regenerates the website copy and the Excel templates' lists).
+3. `bun run check` must pass (it validates the vocabularies and regenerates the website copy and the Excel templates' lists).
 4. A new code is a **minor** change ([versioning.md](versioning.md)): nodes that do not know it yet keep working, because unknown codes are always accepted.
 
 Renaming or removing a code is a breaking change; mark it as deprecated in the pull request instead and keep it in the file.

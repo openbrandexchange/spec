@@ -13,17 +13,16 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: oven-sh/setup-bun@v2
         with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
+          bun-version: "1.3.14"
+      - run: bun install --frozen-lockfile
       - name: tag matches package.json
         run: |
-          want="v$(node -p "require('./package.json').version")"
+          want="v$(bun -p "require('./package.json').version")"
           if [ "$GITHUB_REF_NAME" != "$want" ]; then echo "::error::tag $GITHUB_REF_NAME, package.json says $want"; exit 1; fi
-      - run: npm run check
-      - run: npm run package
+      - run: bun run check
+      - run: bun run package
       - name: release notes from CHANGELOG.md
         run: |
           v="${GITHUB_REF_NAME#v}"

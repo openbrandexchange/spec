@@ -1,6 +1,6 @@
 # site/: generated, do not edit
 
-Built by `npm run build:site` (tools/build-site.mjs) from `openapi/` and `schemas/`; CI fails when it is out of date.
+Built by `bun run build:site` (tools/build-site.mjs) from `openapi/` and `schemas/`; CI fails when it is out of date.
 
 | Path | What |
 |---|---|

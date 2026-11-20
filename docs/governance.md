@@ -37,7 +37,7 @@ In short, the statutes will fix five things:
 ### Process
 
 - Proposals are pull requests to the `spec` repository with a short rationale ("RFC" label for anything beyond wording).
-- Every normative change updates the OpenAPI files, schemas, prose, fixtures and changelog together, and keeps `npm run check` green.
+- Every normative change updates the OpenAPI files, schemas, prose, fixtures and changelog together, and keeps `bun run check` green.
 - Substantive RFCs stay open for comments for at least 14 days before a decision. Decisions and their reasons are written in the pull request.
 - Versions follow [versioning.md](versioning.md). A maintainer tags a release after the changelog is complete; nothing is released by merging alone.
 

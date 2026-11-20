@@ -12,10 +12,10 @@ Thank you for helping. Brands, retailers, software vendors and individuals are a
 ## Making a change
 
 ```sh
-npm ci
-npm run check        # Redocly lint, schema/fixture/doc validation, glossary, links, versions
-npm run build:site   # regenerate the HTML reference in site/ (commit it with your change)
-npm run test:site    # open it in Chromium: no requests to other hosts, the viewer starts, axe finds nothing
+bun install
+bun run check        # Redocly lint, schema/fixture/doc validation, glossary, links, versions
+bun run build:site   # regenerate the HTML reference in site/ (commit it with your change)
+bun run test:site    # open it in Chromium: no requests to other hosts, the viewer starts, axe finds nothing
 ```
 
 A normative change updates, in the same pull request:
@@ -23,10 +23,10 @@ A normative change updates, in the same pull request:
 1. the OpenAPI file(s) in `openapi/` and the JSON Schemas in `schemas/`;
 2. the prose in `docs/`;
 3. the fixtures and expected objects in `fixtures/` (and `fixtures/generate.py` when the generated files change);
-4. the rendered reference in `site/` (`npm run build:site`);
+4. the rendered reference in `site/` (`bun run build:site`);
 5. `CHANGELOG.md` under **Unreleased** (Added / Changed / Clarified / Fixed / Security; "Breaking" with a migration note).
 
-`npm run check` must pass; CI also verifies that `site/` matches the sources.
+`bun run check` must pass; CI also verifies that `site/` matches the sources.
 
 Style: short sentences, active voice, RFC 2119 keywords in capitals only when they are meant normatively, `snake_case` field names, examples with the fictional *Kestrel Outfitters* (GTINs with the restricted `200` prefix, `.example` domains). Never put real customer data in fixtures or examples. User-facing words follow the [glossary](docs/glossary.md).
 

@@ -7,17 +7,17 @@
   "type": "module",
   "scripts": {
     "lint": "redocly lint",
-    "validate": "node tools/validate.mjs",
-    "build:site": "node tools/build-site.mjs",
-    "check:site": "node tools/build-site.mjs --check",
-    "templates": "node tools/templates.mjs",
-    "check:templates": "node tools/templates.mjs --check",
-    "xlsx-fixtures": "node tools/xlsx-fixtures.mjs",
-    "check:xlsx": "node tools/xlsx-fixtures.mjs --check",
-    "licenses": "node tools/licenses.mjs",
+    "validate": "bun tools/validate.mjs",
+    "build:site": "bun tools/build-site.mjs",
+    "check:site": "bun tools/build-site.mjs --check",
+    "templates": "bun tools/templates.mjs",
+    "check:templates": "bun tools/templates.mjs --check",
+    "xlsx-fixtures": "bun tools/xlsx-fixtures.mjs",
+    "check:xlsx": "bun tools/xlsx-fixtures.mjs --check",
+    "licenses": "bun tools/licenses.mjs",
     "fixtures": "python3 fixtures/generate.py",
     "package": "sh tools/package.sh",
-    "check": "npm run lint && npm run validate && npm run licenses && npm run check:site && npm run check:templates && npm run check:xlsx",
+    "check": "bun run lint && bun run validate && bun run licenses && bun run check:site && bun run check:templates && bun run check:xlsx",
     "test:site": "playwright test"
   },
   "devDependencies": {
@@ -33,9 +33,7 @@
     "node": ">=20"
   },
   "overrides": {
-    "exceljs": {
-      "unzipper": "0.12.3",
-      "uuid": "11.1.1"
-    }
+    "unzipper": "0.12.3",
+    "uuid": "11.1.1"
   }
 }
