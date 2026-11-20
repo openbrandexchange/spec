@@ -174,7 +174,7 @@ Each new field gets one plain column, so a spreadsheet stays readable:
 ## Rollout (one release of everything)
 
 1. **spec 0.2.0**: schemas, protocol and import-format text, fixtures (a suitcase, a bag, a shoe
-   added to the Kestrel test brand), conformance tests for the new fields' validation and round
+   added to the MAISON NOOR test brand), conformance tests for the new fields' validation and round
    trip.
 2. **obx-go 0.2.0**: types, CSV import/export, `obx push`, conformance suite, mock node.
 3. **admin-ui 0.2.0**: show measurements, features, composition and the legal lines on the

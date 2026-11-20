@@ -2,12 +2,12 @@
 """Generate the OBX conformance fixtures (Python 3 standard library only, deterministic).
 
 Writes:
-  kestrel/products.csv, kestrel/assets.csv, kestrel/images/*.png   canonical import package
+  maison-noor/products.csv, maison-noor/assets.csv, maison-noor/images/*.png   canonical import package
   ingest/files/*.png, ingest/script.ndjson,
   ingest/expected-results.json, ingest/expected-changes.json       ingest replay scenario
   expected/*.json                                                  expected protocol objects
 
-Everything here is fictional: "Kestrel Outfitters" is not a real company, GTINs use the
+Everything here is fictional: MAISON NOOR is not a real fashion house, GTINs use the
 GS1 restricted-circulation prefix 200 (never assigned to trade items), images are flat
 placeholders. Run: python3 fixtures/generate.py
 """
@@ -127,76 +127,84 @@ def png(width, height, garment_rgb, label, sublabel):
 
 # --------------------------------------------------------------------------- catalog
 
-BRANDS = {"kestrel": "Kestrel", "kestrel-trail": "Kestrel Trail"}
+BRANDS = {"maison-noor": "MAISON NOOR", "noor-atelier": "NOOR ATELIER"}
 
 # (brand, style, name en/nl, description en/nl, item_type, target_group, season, collection,
 #  materials, care, origin, colours [(code, en, nl, supplier, rgb)], sizes, images per colour)
 PRODUCTS = [
-    ("kestrel", "KO-1001", ("Merino Crew Sweater", "Merino trui met ronde hals"),
-     ("Fine-knit crew neck sweater in soft merino wool.", "Fijngebreide trui met ronde hals van zachte merinowol."),
-     "sweater", "unisex", "AW26", "Highland", "main: 100% merino_wool",
+    ("maison-noor", "MN-1001", ("Fine Merino Crew-Neck Sweater", "Fijne merino trui met ronde hals"),
+     ("Fine-gauge crew-neck sweater in extra-fine merino wool, with a softly dropped shoulder.",
+      "Fijngebreide trui met ronde hals van extra fijne merinowol, met een licht verlaagde schouder."),
+     "sweater", "women", "AW26", "Nocturne", "main: 100% merino_wool",
      "wash_30_very_mild|do_not_bleach|do_not_tumble_dry|dry_flat|iron_low|dry_clean_p", "PT",
-     [("NVY", "Navy", "Marineblauw", "Deep Navy", "#1F2A44"), ("OAT", "Oatmeal", "Havermout", "Oat Melange", "#D8CBB0")],
+     [("NVY", "Navy", "Marineblauw", "Midnight", "#1F2A44"), ("OAT", "Oatmeal", "Havermout", "Oat Melange", "#D8CBB0")],
      ["S", "M", "L", "XL"], [("front", None), ("back", None)]),
-    ("kestrel", "KO-1002", ("Waxed Field Jacket", "Gewaxte veldjas"),
-     ("Water-repellent waxed cotton jacket with corduroy collar.", "Waterafstotende jas van gewaxt katoen met corduroy kraag."),
-     "jacket", "men", "AW26", "Highland", "outer: 100% cotton; lining: 100% cotton",
+    ("maison-noor", "MN-1002", ("Cropped Waxed Cotton Jacket", "Korte jas van gewaxt katoen"),
+     ("Water-repellent jacket in waxed cotton with a cropped, boxy cut and a corduroy collar.",
+      "Waterafstotende jas van gewaxt katoen met een korte, rechte snit en een corduroy kraag."),
+     "jacket", "women", "AW26", "Nocturne", "outer: 100% cotton; lining: 100% cotton",
      "do_not_wash|do_not_bleach|do_not_tumble_dry|do_not_iron|do_not_dry_clean", "GB",
-     [("OLV", "Olive", "Olijf", "Field Olive", "#556B2F"), ("BLK", "Black", "Zwart", "Jet", "#1A1A1A")],
+     [("OLV", "Olive", "Olijf", "Moss", "#556B2F"), ("BLK", "Black", "Zwart", "Ink", "#1A1A1A")],
      ["S", "M", "L", "XL"], [("front", None), ("back", None)]),
-    ("kestrel", "KO-1003", ("Organic Cotton Tee", "T-shirt van biologisch katoen"),
-     ("Relaxed T-shirt in organic cotton jersey.", "Losvallend T-shirt van biologisch katoenen jersey."),
+    ("maison-noor", "MN-1003", ("Organic Cotton Boxy Tee", "Boxy T-shirt van biologisch katoen"),
+     ("Boxy T-shirt in heavyweight organic cotton jersey with a close-fitting neckline.",
+      "Boxy T-shirt van zwaar biologisch katoenen jersey met een nauwsluitende hals."),
      "t_shirt", "women", "SS26", "Essentials", "main: 100% cotton (organic) (regenerative)",
      "wash_40|do_not_bleach|tumble_dry_low|iron_medium|dry_clean_p", "PT",
-     [("WHT", "White", "Wit", "Chalk", "#F7F7F2"), ("BLK", "Black", "Zwart", "Jet", "#1A1A1A"), ("RST", "Rust", "Roest", "Burnt Rust", "#A0472A")],
+     [("WHT", "White", "Wit", "Ivory", "#F7F7F2"), ("BLK", "Black", "Zwart", "Ink", "#1A1A1A"), ("RST", "Rust", "Roest", "Terracotta", "#A0472A")],
      ["XS", "S", "M", "L"], [("front", None), ("back", None)]),
-    ("kestrel", "KO-1004", ("Selvedge Straight Jeans", "Rechte selvedge jeans"),
-     ("Straight-leg jeans in rigid selvedge denim.", "Jeans met rechte pijp van stugge selvedge denim."),
-     "jeans", "men", "NOS", "Denim", "main: 98% cotton, 2% elastane",
+    ("maison-noor", "MN-1004", ("High-Rise Straight Selvedge Jeans", "Rechte selvedge jeans met hoge taille"),
+     ("High-rise jeans with a straight leg in rigid selvedge denim, finished with a leather back patch.",
+      "Jeans met hoge taille en rechte pijp van stugge selvedge denim, afgewerkt met een leren label op de achterkant."),
+     "jeans", "women", "NOS", "Denim", "main: 98% cotton, 2% elastane",
      "wash_30|do_not_bleach|do_not_tumble_dry|iron_medium|dry_clean_p", "IT",
      [("IND", "Indigo", "Indigo", "Rinse Indigo", "#26345C")],
      ["30", "32", "34"], [("front", None), ("back", None), ("detail", "detail")]),
-    ("kestrel", "KO-1005", ("Leather Weekender Bag", "Leren weekendtas"),
-     ("Full-grain leather weekender with cotton lining.", "Weekendtas van volnerf leer met katoenen voering."),
-     "bag", "unisex", "NOS", "Travel", "outer: leather; lining: 100% cotton",
+    ("maison-noor", "MN-1005", ("Full-Grain Leather Weekender", "Weekendtas van volnerf leer"),
+     ("Structured weekender in full-grain leather with a cotton lining and a detachable shoulder strap.",
+      "Gestructureerde weekendtas van volnerf leer met katoenen voering en afneembare schouderband."),
+     "bag", "women", "NOS", "Voyage", "outer: leather; lining: 100% cotton",
      "do_not_wash|do_not_bleach|do_not_tumble_dry|do_not_iron|do_not_dry_clean", "IT",
      [("COG", "Cognac", "Cognac", "Saddle", "#8B4A1F")],
      ["ONE SIZE"], [("front", None), ("side", None), ("inside", None)]),
-    ("kestrel", "KO-1006", ("Wool Beanie", "Wollen muts"),
-     ("Rib-knit beanie in lambswool.", "Geribde muts van lamswol."),
-     "hat", "unisex", "AW26", "Highland", "main: 100% lambswool",
+    ("maison-noor", "MN-1006", ("Lambswool Rib Beanie", "Geribde muts van lamswol"),
+     ("Rib-knit beanie in soft lambswool with a deep turn-up.", "Geribde muts van zachte lamswol met een brede omslag."),
+     "hat", "women", "AW26", "Nocturne", "main: 100% lambswool",
      "hand_wash|do_not_bleach|do_not_tumble_dry|dry_flat|do_not_iron|dry_clean_p", "NL",
-     [("RST", "Rust", "Roest", "Burnt Rust", "#A0472A"), ("NVY", "Navy", "Marineblauw", "Deep Navy", "#1F2A44")],
+     [("RST", "Rust", "Roest", "Terracotta", "#A0472A"), ("NVY", "Navy", "Marineblauw", "Midnight", "#1F2A44")],
      ["ONE SIZE"], [("front", None)]),
-    ("kestrel", "KO-1008", ("Hardshell Cabin Spinner", "Harde handbagagekoffer"),
-     ("Four-wheel hardshell cabin suitcase with TSA lock and expansion zip.", "Harde handbagagekoffer met vier wielen, TSA-slot en uitbreidingsrits."),
-     "luggage", "unisex", "NOS", "Travel", "shell: 100% polypropylene; lining: 100% polyester (recycled)",
+    ("maison-noor", "MN-1008", ("Voyage Hardshell Cabin Case", "Harde handbagagekoffer Voyage"),
+     ("Four-wheel hardshell cabin case with a TSA lock and an expansion zip.", "Harde handbagagekoffer met vier wielen, TSA-slot en uitbreidingsrits."),
+     "luggage", "unisex", "NOS", "Voyage", "shell: 100% polypropylene; lining: 100% polyester (recycled)",
      "do_not_wash|do_not_bleach|do_not_tumble_dry|do_not_iron|do_not_dry_clean", "CN",
-     [("BLK", "Black", "Zwart", "Jet", "#1A1A1A")],
+     [("BLK", "Black", "Zwart", "Ink", "#1A1A1A")],
      ["CABIN", "CABIN PLUS"], [("front", None), ("side", None), ("inside", None)]),
-    ("kestrel", "KO-1009", ("Commuter Laptop Messenger", "Laptoptas voor forenzen"),
-     ("Water-repellent messenger with a padded 15.6 inch laptop compartment and a detachable shoulder strap.", "Waterafstotende schoudertas met gevoerd laptopvak voor 15,6 inch en afneembare schouderband."),
-     "bag", "unisex", "NOS", "Travel", "outer: 100% polyester (recycled) (post_consumer); lining: 100% polyamide",
+    ("maison-noor", "MN-1009", ("Flap Laptop Satchel", "Laptoptas met klep"),
+     ("Water-repellent satchel with a padded 15.6 inch laptop compartment and a detachable shoulder strap.",
+      "Waterafstotende tas met klep, gevoerd laptopvak voor 15,6 inch en afneembare schouderband."),
+     "bag", "unisex", "NOS", "Voyage", "outer: 100% polyester (recycled) (post_consumer); lining: 100% polyamide",
      "hand_wash|do_not_bleach|do_not_tumble_dry|do_not_iron|do_not_dry_clean", "VN",
-     [("CHR", "Charcoal", "Antraciet", "Slate", "#3C3F44")],
+     [("CHR", "Charcoal", "Antraciet", "Graphite", "#3C3F44")],
      ["ONE SIZE"], [("front", None), ("back", None), ("inside", None)]),
-    ("kestrel", "KO-1010", ("Leather Chelsea Boot", "Leren chelsea boot"),
-     ("Chelsea boot in full-grain leather with leather lining and a removable insole.", "Chelsea boot van volnerf leer met leren voering en uitneembaar voetbed."),
-     "shoes", "men", "AW26", "Highland", "upper: 100% leather; lining: 100% leather; sole: 100% rubber",
+    ("maison-noor", "MN-1010", ("Leather Chelsea Ankle Boot", "Leren chelsea enkellaars"),
+     ("Chelsea ankle boot in full-grain leather with a leather lining, a low block heel and a removable insole.",
+      "Chelsea enkellaars van volnerf leer met leren voering, lage blokhak en uitneembaar voetbed."),
+     "shoes", "women", "AW26", "Nocturne", "upper: 100% leather; lining: 100% leather; sole: 100% rubber",
      "do_not_wash|do_not_bleach|do_not_tumble_dry|do_not_iron|do_not_dry_clean", "PT",
      [("BRN", "Dark brown", "Donkerbruin", "Espresso", "#4A2C1A")],
      ["41", "42", "43"], [("side", None), ("front", None)]),
-    ("kestrel-trail", "KT-2001", ("Trail Running Shorts", "Trailrunning short"),
-     ("Lightweight running shorts with inner brief.", "Lichte hardloopshort met binnenbroekje."),
-     "shorts", "men", "SS26", "Trail", "outer: 100% recycled_polyester; lining: 88% polyamide, 12% elastane",  # 0.1 fibre key on purpose
+    ("noor-atelier", "NA-2001", ("Fluid Pleated Shorts", "Soepelvallende short met plooien"),
+     ("Fluid shorts with front pleats in recycled crepe, with a soft stretch lining.",
+      "Soepelvallende short met plooien aan de voorkant van gerecyclede crêpe, met een zachte stretchvoering."),
+     "shorts", "women", "SS26", "Riviera", "outer: 100% recycled_polyester; lining: 88% polyamide, 12% elastane",  # 0.1 fibre key on purpose
      "wash_30|do_not_bleach|do_not_tumble_dry|do_not_iron|do_not_dry_clean", "VN",
-     [("BLK", "Black", "Zwart", "Jet", "#1A1A1A")],
+     [("BLK", "Black", "Zwart", "Ink", "#1A1A1A")],
      ["S", "M", "L"], [("front", None), ("back", None)]),
-    ("kestrel-trail", "KT-2002", ("Packable Rain Shell", "Opvouwbare regenjas"),
-     ("Waterproof, breathable shell that packs into its own pocket.", "Waterdichte, ademende jas die in zijn eigen zak past."),
-     "jacket", "unisex", "SS26", "Trail", "main: 100% recycled_polyamide",
+    ("noor-atelier", "NA-2002", ("Packable Hooded Raincoat", "Opvouwbare regenjas met capuchon"),
+     ("Waterproof, breathable hooded raincoat that folds into its own pocket.", "Waterdichte, ademende regenjas met capuchon die in zijn eigen zak past."),
+     "jacket", "women", "SS26", "Riviera", "main: 100% recycled_polyamide",
      "wash_30|do_not_bleach|tumble_dry_low|do_not_iron|do_not_dry_clean", "VN",
-     [("YLW", "Yellow", "Geel", "Signal Yellow", "#E8B820")],
+     [("YLW", "Yellow", "Geel", "Saffron", "#E8B820")],
      ["S", "M", "L"], [("front", None), ("back", None)]),
 ]
 
@@ -210,43 +218,43 @@ MEASUREMENT_KEYS = ["height_cm", "width_cm", "depth_cm", "weight_kg", "volume_l"
 COLOR_FAMILY = {"NVY": "blue", "OAT": "beige", "OLV": "green", "BLK": "black", "WHT": "white", "RST": "orange",
                 "IND": "blue", "COG": "brown", "YLW": "yellow", "CHR": "grey", "BRN": "brown"}
 EXTRA = {
-    "KO-1001": {"contains_animal_origin": False,
+    "MN-1001": {"contains_animal_origin": False,
                 "certifications": [{"scheme": "rws", "licence_number": "CU 200101", "scope": "material"}],
                 "features": {"fit": "regular", "sleeve_length": "long", "neckline": "crew"}},
-    "KO-1002": {"contains_animal_origin": False,
+    "MN-1002": {"contains_animal_origin": False,
                 "features": {"closure": "zip", "water_resistance": "water_repellent", "fit": "regular", "sleeve_length": "long", "neckline": "collar"}},
-    "KO-1003": {"contains_animal_origin": False,
+    "MN-1003": {"contains_animal_origin": False,
                 "certifications": [{"scheme": "gots", "licence_number": "CU 200301", "scope": "product"},
-                                   {"scheme": "oeko_tex_standard_100", "licence_number": "26.KST.20003", "scope": "product"}],
+                                   {"scheme": "oeko_tex_standard_100", "licence_number": "26.MNR.20003", "scope": "product"}],
                 "features": {"fit": "relaxed", "sleeve_length": "short", "neckline": "crew"}},
-    "KO-1004": {"contains_animal_origin": True,  # leather patch at the back
+    "MN-1004": {"contains_animal_origin": True,  # leather patch at the back
                 "features": {"closure": "button", "fit": "regular"},
                 "size_length": {"30": "32", "32": "32", "34": "32"},
                 "measurements": {"30": {"inseam_cm": 81}, "32": {"inseam_cm": 81}, "34": {"inseam_cm": 81}}},
-    "KO-1005": {"item_subtype": "weekender", "contains_animal_origin": True,
+    "MN-1005": {"item_subtype": "weekender", "contains_animal_origin": True,
                 "features": {"closure": "zip", "detachable_parts": ["shoulder_strap"], "adjustable_parts": ["shoulder_strap"]},
                 "measurements": {"ONE SIZE": {"height_cm": 32, "width_cm": 52, "depth_cm": 26, "weight_kg": 1.8, "volume_l": 40,
                                               "handle_drop_cm": 20, "strap_length_cm": {"min": 100, "max": 130}}}},
-    "KO-1006": {"contains_animal_origin": False},
-    "KO-1008": {"item_subtype": "cabin", "size_system": None,
+    "MN-1006": {"contains_animal_origin": False},
+    "MN-1008": {"item_subtype": "cabin", "size_system": None,
                 "features": {"shell": "hard", "wheels": 4, "lock": "tsa_combination", "expandable": True, "closure": "zip"},
                 "measurements": {"CABIN": {"height_cm": 55, "width_cm": 40, "depth_cm": 20, "weight_kg": 2.6, "volume_l": 36, "volume_expanded_l": 42},
                                  "CABIN PLUS": {"height_cm": 55, "width_cm": 40, "depth_cm": 23, "weight_kg": 2.8, "volume_l": 42, "volume_expanded_l": 48}}},
-    "KO-1009": {"item_subtype": "laptop_bag", "contains_animal_origin": False,
+    "MN-1009": {"item_subtype": "laptop_bag", "contains_animal_origin": False,
                 "certifications": [{"scheme": "grs", "licence_number": "CU 200901", "scope": "material"}],
                 "features": {"closure": "flap", "laptop_compartment": True, "water_resistance": "water_repellent",
                              "detachable_parts": ["shoulder_strap"], "adjustable_parts": ["shoulder_strap"]},
                 "measurements": {"ONE SIZE": {"height_cm": 30, "width_cm": 40, "depth_cm": 12, "weight_kg": 0.9, "volume_l": 14,
                                               "handle_drop_cm": 10, "strap_length_cm": {"min": 85, "max": 140}, "laptop_max_inch": 15.6}}},
-    "KO-1010": {"item_subtype": "ankle_boot",
+    "MN-1010": {"item_subtype": "ankle_boot",
                 "footwear_materials": {"upper": "leather", "lining_and_sock": "leather", "outer_sole": "other"},
                 "certifications": [{"scheme": "lwg", "licence_number": "LWG-200-1010", "scope": "material"}],
                 "features": {"closure": "slip_on", "detachable_parts": ["insole"]},
                 "measurements": {"41": {"heel_height_cm": 3.5, "shaft_height_cm": 14},
                                  "42": {"heel_height_cm": 3.5, "shaft_height_cm": 14.5},
                                  "43": {"heel_height_cm": 3.5, "shaft_height_cm": 15}}},
-    "KT-2001": {"contains_animal_origin": False, "features": {"fit": "regular"}},
-    "KT-2002": {"contains_animal_origin": False,
+    "NA-2001": {"contains_animal_origin": False, "features": {"fit": "regular"}},
+    "NA-2002": {"contains_animal_origin": False,
                 "features": {"closure": "zip", "water_resistance": "waterproof", "fit": "regular", "sleeve_length": "long", "neckline": "hood"}},
 }
 
@@ -297,13 +305,13 @@ def csv_footwear(fw):
 
 # assets.csv overrides: basename -> dict
 ASSET_OVERRIDES = {
-    "KO-1003_RST_3_model.png": {"ai_generated": "true", "ai_edited": "false", "source": "generated", "c2pa": "none",
+    "MN-1003_RST_3_model.png": {"ai_generated": "true", "ai_edited": "false", "source": "generated", "c2pa": "none",
                                 "generator": "fictional-image-model 1.0",
-                                "alt_text:en": "AI-generated image of a model wearing the rust tee",
-                                "alt_text:nl": "Met AI gegenereerd beeld van een model in het roestkleurige T-shirt"},
-    "KO-1002_BLK_2_back.png": {"embargo_until": "2030-01-01T00:00:00Z", "credit": "Photo: Kestrel Studio"},
+                                "alt_text:en": "AI-generated image of a model wearing the rust boxy tee",
+                                "alt_text:nl": "Met AI gegenereerd beeld van een model in het roestkleurige boxy T-shirt"},
+    "MN-1002_BLK_2_back.png": {"embargo_until": "2030-01-01T00:00:00Z", "credit": "Photo: MAISON NOOR Studio"},
 }
-BIG = "KO-1002_OLV_1_front.png"  # 2400x3000 original to exercise downscaling
+BIG = "MN-1002_OLV_1_front.png"  # 2400x3000 original to exercise downscaling
 
 PRODUCTS_HEADER = (["brand", "style_number", "name:en", "name:nl", "description:en", "description:nl", "item_type",
                     "item_subtype", "target_group", "season", "collection", "materials", "contains_animal_origin",
@@ -378,7 +386,7 @@ def sha(b):
 
 
 def main():
-    images_dir = os.path.join(HERE, "kestrel", "images")
+    images_dir = os.path.join(HERE, "maison-noor", "images")
     os.makedirs(images_dir, exist_ok=True)
     for old in os.listdir(images_dir):
         os.remove(os.path.join(images_dir, old))
@@ -399,7 +407,7 @@ def main():
                             + ["", g, sku(style, code, size), code, cen, cnl, COLOR_FAMILY[code], sup, size,
                                x.get("size_length", {}).get(size, ""), size_system(style, size) or ""]
                             + [csv_measurement(k, meas[k]) if k in meas else "" for k in MEASUREMENT_KEYS])
-            extra = [("model", None)] if (style, code) == ("KO-1003", "RST") else []
+            extra = [("model", None)] if (style, code) == ("MN-1003", "RST") else []
             for pos, (q1, q2) in enumerate(shots + extra, start=1):
                 quals = [q1]
                 fname = f"{style}_{code}_{pos}_{quals[0]}.png"
@@ -419,13 +427,13 @@ def main():
     w = csv.writer(buf, lineterminator="\r\n")
     w.writerow(PRODUCTS_HEADER)
     w.writerows(rows)
-    write(os.path.join(HERE, "kestrel", "products.csv"), buf.getvalue())
+    write(os.path.join(HERE, "maison-noor", "products.csv"), buf.getvalue())
     buf = io.StringIO()
     w = csv.writer(buf, lineterminator="\r\n")
     w.writerow(ASSETS_HEADER)
     w.writerows(asset_rows)
-    write(os.path.join(HERE, "kestrel", "assets.csv"), buf.getvalue())
-    write(os.path.join(HERE, "kestrel", "images.json"), json.dumps(image_meta, indent=2, sort_keys=True) + "\n")
+    write(os.path.join(HERE, "maison-noor", "assets.csv"), buf.getvalue())
+    write(os.path.join(HERE, "maison-noor", "images.json"), json.dumps(image_meta, indent=2, sort_keys=True) + "\n")
 
     write_expected(image_meta, gtins)
     write_import_cases(gtins)
@@ -523,15 +531,15 @@ def write_expected(image_meta, gtins):
     def dump(name, obj):
         write(os.path.join(out, name), json.dumps(obj, indent=2, ensure_ascii=False) + "\n")
 
-    dump("product-KO-1001.json", expected_product("KO-1001", image_meta, gtins))
-    for style in ("KO-1005", "KO-1008", "KO-1009", "KO-1010", "KT-2001"):
+    dump("product-MN-1001.json", expected_product("MN-1001", image_meta, gtins))
+    for style in ("MN-1005", "MN-1008", "MN-1009", "MN-1010", "NA-2001"):
         dump(f"product-{style}.json", expected_product(style, image_meta, gtins))
-    dump("asset-ai-generated.json", expected_asset("KO-1003_RST_3_model.png", image_meta["KO-1003_RST_3_model.png"]))
-    dump("asset-embargoed.json", expected_asset("KO-1002_BLK_2_back.png", image_meta["KO-1002_BLK_2_back.png"]))
+    dump("asset-ai-generated.json", expected_asset("MN-1003_RST_3_model.png", image_meta["MN-1003_RST_3_model.png"]))
+    dump("asset-embargoed.json", expected_asset("MN-1002_BLK_2_back.png", image_meta["MN-1002_BLK_2_back.png"]))
     dump("asset-large-original.json", expected_asset(BIG, image_meta[BIG]))
-    dump("asset-without-original-scope.json", expected_asset("KO-1001_NVY_1_front.png", image_meta["KO-1001_NVY_1_front.png"], original=False))
-    g1 = gtins[("KO-1001", "NVY", "M")]
-    g2 = gtins[("KT-2001", "BLK", "L")]
+    dump("asset-without-original-scope.json", expected_asset("MN-1001_NVY_1_front.png", image_meta["MN-1001_NVY_1_front.png"], original=False))
+    g1 = gtins[("MN-1001", "NVY", "M")]
+    g2 = gtins[("NA-2001", "BLK", "L")]
     unknown = ean13("200099990101")
     dump("gtin-lookup.request.json", {"gtins": [g1, " " + g2[:4] + " " + g2[4:], "0" + g1, unknown, "12345", "ABC"]})
     dump("gtin-lookup.json", {
@@ -542,55 +550,55 @@ def write_expected(image_meta, gtins):
             {"input": "12345", "gtin": None, "status": "invalid", "product_id": None, "variant_id": None},
             {"input": "ABC", "gtin": None, "status": "invalid", "product_id": None, "variant_id": None},
         ],
-        "products": ["{{product:KO-1001}}", "{{product:KT-2001}}"],
+        "products": ["{{product:MN-1001}}", "{{product:NA-2001}}"],
     })
     dump("counts.json", {"brands": 2, "products": len(PRODUCTS), "variants": len(gtins), "assets": len(image_meta),
-                         "note": "Visible objects after importing fixtures/kestrel into a fresh node whose first brand is external_id 'kestrel' (see fixtures/README.md)."})
+                         "note": "Visible objects after importing fixtures/maison-noor into a fresh node whose first brand is external_id 'maison-noor' (see fixtures/README.md)."})
 
 # --------------------------------------------------------------------------- import cases (0.2 columns)
 
 def write_import_cases(gtins):
     """Small products.csv files for conformance I-IMP-7, applied in order to a node that holds exactly
-    the fixture import; the last case re-imports kestrel/products.csv and restores that state."""
+    the fixture import; the last case re-imports maison-noor/products.csv and restores that state."""
     out = os.path.join(HERE, "imports")
     os.makedirs(out, exist_ok=True)
     for old in os.listdir(out):
         # imports/xlsx/ is written by tools/xlsx-fixtures.mjs, not here
         if os.path.isfile(os.path.join(out, old)):
             os.remove(os.path.join(out, old))
-    cabin, plus = gtins[("KO-1008", "BLK", "CABIN")], gtins[("KO-1008", "BLK", "CABIN PLUS")]
-    cabin_id, plus_id = variant_id("KO-1008", "BLK", "CABIN"), variant_id("KO-1008", "BLK", "CABIN PLUS")
-    bag, boot = gtins[("KO-1009", "CHR", "ONE SIZE")], gtins[("KO-1010", "BRN", "41")]
-    f1008 = dict(EXTRA["KO-1008"]["features"])
-    m_cabin = dict(EXTRA["KO-1008"]["measurements"]["CABIN"])
-    name = "Hardshell Cabin Spinner"
+    cabin, plus = gtins[("MN-1008", "BLK", "CABIN")], gtins[("MN-1008", "BLK", "CABIN PLUS")]
+    cabin_id, plus_id = variant_id("MN-1008", "BLK", "CABIN"), variant_id("MN-1008", "BLK", "CABIN PLUS")
+    bag, boot = gtins[("MN-1009", "CHR", "ONE SIZE")], gtins[("MN-1010", "BRN", "41")]
+    f1008 = dict(EXTRA["MN-1008"]["features"])
+    m_cabin = dict(EXTRA["MN-1008"]["measurements"]["CABIN"])
+    name = "Voyage Hardshell Cabin Case"
     cases = [
         ("1-feature-update.csv", ["brand", "style_number", "name:en", "feature:wheels"],
-         [["Kestrel", "KO-1008", name, "2"]],
-         "A file with one feature column changes only that feature; the other features of KO-1008 stay (rule 9, per key).",
+         [["MAISON NOOR", "MN-1008", name, "2"]],
+         "A file with one feature column changes only that feature; the other features of MN-1008 stay (rule 9, per key).",
          {"rows": 1, "created": 0, "updated": 1, "unchanged": 0, "errors": 0}, [],
-         [("product", "upsert", "KO-1008")], {"KO-1008": {"features": dict(f1008, wheels=2)}}, {}),
+         [("product", "upsert", "MN-1008")], {"MN-1008": {"features": dict(f1008, wheels=2)}}, {}),
         ("2-feature-clear.csv", ["brand", "style_number", "name:en", "feature:wheels"],
-         [["Kestrel", "KO-1008", name, ""]],
+         [["MAISON NOOR", "MN-1008", name, ""]],
          "An empty cell in a feature column removes that feature only.",
          {"rows": 1, "created": 0, "updated": 1, "unchanged": 0, "errors": 0}, [],
-         [("product", "upsert", "KO-1008")], {"KO-1008": {"features": {k: v for k, v in f1008.items() if k != "wheels"}}}, {}),
+         [("product", "upsert", "MN-1008")], {"MN-1008": {"features": {k: v for k, v in f1008.items() if k != "wheels"}}}, {}),
         ("3-measurement-update.csv", ["brand", "style_number", "name:en", "gtin", "color_code", "weight_kg"],
-         [["Kestrel", "KO-1008", name, cabin, "BLK", "2,7"]],
+         [["MAISON NOOR", "MN-1008", name, cabin, "BLK", "2,7"]],
          "One measurement column with a decimal comma changes only that measurement of that variant; the product is unchanged. "
          "The row has no variant_id and no size: the variant is found by its GTIN and keeps its external id (1.2.1).",
          {"rows": 1, "created": 0, "updated": 1, "unchanged": 1, "errors": 0}, [],
          [("variant", "upsert", cabin_id)], {}, {cabin_id: {"measurements": dict(m_cabin, weight_kg=2.7)}}),
         ("4-fibre-flags.csv", ["brand", "style_number", "name:en", "materials"],
-         [["Kestrel Trail", "KT-2001", "Trail Running Shorts", "outer: 100% polyester (recycled); lining: 88% polyamide, 12% elastane"]],
+         [["NOOR ATELIER", "NA-2001", "Fluid Pleated Shorts", "outer: 100% polyester (recycled); lining: 88% polyamide, 12% elastane"]],
          "The qualifier form gives the same materials as the 0.1 key recycled_polyester in the fixture: unchanged, no change entries.",
          {"rows": 1, "created": 0, "updated": 0, "unchanged": 1, "errors": 0}, [], [], {}, {}),
         ("5-invalid.csv", ["brand", "style_number", "name:en", "gtin", "color_code", "feature:wheels", "height_cm", "color_family", "footwear_materials", "materials"],
-         [["Kestrel", "KO-1008", name, "", "", "3", "", "", "", ""],
-          ["Kestrel", "KO-1009", "Commuter Laptop Messenger", bag, "CHR", "", "30 cm", "", "", ""],
-          ["Kestrel", "KO-1010", "Leather Chelsea Boot", boot, "BRN", "", "", "navy", "", ""],
-          ["Kestrel", "KO-1005", "Leather Weekender Bag", "", "", "", "", "", "upper: plastic", ""],
-          ["Kestrel Trail", "KT-2001", "Trail Running Shorts", "", "", "", "", "", "", "main: 95,5% polyester, 4,5% elastane"]],
+         [["MAISON NOOR", "MN-1008", name, "", "", "3", "", "", "", ""],
+          ["MAISON NOOR", "MN-1009", "Flap Laptop Satchel", bag, "CHR", "", "30 cm", "", "", ""],
+          ["MAISON NOOR", "MN-1010", "Leather Chelsea Ankle Boot", boot, "BRN", "", "", "navy", "", ""],
+          ["MAISON NOOR", "MN-1005", "Full-Grain Leather Weekender", "", "", "", "", "", "upper: plastic", ""],
+          ["NOOR ATELIER", "NA-2001", "Fluid Pleated Shorts", "", "", "", "", "", "", "main: 95,5% polyester, 4,5% elastane"]],
          "Each row has one value outside the rules: every row is skipped with an error, nothing is written, the job succeeds. "
          "Row 5 writes percentages with a decimal comma: the comma separates fibres, so the detail of its error starts with detail_prefix.",
          {"rows": 5, "created": 0, "updated": 0, "unchanged": 0, "errors": 5},
@@ -602,15 +610,15 @@ def write_import_cases(gtins):
            "detail_prefix": "materials: decimal comma", "value": "main: 95,5% polyester, 4,5% elastane"}],
          [], {}, {}),
         ("6-restore.csv", None, None,
-         "kestrel/products.csv again (the same bytes): restores wheels 4 and weight 2.6; everything else is unchanged.",
+         "maison-noor/products.csv again (the same bytes): restores wheels 4 and weight 2.6; everything else is unchanged.",
          {"rows": len(gtins), "created": 0, "updated": 2, "unchanged": len(PRODUCTS) + len(gtins) - 2, "errors": 0}, [],
-         [("product", "upsert", "KO-1008"), ("variant", "upsert", cabin_id)],
-         {"KO-1008": {"features": f1008}}, {cabin_id: {"measurements": m_cabin}}),
+         [("product", "upsert", "MN-1008"), ("variant", "upsert", cabin_id)],
+         {"MN-1008": {"features": f1008}}, {cabin_id: {"measurements": m_cabin}}),
     ]
     expected = []
     for fname, header, rows, what, counts, errors, changes, products, variants in cases:
         if header is None:
-            with open(os.path.join(HERE, "kestrel", "products.csv"), encoding="utf-8", newline="") as f:
+            with open(os.path.join(HERE, "maison-noor", "products.csv"), encoding="utf-8", newline="") as f:
                 data = f.read()
         else:
             buf = io.StringIO()
@@ -625,15 +633,15 @@ def write_import_cases(gtins):
     assert plus_id not in variants
     # I-IMP-8: label completeness warnings (dry run, nothing is written)
     header = ["brand", "style_number", "name:en", "item_type", "materials", "contains_animal_origin", "footwear_materials"]
-    rows = [["Kestrel", "KL-8001", "Label Test Tee", "t_shirt", "", "no", ""],
-            ["Kestrel", "KL-8002", "Label Test Scarf", "scarf", "main: 100% wool", "", ""],
-            ["Kestrel", "KL-8003", "Label Test Sneaker", "sneakers", "upper: 100% polyester", "", ""],
-            ["Kestrel", "KL-8004", "Label Test Shirt", "shirt", "main: 60% cotton, 30% polyester", "no", ""],
-            ["Kestrel", "KL-8005", "Label Test Sandal", "sandals", "", "", "upper: leather; lining_and_sock: leather"],
-            ["Kestrel", "KL-8006", "Label Test Complete", "t_shirt", "main: 100% cotton", "no", ""],
-            ["Kestrel", "KL-8007", "Label Test Dutch", "t_shirt", "main: 95% katoen, 5% elastane", "no", ""],
-            ["Kestrel", "KL-8008", "Label Test No Percentage", "bag", "outer: leather; lining: 60% cotton, polyester", "yes", ""],
-            ["Kestrel", "KL-8009", "Label Test Too Much", "shirt", "main: 70% cotton, 40% polyester, elastane", "no", ""]]
+    rows = [["MAISON NOOR", "ML-8001", "Label Test Tee", "t_shirt", "", "no", ""],
+            ["MAISON NOOR", "ML-8002", "Label Test Scarf", "scarf", "main: 100% wool", "", ""],
+            ["MAISON NOOR", "ML-8003", "Label Test Sneaker", "sneakers", "upper: 100% polyester", "", ""],
+            ["MAISON NOOR", "ML-8004", "Label Test Shirt", "shirt", "main: 60% cotton, 30% polyester", "no", ""],
+            ["MAISON NOOR", "ML-8005", "Label Test Sandal", "sandals", "", "", "upper: leather; lining_and_sock: leather"],
+            ["MAISON NOOR", "ML-8006", "Label Test Complete", "t_shirt", "main: 100% cotton", "no", ""],
+            ["MAISON NOOR", "ML-8007", "Label Test Dutch", "t_shirt", "main: 95% katoen, 5% elastane", "no", ""],
+            ["MAISON NOOR", "ML-8008", "Label Test No Percentage", "bag", "outer: leather; lining: 60% cotton, polyester", "yes", ""],
+            ["MAISON NOOR", "ML-8009", "Label Test Too Much", "shirt", "main: 70% cotton, 40% polyester, elastane", "no", ""]]
     buf = io.StringIO()
     w = csv.writer(buf, lineterminator="\r\n")
     w.writerow(header)
@@ -642,11 +650,11 @@ def write_import_cases(gtins):
     warn = lambda row, col, code: {"file": "products.csv", "row": row, "column": col, "severity": "warning", "obx_error": code}
     write(os.path.join(out, "label-warnings.expected.json"), json.dumps({
         "description": "Conformance I-IMP-8. Send label-warnings.csv as the import's products.csv with dry_run: true (mode upsert). The job succeeds, "
-                       "nothing is written (no change entries, KL-8001 to KL-8006 do not exist afterwards), there are no errors, and the ImportRowErrors whose "
+                       "nothing is written (no change entries, ML-8001 to ML-8006 do not exist afterwards), there are no errors, and the ImportRowErrors whose "
                        "obx_error is one of the four label completeness codes or material_unknown are exactly these, in this order (other warnings "
-                       "are not checked). KL-8006 is complete and gets none. KL-8007 has a material code outside vocabularies/materials.json "
-                       "(material_unknown, value = the code). KL-8008 has fibres without a percentage: its parts are not checked for the sum. "
-                       "KL-8009 states more than 100 % in one part, also with a fibre without a percentage.",
+                       "are not checked). ML-8006 is complete and gets none. ML-8007 has a material code outside vocabularies/materials.json "
+                       "(material_unknown, value = the code). ML-8008 has fibres without a percentage: its parts are not checked for the sum. "
+                       "ML-8009 states more than 100 % in one part, also with a fibre without a percentage.",
         "codes": ["fibre_composition_missing", "animal_origin_unknown", "footwear_materials_missing", "fibre_percentages_not_100", "material_unknown"],
         "warnings": [warn(1, "materials", "fibre_composition_missing"),
                      warn(2, "contains_animal_origin", "animal_origin_unknown"),
@@ -657,7 +665,7 @@ def write_import_cases(gtins):
                      warn(9, "materials", "fibre_percentages_not_100")]}, indent=2, ensure_ascii=False) + "\n")
     write(os.path.join(out, "expected.json"), json.dumps({
         "description": "Conformance I-IMP-7. Apply the files in order, each sent as the import's products.csv (mode upsert, no images, no assets.csv), "
-                       "to a node that holds exactly the import of fixtures/kestrel. counts: ImportRun.counts (other count fields not checked). "
+                       "to a node that holds exactly the import of fixtures/maison-noor. counts: ImportRun.counts (other count fields not checked). "
                        "errors: the ImportRowErrors with severity error, in order (warnings not checked); when an error has detail_prefix, "
                        "its detail starts with that text (detail_prefix is not a member of the ImportRowError). changes: the /changes entries the import "
                        "produced, in order. products/variants: fields of the protocol objects afterwards (by external_id), matched like fixtures/expected.",
@@ -669,12 +677,12 @@ def write_identity_cases(gtins):
     """products.csv files for conformance I-IMP-12 (import-format.md 1.2.1): the default variant id never
     holds the GTIN, a GTIN that arrives later updates the variant in place, a GTIN finds its variant."""
     out = os.path.join(HERE, "imports")
-    style, name = "KL-8101", "Identity Test Jeans"
+    style, name = "ML-8101", "Identity Test Jeans"
     g = [ean13("2000810101" + f"{i:02d}") for i in (1, 2, 3)]
-    taken = gtins[("KO-1001", "NVY", "M")]
+    taken = gtins[("MN-1001", "NVY", "M")]
     ids = [f"{style}-IND-32-32", f"{style}-IND-32-34", f"{style}-IND-32_34"]
     base = ["brand", "style_number", "name:en", "item_type", "materials", "contains_animal_origin"]
-    prod = ["Kestrel", style, name, "jeans", "main: 100% cotton", "no"]
+    prod = ["MAISON NOOR", style, name, "jeans", "main: 100% cotton", "no"]
 
     def variant(ext, gtin, size, length):
         return {"external_id": ext, "gtin": gtin14(gtin) if gtin else None, "gtin_original": gtin, "size": size, "size_length": length}
@@ -697,15 +705,15 @@ def write_identity_cases(gtins):
          [("variant", "upsert", i) for i in ids],
          [variant(ids[0], g[0], "32", "32"), variant(ids[1], g[1], "32", "34"), variant(ids[2], g[2], "32/34", None)]),
         ("id-3-gtin-finds-variant.csv", ["brand", "style_number", "name:en", "gtin", "color_code", "size", "size_length"],
-         [["Kestrel", style, name, g[0], "IND", "33", "32"]],
+         [["MAISON NOOR", style, name, g[0], "IND", "33", "32"]],
          "A row whose GTIN belongs to a variant of this product updates that variant, also when its size changed: the variant "
-         "KL-8101-IND-32-32 becomes size 33 and keeps its external id; no variant KL-8101-IND-33-32 is created.",
+         "ML-8101-IND-32-32 becomes size 33 and keeps its external id; no variant ML-8101-IND-33-32 is created.",
          {"rows": 1, "created": 0, "updated": 1, "unchanged": 1, "errors": 0}, [],
          [("variant", "upsert", ids[0])],
          [variant(ids[0], g[0], "33", "32"), variant(ids[1], g[1], "32", "34"), variant(ids[2], g[2], "32/34", None)]),
         ("id-4-gtin-of-other-product.csv", ["brand", "style_number", "name:en", "gtin", "color_code", "size", "size_length"],
-         [["Kestrel", style, name, taken, "IND", "36", "32"]],
-         "The GTIN belongs to a variant of another product (KO-1001): gtin_conflict, the row is skipped, nothing is written.",
+         [["MAISON NOOR", style, name, taken, "IND", "36", "32"]],
+         "The GTIN belongs to a variant of another product (MN-1001): gtin_conflict, the row is skipped, nothing is written.",
          {"rows": 1, "created": 0, "updated": 0, "unchanged": 0, "errors": 1},
          [{"file": "products.csv", "row": 1, "column": "gtin", "severity": "error", "obx_error": "gtin_conflict", "value": taken}],
          [],
@@ -723,11 +731,11 @@ def write_identity_cases(gtins):
                          "products": {style: {"variants": variants}}})
     write(os.path.join(out, "variant-identity.expected.json"), json.dumps({
         "description": "Conformance I-IMP-12 (docs/import-format.md 1.2.1). Apply the files in order, each sent as the import's products.csv "
-                       "(mode upsert, no images, no assets.csv), to a node that holds the import of fixtures/kestrel. counts, errors and changes "
+                       "(mode upsert, no images, no assets.csv), to a node that holds the import of fixtures/maison-noor. counts, errors and changes "
                        "as in expected.json. products: the ProductDetail afterwards, matched like fixtures/expected, so `variants` lists every "
-                       "variant of KL-8101 in order (by external_id) and nothing else; the protocol `id` of each variant is the same after "
-                       "every file. Afterwards the runner deletes product KL-8101 through the Ingest API, so the node holds exactly the "
-                       "Kestrel import again.",
+                       "variant of ML-8101 in order (by external_id) and nothing else; the protocol `id` of each variant is the same after "
+                       "every file. Afterwards the runner deletes product ML-8101 through the Ingest API, so the node holds exactly the "
+                       "MAISON NOOR import again.",
         "cases": expected}, indent=2, ensure_ascii=False) + "\n")
 
 # --------------------------------------------------------------------------- ingest scenario
@@ -736,9 +744,9 @@ def write_ingest():
     files_dir = os.path.join(HERE, "ingest", "files")
     os.makedirs(files_dir, exist_ok=True)
     imgs = {
-        "KL-9001_GRN_1.png": png(1200, 1500, "#2E7D4F", "KL-9001 GRN 1", "FRONT"),
-        "KL-9001_GRN_1_v2.png": png(1200, 1500, "#2E7D4F", "KL-9001 GRN 1", "REPLACED"),
-        "KL-9001_GRN_2.png": png(1200, 1500, "#2E7D4F", "KL-9001 GRN 2", "BACK"),
+        "ML-9001_GRN_1.png": png(1200, 1500, "#2E7D4F", "ML-9001 GRN 1", "FRONT"),
+        "ML-9001_GRN_1_v2.png": png(1200, 1500, "#2E7D4F", "ML-9001 GRN 1", "REPLACED"),
+        "ML-9001_GRN_2.png": png(1200, 1500, "#2E7D4F", "ML-9001 GRN 2", "BACK"),
     }
     shas = {}
     for n, b in imgs.items():
@@ -748,53 +756,53 @@ def write_ingest():
 
     gs, gm = ean13("200900100101"), ean13("200900100102")
     bad = gs[:12] + str((int(gs[12]) + 1) % 10)  # wrong check digit
-    product = {"brand_external_id": "kestrel-lab", "style_number": "KL-9001",
+    product = {"brand_external_id": "maison-noor-lab", "style_number": "ML-9001",
                "name": {"en": "Lab Test Shorts", "nl": "Testshort"}, "item_type": "shorts", "target_group": "unisex",
                "season": "SS27", "materials": [{"part": {"code": "main"}, "fibers": [{"material": {"code": "cotton"}, "percentage": 100}]}],
                "care": [{"code": "wash_30"}]}
     changed = dict(product, description={"en": "Now with pockets.", "nl": "Nu met zakken."})
 
     def asset(pos, view, f):
-        return {"product_external_id": "KL-9001", "color_code": "GRN", "role": "packshot", "view": view, "position": pos,
+        return {"product_external_id": "ML-9001", "color_code": "GRN", "role": "packshot", "view": view, "position": pos,
                 "files": {"original": {"sha256": shas[f]["sha256"]}}}
 
     steps = [
         # (operation, expected result, expected change entries [(type, op, external_id)])
-        ({"op": "upsert", "kind": "brand", "external_id": "kestrel-lab", "data": {"name": "Kestrel Lab"}}, "created",
-         [("brand", "upsert", "kestrel-lab")]),
-        ({"op": "upsert", "kind": "product", "external_id": "KL-9001", "data": product}, "created",
-         [("product", "upsert", "KL-9001")]),
-        ({"op": "upsert", "kind": "variant", "external_id": gs, "data": {"product_external_id": "KL-9001", "gtin": gs,
+        ({"op": "upsert", "kind": "brand", "external_id": "maison-noor-lab", "data": {"name": "MAISON NOOR LAB"}}, "created",
+         [("brand", "upsert", "maison-noor-lab")]),
+        ({"op": "upsert", "kind": "product", "external_id": "ML-9001", "data": product}, "created",
+         [("product", "upsert", "ML-9001")]),
+        ({"op": "upsert", "kind": "variant", "external_id": gs, "data": {"product_external_id": "ML-9001", "gtin": gs,
           "color": {"code": "GRN", "name": {"en": "Green"}}, "size": "S"}}, "created", [("variant", "upsert", gs)]),
-        ({"op": "upsert", "kind": "variant", "external_id": gm, "data": {"product_external_id": "KL-9001", "gtin": gm,
+        ({"op": "upsert", "kind": "variant", "external_id": gm, "data": {"product_external_id": "ML-9001", "gtin": gm,
           "color": {"code": "GRN", "name": {"en": "Green"}}, "size": "M"}}, "created", [("variant", "upsert", gm)]),
-        ({"op": "upsert", "kind": "asset", "external_id": "KL-9001_GRN_1", "data": asset(1, "front", "KL-9001_GRN_1.png")},
-         "created", [("asset", "upsert", "KL-9001_GRN_1")]),
-        ({"op": "upsert", "kind": "product", "external_id": "KL-9001", "data": product}, "unchanged", []),
-        ({"op": "upsert", "kind": "product", "external_id": "KL-9001", "data": changed}, "updated",
-         [("product", "upsert", "KL-9001")]),
-        ({"op": "upsert", "kind": "asset", "external_id": "KL-9001_GRN_1", "data": asset(1, "front", "KL-9001_GRN_1_v2.png")},
-         "updated", [("asset", "upsert", "KL-9001_GRN_1")]),
-        ({"op": "upsert", "kind": "asset", "external_id": "KL-9001_GRN_2", "data": asset(2, "back", "KL-9001_GRN_2.png")},
-         "created", [("asset", "upsert", "KL-9001_GRN_2")]),
-        ({"op": "upsert", "kind": "asset", "external_id": "KL-9001_GRN_2b", "data": asset(2, "back", "KL-9001_GRN_2.png")},
+        ({"op": "upsert", "kind": "asset", "external_id": "ML-9001_GRN_1", "data": asset(1, "front", "ML-9001_GRN_1.png")},
+         "created", [("asset", "upsert", "ML-9001_GRN_1")]),
+        ({"op": "upsert", "kind": "product", "external_id": "ML-9001", "data": product}, "unchanged", []),
+        ({"op": "upsert", "kind": "product", "external_id": "ML-9001", "data": changed}, "updated",
+         [("product", "upsert", "ML-9001")]),
+        ({"op": "upsert", "kind": "asset", "external_id": "ML-9001_GRN_1", "data": asset(1, "front", "ML-9001_GRN_1_v2.png")},
+         "updated", [("asset", "upsert", "ML-9001_GRN_1")]),
+        ({"op": "upsert", "kind": "asset", "external_id": "ML-9001_GRN_2", "data": asset(2, "back", "ML-9001_GRN_2.png")},
+         "created", [("asset", "upsert", "ML-9001_GRN_2")]),
+        ({"op": "upsert", "kind": "asset", "external_id": "ML-9001_GRN_2b", "data": asset(2, "back", "ML-9001_GRN_2.png")},
          "error:position_conflict", []),
-        ({"op": "unpublish", "kind": "asset", "external_id": "KL-9001_GRN_2"}, "updated",
-         [("asset", "delete", "KL-9001_GRN_2")]),
-        ({"op": "upsert", "kind": "variant", "external_id": "bad-gtin", "data": {"product_external_id": "KL-9001",
+        ({"op": "unpublish", "kind": "asset", "external_id": "ML-9001_GRN_2"}, "updated",
+         [("asset", "delete", "ML-9001_GRN_2")]),
+        ({"op": "upsert", "kind": "variant", "external_id": "bad-gtin", "data": {"product_external_id": "ML-9001",
           "gtin": bad, "color": {"code": "GRN"}, "size": "L"}}, "error:invalid_gtin", []),
         ({"op": "patch", "kind": "variant", "external_id": gm, "data": {"size_system": "INT"}}, "updated",
          [("variant", "upsert", gm)]),
-        ({"op": "unpublish", "kind": "product", "external_id": "KL-9001"}, "updated",
-         [("product", "delete", "KL-9001"), ("variant", "delete", gs), ("variant", "delete", gm),
-          ("asset", "delete", "KL-9001_GRN_1")]),
-        ({"op": "publish", "kind": "product", "external_id": "KL-9001"}, "updated",
-         [("product", "upsert", "KL-9001"), ("variant", "upsert", gs), ("variant", "upsert", gm),
-          ("asset", "upsert", "KL-9001_GRN_1")]),
+        ({"op": "unpublish", "kind": "product", "external_id": "ML-9001"}, "updated",
+         [("product", "delete", "ML-9001"), ("variant", "delete", gs), ("variant", "delete", gm),
+          ("asset", "delete", "ML-9001_GRN_1")]),
+        ({"op": "publish", "kind": "product", "external_id": "ML-9001"}, "updated",
+         [("product", "upsert", "ML-9001"), ("variant", "upsert", gs), ("variant", "upsert", gm),
+          ("asset", "upsert", "ML-9001_GRN_1")]),
         ({"op": "delete", "kind": "variant", "external_id": gm}, "deleted", [("variant", "delete", gm)]),
         ({"op": "delete", "kind": "variant", "external_id": gm}, "unchanged", []),
-        ({"op": "delete", "kind": "product", "external_id": "KL-9001"}, "deleted",
-         [("product", "delete", "KL-9001"), ("variant", "delete", gs), ("asset", "delete", "KL-9001_GRN_1")]),
+        ({"op": "delete", "kind": "product", "external_id": "ML-9001"}, "deleted",
+         [("product", "delete", "ML-9001"), ("variant", "delete", gs), ("asset", "delete", "ML-9001_GRN_1")]),
     ]
     assert ean13(bad[:12]) != bad
     lines = "".join(json.dumps(op, ensure_ascii=False, separators=(",", ":")) + "\n" for op, _, _ in steps)

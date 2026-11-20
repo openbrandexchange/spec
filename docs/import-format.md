@@ -1,6 +1,6 @@
 # Canonical import format 0.3
 
-**Status:** normative. Every node (upload in the admin UI, scheduled pull imports, `POST /obx/v1/ingest/imports`) and the `obx` CLI MUST support this format with exactly these rules, so a brand's export works everywhere. Example: [`fixtures/kestrel/`](../fixtures/kestrel). Section 5 (Excel workbooks) is a non-normative node feature: optional, but a node that offers it follows it exactly.
+**Status:** normative. Every node (upload in the admin UI, scheduled pull imports, `POST /obx/v1/ingest/imports`) and the `obx` CLI MUST support this format with exactly these rules, so a brand's export works everywhere. Example: [`fixtures/maison-noor/`](../fixtures/maison-noor). Section 5 (Excel workbooks) is a non-normative node feature: optional, but a node that offers it follows it exactly.
 
 A brand needs at most three things:
 
@@ -71,7 +71,7 @@ A variant's external id is its key for the life of the variant; a GTIN is a valu
 
 1. **`variant_id` is filled:** that external id, in this product. Nothing else is tried. (If the row's GTIN belongs to another variant: `gtin_conflict`.)
 2. **The row has a GTIN** and a variant **of this product** already has that GTIN (compared as GTIN-14, so `0871…` and `871…` are the same): the row is that variant. It keeps its external id and its protocol `id`, also when the row's colour, size or `size_length` differ from what is stored (they are updated).
-3. **Otherwise** the default external id, in this product: `<style_number>-<color_code>-<size>[-<size_length>]`: the four cell values as written (after trimming), joined with `-`, where an empty `size` and an empty `size_length` are left out together with their `-`. Every character an external id cannot hold (the control characters U+0000 to U+001F and U+007F, and `/`) is replaced by `_`: size `32/34` gives `KO-1004-IND-32_34`, size `32` with `size_length` `34` gives `KO-1004-IND-32-34`. Nothing else is changed (no lowercasing, spaces stay: `KO-1005-COG-ONE SIZE`). A variant with that external id is updated; otherwise a new variant with that external id is created. A result longer than 200 characters is `validation_failed` (column `variant_id`): give a `variant_id`.
+3. **Otherwise** the default external id, in this product: `<style_number>-<color_code>-<size>[-<size_length>]`: the four cell values as written (after trimming), joined with `-`, where an empty `size` and an empty `size_length` are left out together with their `-`. Every character an external id cannot hold (the control characters U+0000 to U+001F and U+007F, and `/`) is replaced by `_`: size `32/34` gives `MN-1004-IND-32_34`, size `32` with `size_length` `34` gives `MN-1004-IND-32-34`. Nothing else is changed (no lowercasing, spaces stay: `MN-1005-COG-ONE SIZE`). A variant with that external id is updated; otherwise a new variant with that external id is created. A result longer than 200 characters is `validation_failed` (column `variant_id`): give a `variant_id`.
 
 Consequences, all tested by conformance I-IMP-12 ([`fixtures/imports/variant-identity.expected.json`](../fixtures/imports)):
 
@@ -137,24 +137,24 @@ The fields are described in [protocol.md §5.9](protocol.md#59-article-data). A 
 ```
 - `ext`: `jpg`, `jpeg`, `png`, `webp`, `tif`, `tiff` (case-insensitive).
 - Parse from the **right**: strip the extension and split the rest on `_`. Then repeat: if more than four parts remain and the last **two** parts joined with `_` are a role or view key (`size_chart`, `tilted_left`, `tilted_right`), pop both as one qualifier; otherwise, if more than three parts remain and the last part is a role or view key, pop it; otherwise stop. The last part must then be the position (`1`–`999`, no leading zero), the one before it the colour code, and everything before that (joined with `_`) the style number. So style numbers may contain `_`; colour codes may not.
-- Qualifiers (optional, any order): a **role** (`packshot`, `model`, `detail`, `ghost`, `flatlay`, `scene`, `swatch`, `size_chart`, `other`) and/or a **view** (`front`, `back`, `side`, `left`, `right`, `top`, `bottom`, `tilted_left`, `tilted_right`, `inside`, `detail`, `other`). Qualifiers are applied in the order they are popped (right to left), and each only fills what is still empty: `detail` sets the role and the view to `detail`; `other` is the view when the name also has another role qualifier (`KO-1001_NVY_6_model_other.jpg`), otherwise the role; any other key sets the role or the view it belongs to. A second role or view further left is therefore ignored (the rightmost one wins). Without a role qualifier the role is `packshot`; without a view qualifier the view is `null`.
+- Qualifiers (optional, any order): a **role** (`packshot`, `model`, `detail`, `ghost`, `flatlay`, `scene`, `swatch`, `size_chart`, `other`) and/or a **view** (`front`, `back`, `side`, `left`, `right`, `top`, `bottom`, `tilted_left`, `tilted_right`, `inside`, `detail`, `other`). Qualifiers are applied in the order they are popped (right to left), and each only fills what is still empty: `detail` sets the role and the view to `detail`; `other` is the view when the name also has another role qualifier (`MN-1001_NVY_6_model_other.jpg`), otherwise the role; any other key sets the role or the view it belongs to. A second role or view further left is therefore ignored (the rightmost one wins). Without a role qualifier the role is `packshot`; without a view qualifier the view is `null`.
 - Matching the style number and colour code against the catalog is case-insensitive; the asset takes the catalog's spelling.
-- <a id="all-colours"></a>**Images without a colour.** The colour part `ALL` (any case) means the image belongs to every colour of the product (`color_code: null`), for example a size chart or a detail shared by all colours: `KO-1005_ALL_4_size_chart.png`. `ALL` is therefore reserved: a product colour whose code is `ALL` cannot be addressed by file name (use `assets.csv` with an explicit `color_code`), and brands SHOULD NOT use it as a colour code.
+- <a id="all-colours"></a>**Images without a colour.** The colour part `ALL` (any case) means the image belongs to every colour of the product (`color_code: null`), for example a size chart or a detail shared by all colours: `MN-1005_ALL_4_size_chart.png`. `ALL` is therefore reserved: a product colour whose code is `ALL` cannot be addressed by file name (use `assets.csv` with an explicit `color_code`), and brands SHOULD NOT use it as a colour code.
 - The asset's external id is `{style_number}_{color_code}_{position}` (catalog spelling, no qualifiers, no extension; `{style_number}_ALL_{position}` for an image without a colour), so re-sending a file with the same style, colour and position **replaces** that image, and renaming `_front` to `_back` only changes the view. The original file name becomes the asset `filename`.
 
 | File | style | colour | position | role | view |
 |---|---|---|---|---|---|
-| `KO-1001_NVY_1.jpg` | KO-1001 | NVY | 1 | packshot | null |
-| `KO-1001_NVY_2_back.jpg` | KO-1001 | NVY | 2 | packshot | back |
-| `KO-1003_RST_3_model.png` | KO-1003 | RST | 3 | model | null |
+| `MN-1001_NVY_1.jpg` | MN-1001 | NVY | 1 | packshot | null |
+| `MN-1001_NVY_2_back.jpg` | MN-1001 | NVY | 2 | packshot | back |
+| `MN-1003_RST_3_model.png` | MN-1003 | RST | 3 | model | null |
 | `AB_12_34_BLK_2_packshot_back.JPG` | AB_12_34 | BLK | 2 | packshot | back |
-| `KO-1004_IND_3_detail.jpg` | KO-1004 | IND | 3 | detail | detail |
-| `KO-1002_BLK_4_model_tilted_left.jpg` | KO-1002 | BLK | 4 | model | tilted_left |
-| `KO-1001_NVY_5_back_front.jpg` | KO-1001 | NVY | 5 | packshot | front (rightmost wins) |
-| `KO-1005_all_4_size_chart.png` | KO-1005 | `null` (all colours; external id `KO-1005_ALL_4`) | 4 | size_chart | null |
-| `KO-1001_NVY_6_model_other.jpg` | KO-1001 | NVY | 6 | model | other |
-| `KO-1001_NVY_7_other.jpg` | KO-1001 | NVY | 7 | other | null |
-| `KO-1001_NVY_front.jpg` | — | — | — | error `validation_failed`: no position | |
+| `MN-1004_IND_3_detail.jpg` | MN-1004 | IND | 3 | detail | detail |
+| `MN-1002_BLK_4_model_tilted_left.jpg` | MN-1002 | BLK | 4 | model | tilted_left |
+| `MN-1001_NVY_5_back_front.jpg` | MN-1001 | NVY | 5 | packshot | front (rightmost wins) |
+| `MN-1005_all_4_size_chart.png` | MN-1005 | `null` (all colours; external id `MN-1005_ALL_4`) | 4 | size_chart | null |
+| `MN-1001_NVY_6_model_other.jpg` | MN-1001 | NVY | 6 | model | other |
+| `MN-1001_NVY_7_other.jpg` | MN-1001 | NVY | 7 | other | null |
+| `MN-1001_NVY_front.jpg` | — | — | — | error `validation_failed`: no position | |
 
 These and more edge cases are test vectors in [`fixtures/expected/image-filenames.json`](../fixtures/expected/image-filenames.json); every implementation should parse each name exactly as listed there.
 
@@ -215,7 +215,7 @@ Scheduled pull imports (SFTP folder, S3 prefix) treat the folder like an unpacke
 | `footwear_materials_missing` | a footwear item type without `footwear_materials`, or with one of its three parts empty | `footwear_materials` | the material of the upper, the lining and sock and the outer sole is mandatory on footwear labels: Directive 94/11/EC |
 | `fibre_percentages_not_100` | a part of `materials` in which every fibre states a percentage and they do not sum to 100, or whose stated percentages sum to more than 100 (one per part). A part with a fibre without a percentage ([1.4](#materials)) is otherwise not checked | `materials` | the composition is given as percentages of the total fibre weight: Reg. (EU) No 1007/2011 Art. 9 (and Art. 11 per component) |
 
-The import of [`fixtures/kestrel`](../fixtures/kestrel) gives none of these warnings, and no `material_unknown` ([1.4](#material-unknown)), which is a fifth stable warning code next to these four. A sixth, `qualifier_deprecated`, occurs only on the Ingest API and admin write paths, for a fibre written with the draft single `qualifier` ([ingest.md §3.1](ingest.md)); an import file has no such form.
+The import of [`fixtures/maison-noor`](../fixtures/maison-noor) gives none of these warnings, and no `material_unknown` ([1.4](#material-unknown)), which is a fifth stable warning code next to these four. A sixth, `qualifier_deprecated`, occurs only on the Ingest API and admin write paths, for a fibre written with the draft single `qualifier` ([ingest.md §3.1](ingest.md)); an import file has no such form.
 
 ## 5. <a id="excel"></a>Excel workbooks (node feature, non-normative)
 
@@ -245,7 +245,7 @@ So the templates work as they are: their sheet `Products` (or `Assets`) is read;
 - **Hidden rows and hidden columns are imported**, as Excel's own "Save as CSV" does. Filters, grouping, row heights, fonts and fill colours are ignored. The yellow example rows of the templates are ordinary rows: the template's Read me tells the brand to delete them, and rows that are left import like any other row.
 - **Merged cells**: the value is the value of the top-left cell; every other cell of the merged range is empty, even when the file has a value for it.
 - A converted text is not trimmed or otherwise changed here; trimming, header matching and the like are the CSV rules of §1.1.
-- **Canonical CSV.** The rows written as `products.csv` / `assets.csv` text (the fixtures do this; a node MAY pass the rows to its CSV import directly): UTF-8 without BOM, delimiter `,`, CRLF after every row including the last, a field in double quotes (a `"` inside doubled) only when it contains `,`, `"`, CR or LF. `templates/products.xlsx` gives [`fixtures/kestrel/products.csv`](../fixtures/kestrel/products.csv) byte for byte.
+- **Canonical CSV.** The rows written as `products.csv` / `assets.csv` text (the fixtures do this; a node MAY pass the rows to its CSV import directly): UTF-8 without BOM, delimiter `,`, CRLF after every row including the last, a field in double quotes (a `"` inside doubled) only when it contains `,`, `"`, CR or LF. `templates/products.xlsx` gives [`fixtures/maison-noor/products.csv`](../fixtures/maison-noor/products.csv) byte for byte.
 
 ### 5.4 Cell values
 

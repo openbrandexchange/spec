@@ -107,7 +107,7 @@ async function workbook(spec) {
 
 /** A small valid products workbook, the base of the refusal fixtures. */
 const tiny = (extra = {}, sheetRows) => workbook({
-  sheets: [{ name: "Products", xml: sheetXml(sheetRows ?? [{ r: 1, cells: [C.inl("A1", "style_number"), C.inl("B1", "name:en")] }, { r: 2, cells: [C.inl("A2", "KX-9901"), C.inl("B2", "Tiny")] }]) }],
+  sheets: [{ name: "Products", xml: sheetXml(sheetRows ?? [{ r: 1, cells: [C.inl("A1", "style_number"), C.inl("B1", "name:en")] }, { r: 2, cells: [C.inl("A2", "MX-9901"), C.inl("B2", "Tiny")] }]) }],
   ...extra,
 });
 
@@ -117,7 +117,7 @@ const HEADER = ["brand", "style_number", "name:en", "gtin", "color_code", "size"
 async function edgeCases() {
   const t = sst();
   const h = HEADER.map((x) => t.t(x));
-  const kestrel = t.t("Kestrel");
+  const brand = t.t("MAISON NOOR");
   const fmts = [
     { id: 49 }, // 1: text "@"
     { id: 164, code: "yyyy-mm-dd" }, // 2
@@ -132,7 +132,7 @@ async function edgeCases() {
     // header: shared strings, except name:en and season as inline strings
     row(1, HEADER.map((x, i) => (i === 2 || i === 11 ? C.inl(`${L[i]}1`, x) : C.s(`${L[i]}1`, h[i])))),
     row(2, [
-      C.s("A2", kestrel), C.s("B2", t.t("KX-9001")), C.s("C2", t.t("Edge Case Tee")),
+      C.s("A2", brand), C.s("B2", t.t("MX-9001")), C.s("C2", t.t("Edge Case Tee")),
       C.n("D2", "2000901000015"), // GTIN typed as a number
       C.s("E2", t.t("BLK")), C.n("F2", "42"), C.n("G2", "0.25"), C.b("H2", false),
       C.n("I2", "46082", 2), // date serial with a date format
@@ -141,7 +141,7 @@ async function edgeCases() {
       C.s("L2", t.t("SS26")), // merged L2:L3
     ]),
     row(3, [
-      C.s("A3", kestrel), C.s("B3", t.t("KX-9001")), C.s("C3", t.t("Edge Case Tee")),
+      C.s("A3", brand), C.s("B3", t.t("MX-9001")), C.s("C3", t.t("Edge Case Tee")),
       C.n("D3", "2000901000022", 4), // number with format 00000000000000 -> 02000901000022
       C.s("E3", t.t("BLK")), C.inl("F3", "44"),
       C.fnum("G3", "0.1+0.2", "0.30000000000000004"), // formula with a cached number
@@ -149,29 +149,29 @@ async function edgeCases() {
     ]),
     row(4, [C.empty("A4"), C.inl("B4", "")]), // empty row inside the data
     row(5, [
-      C.s("A5", kestrel), C.s("B5", t.t("KX-9002")), C.s("C5", t.t("Formula Gap")), C.s("D5", t.t("2000902000014"), 1),
+      C.s("A5", brand), C.s("B5", t.t("MX-9002")), C.s("C5", t.t("Formula Gap")), C.s("D5", t.t("2000902000014"), 1),
       C.s("E5", t.t("NVY")), C.s("F5", t.t("M")),
       C.fnum("G5", "G2*2"), // formula without a cached value -> conversion error, row skipped
     ]),
     row(6, [
-      C.s("A6", kestrel), C.s("B6", t.t("KX-9003")), C.s("C6", t.t("Bad Check Digit")),
+      C.s("A6", brand), C.s("B6", t.t("MX-9003")), C.s("C6", t.t("Bad Check Digit")),
       C.s("D6", t.t("2000903000018"), 1), // wrong check digit (…13 is right): error of the CSV import
       C.s("E6", t.t("RED")), C.s("F6", t.t("L")),
     ]),
     row(7, [
-      C.s("A7", kestrel), C.s("B7", t.t("KX-9004")),
+      C.s("A7", brand), C.s("B7", t.t("MX-9004")),
       C.s("C7", t.raw('<r><t xml:space="preserve">Hidden Row </t></r><r><rPr><b/></rPr><t>Still Imported</t></r><rPh sb="0" eb="1"><t>ignored</t></rPh>')), // rich text
       C.n("D7", "2.000904000012E+12"), // GTIN as a number written with an exponent
       C.s("E7", t.t("GRN")), C.s("F7", t.t("S")),
       C.n("G7", "12.5", 5), C.b("H7", true), C.n("I7", "46082", 6),
     ], true), // hidden row: imported
     row(8, [
-      C.s("A8", kestrel), C.s("B8", t.t("KX-9005")), C.s("C8", t.t("Error Cell")), C.s("D8", t.t("2000905000011"), 1),
+      C.s("A8", brand), C.s("B8", t.t("MX-9005")), C.s("C8", t.t("Error Cell")), C.s("D8", t.t("2000905000011"), 1),
       C.s("E8", t.t("YLW")), C.s("F8", t.t("XL")),
       C.e("K8", "#N/A"), // error value -> conversion error, row skipped
     ]),
     row(9, [
-      C.s("A9", kestrel), C.s("B9", t.t("KX-9006")), C.s("C9", t.t("Escapes")), C.s("D9", t.t("2000906000010"), 1),
+      C.s("A9", brand), C.s("B9", t.t("MX-9006")), C.s("C9", t.t("Escapes")), C.s("D9", t.t("2000906000010"), 1),
       C.s("E9", t.t("BLK")), C.s("F9", t.t("S")),
       C.n("I9", "46082.5", 3), // date and time
       C.s("J9", t.t("Line one_x000D_\nLine two")), // _x000D_ is a carriage return
@@ -194,14 +194,14 @@ async function edgeCases() {
 }
 const EDGE_ROWS = [
   HEADER,
-  ["Kestrel", "KX-9001", "Edge Case Tee", "2000901000015", "BLK", "42", "0.25", "false", "2026-03-01", "=SUM(1,2) is text, not a formula", "Core", "SS26"],
-  ["Kestrel", "KX-9001", "Edge Case Tee", "02000901000022", "BLK", "44", "0.3", "", "", "", "", ""],
+  ["MAISON NOOR", "MX-9001", "Edge Case Tee", "2000901000015", "BLK", "42", "0.25", "false", "2026-03-01", "=SUM(1,2) is text, not a formula", "Core", "SS26"],
+  ["MAISON NOOR", "MX-9001", "Edge Case Tee", "02000901000022", "BLK", "44", "0.3", "", "", "", "", ""],
   ["", "", "", "", "", "", "", "", "", "", "", ""],
   ["", "", "", "", "", "", "", "", "", "", "", ""],
-  ["Kestrel", "KX-9003", "Bad Check Digit", "2000903000018", "RED", "L", "", "", "", "", "", ""],
-  ["Kestrel", "KX-9004", "Hidden Row Still Imported", "2000904000012", "GRN", "S", "12.5", "true", "2026-03-01", "", "", ""],
+  ["MAISON NOOR", "MX-9003", "Bad Check Digit", "2000903000018", "RED", "L", "", "", "", "", "", ""],
+  ["MAISON NOOR", "MX-9004", "Hidden Row Still Imported", "2000904000012", "GRN", "S", "12.5", "true", "2026-03-01", "", "", ""],
   ["", "", "", "", "", "", "", "", "", "", "", ""],
-  ["Kestrel", "KX-9006", "Escapes", "2000906000010", "BLK", "S", "", "", "2026-03-01T12:00:00Z", "Line one\r\nLine two", "Capsule_x0031_", ""],
+  ["MAISON NOOR", "MX-9006", "Escapes", "2000906000010", "BLK", "S", "", "", "2026-03-01T12:00:00Z", "Line one\r\nLine two", "Capsule_x0031_", ""],
 ];
 const F = "products.xlsx";
 const EDGE_ERRORS = [
@@ -213,17 +213,17 @@ const EDGE_WARNINGS = [{ file: F, row: null, column: null, severity: "warning", 
 async function date1904() {
   const rows = [
     { r: 1, cells: [C.inl("A1", "brand"), C.inl("B1", "style_number"), C.inl("C1", "name:en"), C.inl("D1", "attr:launch_date")] },
-    { r: 2, cells: [C.inl("A2", "Kestrel"), C.inl("B2", "KX-9101"), C.inl("C2", "Date 1904"), C.n("D2", "44620", 1)] },
-    { r: 3, cells: [C.inl("A3", "Kestrel"), C.inl("B3", "KX-9102"), C.inl("C3", "ISO date cell"), C.d("D3", "2026-03-01T00:00:00")] },
-    { r: 4, cells: [C.inl("A4", "Kestrel"), C.inl("B4", "KX-9103"), C.inl("C4", "Last 1904 date"), C.n("D4", "2957003", 1)] },
+    { r: 2, cells: [C.inl("A2", "MAISON NOOR"), C.inl("B2", "MX-9101"), C.inl("C2", "Date 1904"), C.n("D2", "44620", 1)] },
+    { r: 3, cells: [C.inl("A3", "MAISON NOOR"), C.inl("B3", "MX-9102"), C.inl("C3", "ISO date cell"), C.d("D3", "2026-03-01T00:00:00")] },
+    { r: 4, cells: [C.inl("A4", "MAISON NOOR"), C.inl("B4", "MX-9103"), C.inl("C4", "Last 1904 date"), C.n("D4", "2957003", 1)] },
   ];
   return workbook({ sheets: [{ name: "products", xml: sheetXml(rows) }], date1904: true, styles: styles([{ id: 164, code: "dd/mm/yyyy" }]) });
 }
 const DATE1904_ROWS = [
   ["brand", "style_number", "name:en", "attr:launch_date"],
-  ["Kestrel", "KX-9101", "Date 1904", "2026-03-01"],
-  ["Kestrel", "KX-9102", "ISO date cell", "2026-03-01"],
-  ["Kestrel", "KX-9103", "Last 1904 date", "9999-12-31"],
+  ["MAISON NOOR", "MX-9101", "Date 1904", "2026-03-01"],
+  ["MAISON NOOR", "MX-9102", "ISO date cell", "2026-03-01"],
+  ["MAISON NOOR", "MX-9103", "Last 1904 date", "9999-12-31"],
 ];
 
 /**
@@ -236,9 +236,9 @@ async function emptyHeader() {
   const rows = [
     // C1 has no cell, E1 is an error value (a conversion error that leaves the header empty)
     { r: 1, cells: [C.inl("A1", "Brand"), C.inl("B1", "  Style - Number "), C.inl("D1", "name:en"), C.e("E1", "#REF!"), C.inl("F1", "season"), C.inl("G1", "attr:launch_date")] },
-    { r: 2, cells: [C.inl("A2", "Kestrel"), C.inl("B2", "KX-9201"), C.inl("C2", "spacer"), cdata("D2", "Cdata & <Tee>"), C.inl("E2", "x"), C.inl("F2", "SS26"), C.n("G2", "2958465", 1)] },
-    { r: 3, cells: [C.inl("A3", "Kestrel"), C.inl("B3", "KX-9202"), C.e("C3", "#DIV/0!"), C.inl("D3", "Error under an empty header")] },
-    { r: 4, cells: [C.inl("A4", "Kestrel"), C.inl("B4", "KX-9203"), C.inl("D4", "Year 10000"), C.n("G4", "2958466", 1)] },
+    { r: 2, cells: [C.inl("A2", "MAISON NOOR"), C.inl("B2", "MX-9201"), C.inl("C2", "spacer"), cdata("D2", "Cdata & <Tee>"), C.inl("E2", "x"), C.inl("F2", "SS26"), C.n("G2", "2958465", 1)] },
+    { r: 3, cells: [C.inl("A3", "MAISON NOOR"), C.inl("B3", "MX-9202"), C.e("C3", "#DIV/0!"), C.inl("D3", "Error under an empty header")] },
+    { r: 4, cells: [C.inl("A4", "MAISON NOOR"), C.inl("B4", "MX-9203"), C.inl("D4", "Year 10000"), C.n("G4", "2958466", 1)] },
   ];
   return workbook({
     sheets: [
@@ -250,7 +250,7 @@ async function emptyHeader() {
 }
 const EMPTY_HEADER_ROWS = [
   ["Brand", "  Style - Number ", "", "name:en", "", "season", "attr:launch_date"],
-  ["Kestrel", "KX-9201", "spacer", "Cdata & <Tee>", "x", "SS26", "9999-12-31"],
+  ["MAISON NOOR", "MX-9201", "spacer", "Cdata & <Tee>", "x", "SS26", "9999-12-31"],
   ["", "", "", "", "", "", ""],
   ["", "", "", "", "", "", ""],
 ];
@@ -278,20 +278,20 @@ const refusals = {
     extraWbRels: [`<Relationship Id="rIdX" Type="${REL}/externalLink" Target="externalLinks/externalLink1.xml"/>`],
   }),
   // 12 MiB of whitespace between two rows: about 12 KB on disk, more than 100 times its size.
-  "zip-bomb.xlsx": async () => workbook({ sheets: [{ name: "Products", xml: sheetXml([{ r: 1, cells: [C.inl("A1", "style_number")] }, { r: 2, cells: [C.inl("A2", "KX-9902")] }], "", " ".repeat(12 * 1024 * 1024)) }] }),
-  "too-many-rows.xlsx": async () => tiny({}, [{ r: 1, cells: [C.inl("A1", "style_number"), C.inl("B1", "name:en")] }, { r: 2, cells: [C.inl("A2", "KX-9903"), C.inl("B2", "Far away")] }, { r: LIMITS.maxRow + 1, cells: [C.inl(`A${LIMITS.maxRow + 1}`, "KX-9904")] }]),
-  "not-a-workbook.xlsx": async () => Buffer.from("style_number,name:en\r\nKX-9905,A CSV file renamed to .xlsx\r\n"),
+  "zip-bomb.xlsx": async () => workbook({ sheets: [{ name: "Products", xml: sheetXml([{ r: 1, cells: [C.inl("A1", "style_number")] }, { r: 2, cells: [C.inl("A2", "MX-9902")] }], "", " ".repeat(12 * 1024 * 1024)) }] }),
+  "too-many-rows.xlsx": async () => tiny({}, [{ r: 1, cells: [C.inl("A1", "style_number"), C.inl("B1", "name:en")] }, { r: 2, cells: [C.inl("A2", "MX-9903"), C.inl("B2", "Far away")] }, { r: LIMITS.maxRow + 1, cells: [C.inl(`A${LIMITS.maxRow + 1}`, "MX-9904")] }]),
+  "not-a-workbook.xlsx": async () => Buffer.from("style_number,name:en\r\nMX-9905,A CSV file renamed to .xlsx\r\n"),
   // The OLE compound file signature (encrypted .xlsx and legacy .xls start with it), then zeros.
   "encrypted.xlsx": async () => Buffer.concat([Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]), Buffer.alloc(504)]),
   "doctype.xlsx": async () => tiny({ workbookPrefix: '<!DOCTYPE workbook [<!ENTITY a "aaaaaaaaaa"><!ENTITY b "&a;&a;&a;&a;&a;&a;&a;&a;&a;&a;">]>' }),
   // a macro part and a [Content_Types].xml that is not XML: the entry names are checked first (§5.6 step 5)
   "unsafe-before-types.xlsx": async () => tiny({ extraParts: { "xl/vbaProject.bin": "not a real VBA project", "[Content_Types].xml": "<Types" } }),
   // 1E+308 is outside Excel's range (§5.4, numbers, step 3)
-  "number-range.xlsx": async () => tiny({}, [{ r: 1, cells: [C.inl("A1", "style_number"), C.inl("B1", "weight_kg")] }, { r: 2, cells: [C.inl("A2", "KX-9907"), C.n("B2", "1E+308")] }]),
+  "number-range.xlsx": async () => tiny({}, [{ r: 1, cells: [C.inl("A1", "style_number"), C.inl("B1", "weight_kg")] }, { r: 2, cells: [C.inl("A2", "MX-9907"), C.n("B2", "1E+308")] }]),
   "no-products-sheet.xlsx": async () => workbook({
     sheets: [
       { name: "Notes", xml: sheetXml([{ r: 1, cells: [C.inl("A1", "Hello")] }, { r: 2, cells: [C.inl("A2", "Nothing to import here")] }]) },
-      { name: "Products", state: "hidden", xml: sheetXml([{ r: 1, cells: [C.inl("A1", "style_number")] }, { r: 2, cells: [C.inl("A2", "KX-9906")] }]) },
+      { name: "Products", state: "hidden", xml: sheetXml([{ r: 1, cells: [C.inl("A1", "style_number")] }, { r: 2, cells: [C.inl("A2", "MX-9906")] }]) },
     ],
   }),
 };
@@ -379,17 +379,17 @@ function expected() {
   const m = specModel();
   const assets = workbookModel("assets", m);
   return {
-    description: "Conformance I-IMP-9 and I-IMP-10 (optional: nodes that accept Excel workbooks, docs/import-format.md §5). For each workbook: send it as the import's products.xlsx (role products) or assets.xlsx (role assets), nothing else unless send says so (send.images_manifest: these files of fixtures/kestrel/images in the images_manifest, by file name and sha256). rows: the canonical rows the conversion gives, header first; rows[i] is Excel row i + 1, so a row that the conversion empties (a conversion error) or that is empty in the sheet is a row of empty strings. csv: the same rows as canonical CSV text (§5.3). errors / warnings: the ImportRowErrors of the conversion (detail starts with detail_prefix). import_errors: every ImportRowError with severity error of a dry-run import of the workbook on a node that holds fixtures/kestrel, sorted by row then column. error: the workbook-level refusal (§5.5: the import run fails with this code in ImportRun.error, nothing is imported, and its results hold this one ImportRowError with row null); detail_contains is a hint for humans, not checked by obx-conformance. number_vectors / date_vectors / format_vectors: unit test vectors for §5.4.",
+    description: "Conformance I-IMP-9 and I-IMP-10 (optional: nodes that accept Excel workbooks, docs/import-format.md §5). For each workbook: send it as the import's products.xlsx (role products) or assets.xlsx (role assets), nothing else unless send says so (send.images_manifest: these files of fixtures/maison-noor/images in the images_manifest, by file name and sha256). rows: the canonical rows the conversion gives, header first; rows[i] is Excel row i + 1, so a row that the conversion empties (a conversion error) or that is empty in the sheet is a row of empty strings. csv: the same rows as canonical CSV text (§5.3). errors / warnings: the ImportRowErrors of the conversion (detail starts with detail_prefix). import_errors: every ImportRowError with severity error of a dry-run import of the workbook on a node that holds fixtures/maison-noor, sorted by row then column. error: the workbook-level refusal (§5.5: the import run fails with this code in ImportRun.error, nothing is imported, and its results hold this one ImportRowError with row null); detail_contains is a hint for humans, not checked by obx-conformance. number_vectors / date_vectors / format_vectors: unit test vectors for §5.4.",
     limits: LIMITS,
     cases: [
       {
         file: "products-template.xlsx", role: "products", sheet: "Products",
-        what: "templates/products.xlsx as it is, yellow example rows included: the rows are exactly fixtures/kestrel/products.csv, so importing it equals I-IMP-1 without images (all unchanged on a node that holds the fixtures).",
-        csv_file: "fixtures/kestrel/products.csv", errors: [], warnings: [], import_errors: [],
+        what: "templates/products.xlsx as it is, yellow example rows included: the rows are exactly fixtures/maison-noor/products.csv, so importing it equals I-IMP-1 without images (all unchanged on a node that holds the fixtures).",
+        csv_file: "fixtures/maison-noor/products.csv", errors: [], warnings: [], import_errors: [],
       },
       {
         file: "assets-template.xlsx", role: "assets", sheet: "Assets",
-        what: "templates/assets.xlsx as it is: every column of import-format.md 2.3, the rows of fixtures/kestrel/assets.csv. Sent with the two images its rows name in the images_manifest (alone, each row would be files_missing, §2.2); on a node that holds the fixtures it is all unchanged.",
+        what: "templates/assets.xlsx as it is: every column of import-format.md 2.3, the rows of fixtures/maison-noor/assets.csv. Sent with the two images its rows name in the images_manifest (alone, each row would be files_missing, §2.2); on a node that holds the fixtures it is all unchanged.",
         send: { images_manifest: assets.rows.map((r) => r[0]) },
         rows: [assets.header, ...assets.rows], csv: canonicalCSV([assets.header, ...assets.rows]), errors: [], warnings: [], import_errors: [],
       },

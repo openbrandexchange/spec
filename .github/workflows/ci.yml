@@ -31,7 +31,7 @@ jobs:
         # without image hashes are compared; the committed fixtures stay canonical.
         run: |
           python3 fixtures/generate.py
-          git diff --exit-code -- fixtures/kestrel/products.csv fixtures/kestrel/assets.csv \
+          git diff --exit-code -- fixtures/maison-noor/products.csv fixtures/maison-noor/assets.csv \
             fixtures/ingest/expected-results.json fixtures/ingest/expected-changes.json \
             fixtures/expected/counts.json fixtures/expected/gtin-lookup.json fixtures/expected/gtin-lookup.request.json
 

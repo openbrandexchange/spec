@@ -110,8 +110,8 @@ for (const file of readdirSync(join(root, "fixtures", "examples"))) {
     ["http: link", blocks([{ id: "a", type: "hero", link: "http://example.org/" }]), false],
     ["protocol-relative link", blocks([{ id: "a", type: "hero", link: "//example.org/" }]), false],
     ["backslash link", blocks([{ id: "a", type: "hero", link: "/\\example.org/" }]), false],
-    ["https link", blocks([{ id: "a", type: "hero", link: "https://kestrel.example/lookbook" }]), true],
-    ["portal path", blocks([{ id: "a", type: "hero", link: "/products/KO-1001" }]), true],
+    ["https link", blocks([{ id: "a", type: "hero", link: "https://maison-noor.example/lookbook" }]), true],
+    ["portal path", blocks([{ id: "a", type: "hero", link: "/products/MN-1001" }]), true],
     ["13 tiles", blocks([{ id: "a", type: "tiles", items: Array(13).fill({}) }]), false],
     ["31 blocks", blocks(Array.from({ length: 31 }, (_, i) => ({ id: `b${i}`, type: "text" }))), false],
     ["unknown font", { theme: { body_font: "comic-sans" } }, false],
@@ -267,8 +267,8 @@ export function roleAndView(qualifiers) {
   return { role: role ?? "packshot", view };
 }
 
-const kestrel = join(root, "fixtures", "kestrel");
-const productRows = parseCSV(readFileSync(join(kestrel, "products.csv"), "utf8"));
+const catalog = join(root, "fixtures", "maison-noor");
+const productRows = parseCSV(readFileSync(join(catalog, "products.csv"), "utf8"));
 const header = productRows[0].map((h) => h.trim().toLowerCase());
 header.forEach((h) => { checked++; if (!PRODUCT_COLUMNS.test(h)) fail("products.csv", `unknown column ${h}`); });
 const col = (row, name) => row[header.indexOf(name)] ?? "";
@@ -369,7 +369,7 @@ export function parseMeasurements(get) {
 // what an external id cannot hold (control characters and "/") becomes "_".
 export const defaultVariantId = (style, color, size, length) =>
   [style, color, size, length].filter((x) => x).join("-").replace(/[\u0000-\u001f\u007f/]/g, "_");
-for (const [args, want] of [[["KO-1004", "IND", "32", "34"], "KO-1004-IND-32-34"], [["KL-8101", "IND", "32/34", ""], "KL-8101-IND-32_34"], [["KO-1005", "COG", "ONE SIZE", ""], "KO-1005-COG-ONE SIZE"], [["KO-1", "BLK", "", ""], "KO-1-BLK"]]) {
+for (const [args, want] of [[["MN-1004", "IND", "32", "34"], "MN-1004-IND-32-34"], [["ML-8101", "IND", "32/34", ""], "ML-8101-IND-32_34"], [["MN-1005", "COG", "ONE SIZE", ""], "MN-1005-COG-ONE SIZE"], [["MN-1", "BLK", "", ""], "MN-1-BLK"]]) {
   checked++;
   if (defaultVariantId(...args) !== want) fail("default variant id", `${JSON.stringify(args)} -> ${defaultVariantId(...args)}`);
 }
@@ -481,7 +481,7 @@ checked++;
   }
 }
 
-const images = readdirSync(join(kestrel, "images"));
+const images = readdirSync(join(catalog, "images"));
 const positions = new Set();
 for (const img of images) {
   checked++;
@@ -492,23 +492,23 @@ for (const img of images) {
   if (positions.has(key)) fail(`images/${img}`, `duplicate position ${key}`);
   positions.add(key);
 }
-const assetRows = parseCSV(readFileSync(join(kestrel, "assets.csv"), "utf8"));
+const assetRows = parseCSV(readFileSync(join(catalog, "assets.csv"), "utf8"));
 assetRows[0].forEach((h) => { checked++; if (!ASSET_COLUMNS.test(h.trim().toLowerCase())) fail("assets.csv", `unknown column ${h}`); });
 for (const row of assetRows.slice(1)) { checked++; if (!images.includes(row[0])) fail("assets.csv", `file ${row[0]} not in images/`); }
 
 // A few behavioural checks of the filename rule itself (docs/import-format.md examples).
 const cases = [
-  ["KO-1001_NVY_1.jpg", { style: "KO-1001", color: "NVY", position: 1, qualifiers: [] }],
-  ["KO-1003_RST_3_model.png", { style: "KO-1003", color: "RST", position: 3, qualifiers: ["model"] }],
+  ["MN-1001_NVY_1.jpg", { style: "MN-1001", color: "NVY", position: 1, qualifiers: [] }],
+  ["MN-1003_RST_3_model.png", { style: "MN-1003", color: "RST", position: 3, qualifiers: ["model"] }],
   ["AB_12_34_BLK_2_packshot_back.JPG", { style: "AB_12_34", color: "BLK", position: 2, qualifiers: ["packshot", "back"] }],
-  ["KO-1005_all_4_size_chart.png", { style: "KO-1005", color: "all", position: 4, qualifiers: ["size_chart"] }],
-  ["KO-1001_NVY_front.jpg", null],
-  ["KO-1001_NVY_0.jpg", null],
+  ["MN-1005_all_4_size_chart.png", { style: "MN-1005", color: "all", position: 4, qualifiers: ["size_chart"] }],
+  ["MN-1001_NVY_front.jpg", null],
+  ["MN-1001_NVY_0.jpg", null],
 ];
 // The colour part ALL (any case) means "all colours": color_code null, external id {style}_ALL_{position}.
 export const colorCodeOf = (parsed) => (parsed.color.toUpperCase() === "ALL" ? null : parsed.color);
 export const assetExternalId = (style, color, position) => `${style}_${color ?? "ALL"}_${position}`;
-for (const [name, color, id] of [["KO-1005_all_4_size_chart.png", null, "KO-1005_ALL_4"], ["KO-1001_NVY_2_back.jpg", "NVY", "KO-1001_NVY_2"]]) {
+for (const [name, color, id] of [["MN-1005_all_4_size_chart.png", null, "MN-1005_ALL_4"], ["MN-1001_NVY_2_back.jpg", "NVY", "MN-1001_NVY_2"]]) {
   checked++;
   const p = parseImageFilename(name);
   if (colorCodeOf(p) !== color || assetExternalId(p.style, colorCodeOf(p), p.position) !== id) fail("filename rule", `${name}: colour ${colorCodeOf(p)}, id ${assetExternalId(p.style, colorCodeOf(p), p.position)}`);
@@ -518,12 +518,12 @@ for (const [name, want] of cases) {
   if (JSON.stringify(parseImageFilename(name)) !== JSON.stringify(want)) fail("filename rule", `${name} -> ${JSON.stringify(parseImageFilename(name))}`);
 }
 for (const [name, want] of [
-  ["KO-1001_NVY_1.jpg", { role: "packshot", view: null }],
-  ["KO-1004_IND_3_detail.jpg", { role: "detail", view: "detail" }],
-  ["KO-1002_BLK_4_model_tilted_left.jpg", { role: "model", view: "tilted_left" }],
-  ["KO-1001_NVY_5_back_front.jpg", { role: "packshot", view: "front" }],
-  ["KO-1001_NVY_6_model_other.jpg", { role: "model", view: "other" }],
-  ["KO-1001_NVY_7_other.jpg", { role: "other", view: null }],
+  ["MN-1001_NVY_1.jpg", { role: "packshot", view: null }],
+  ["MN-1004_IND_3_detail.jpg", { role: "detail", view: "detail" }],
+  ["MN-1002_BLK_4_model_tilted_left.jpg", { role: "model", view: "tilted_left" }],
+  ["MN-1001_NVY_5_back_front.jpg", { role: "packshot", view: "front" }],
+  ["MN-1001_NVY_6_model_other.jpg", { role: "model", view: "other" }],
+  ["MN-1001_NVY_7_other.jpg", { role: "other", view: null }],
   ["AB_12_34_BLK_2_packshot_back.JPG", { role: "packshot", view: "back" }],
 ]) {
   checked++;
@@ -676,7 +676,7 @@ for (const name of schemaNames) walkDescriptions(readJSON(join(schemaDir, `${nam
   for (const file of ["obx-protocol.yaml", "obx-ingest.yaml", "node-admin.yaml"]) {
     expect(`openapi/${file} info.version`, parseYAML(readFileSync(join(root, "openapi", file), "utf8")).info.version);
   }
-  expect("fixtures/examples/DiscoveryDocument.kestrel.json spec_version", readJSON(join(exDir, "DiscoveryDocument.kestrel.json")).spec_version);
+  expect("fixtures/examples/DiscoveryDocument.maison-noor.json spec_version", readJSON(join(exDir, "DiscoveryDocument.maison-noor.json")).spec_version);
   const released = /^## \[(\d+\.\d+\.\d+[^\]]*)\]/m.exec(readFileSync(join(root, "CHANGELOG.md"), "utf8").replace(/^## \[Unreleased\][\s\S]*?(?=^## \[)/m, ""));
   expect("CHANGELOG.md latest release", released?.[1]);
   for (const doc of ["protocol.md", "ingest.md"]) {

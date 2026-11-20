@@ -12,7 +12,7 @@ Alongside [proposal 0004](https://github.com/openbrandexchange/spec/blob/obx-0.3
 
 The owner found the API "pretty bad" for browsing and thought there was no pagination. There is (keyset cursors on `/products` and `/changes`, and webhooks instead of polling), but 0.2 documented it in one line each; the 0.2 documentation patch fixes that ([protocol.md §2.1](../protocol.md#pagination), [§2.2](../protocol.md#notifications)). What remains are real gaps:
 
-1. **Browsing.** `GET /products` filters only by `ids`, `brand_id` and `updated_since`, in `id` order. A retailer's shop or PIM that wants "all AW26 sweaters of collection Highland, newest first" must download everything and filter itself. The retailer portal already has these filters ([node-admin.yaml](../../openapi/node-admin.yaml) `/admin/api/portal/products`); the protocol does not.
+1. **Browsing.** `GET /products` filters only by `ids`, `brand_id` and `updated_since`, in `id` order. A retailer's shop or PIM that wants "all AW26 sweaters of collection Nocturne, newest first" must download everything and filter itself. The retailer portal already has these filters ([node-admin.yaml](../../openapi/node-admin.yaml) `/admin/api/portal/products`); the protocol does not.
 2. **Webhooks** are minimal: 5 subscriptions, no filters, no delivery log, no way to pause, rotate a secret or ask for a redelivery, and no way to see a missed event.
 3. **Replaced images.** Re-sending a file with the same style, colour and position replaces the image (same asset id, new `sha256`, one change entry; [import-format.md §2.1](../import-format.md#21-filename-pattern) and rule 6), but a consumer cannot tell a replacement from a metadata change without its own copy of the old hash, and the behaviour of conditional requests for the old bytes is unwritten.
 4. **Buyers** (people at the retailer, not their software) want an e-mail when a brand has new products, new images or changed EANs. Every node would build this differently.
@@ -46,7 +46,7 @@ Capabilities in 0.2 are an array of strings (`["changes", "products", …]`; unk
 
 - **Lists.** Each parameter is a comma-separated list; a value that contains a comma or a backslash writes it as `\,` or `\\` (only `season` and `collection` can contain them; the other fields' patterns exclude commas). Values are trimmed; empty values are ignored. At most 100 values per parameter and 8 KiB of query string (else `400 limit_exceeded`).
 - **Semantics.** OR within a list, AND between parameters. `season=SS26,AW26&item_type=sweater` = (season SS26 or AW26) and item type sweater. A variant-level filter selects products that have at least one matching visible variant; when both `color_code` and `gtin` are given, one variant must match both. The response is unchanged: the whole ProductDetail with **all** its visible variants and assets (filters select products, they do not trim them).
-- **Exact, case-insensitive.** A value matches when it equals the field after both are folded (1.2): `aw26` finds `AW26`, `Highland` does not find `Highland Wool`. Products with the field `null` never match. `gtin` compares GTIN-14 digits.
+- **Exact, case-insensitive.** A value matches when it equals the field after both are folded (1.2): `aw26` finds `AW26`, `Nocturne` does not find `Nocturne Wool`. Products with the field `null` never match. `gtin` compares GTIN-14 digits.
 - **`ids` stays as in 0.2**: when `ids` is set, every other filter, `q` and `sort` are ignored (`fields` and `include` still apply).
 - `updated_since` stays and combines with the new filters by AND.
 
@@ -64,7 +64,7 @@ Capabilities in 0.2 are an array of strings (`["changes", "products", …]`; unk
 
 - Ties are broken by `id` in the same direction, so the order is total.
 - `name` sorts by the name in the node's default content language (`languages[0]` in discovery), folded (1.2), compared by code point; products without a name in that language sort as if their name were their folded `style_number`. Nodes MUST NOT use locale collation (it differs between databases).
-- `style_number` sorts by the folded style number, by code point (`KO-1010` sorts before `KO-2`; no natural sort).
+- `style_number` sorts by the folded style number, by code point (`MN-1010` sorts before `MN-2`; no natural sort).
 - Unknown key: `400 invalid_request`.
 
 ### 1.4 Pagination stays keyset
@@ -159,7 +159,7 @@ Every 0.3 node that advertises `webhooks` MUST do 2.1 to 2.8; 2.9 is the optiona
 ```json
 {"url": "https://store.example/hooks/obx",
  "events": ["changes.available"],
- "filter": {"brand_ids": ["brd_kestrel"], "seasons": ["AW26"], "collections": ["Highland"], "item_types": ["sweater", "shoes"]}}
+ "filter": {"brand_ids": ["brd_maison_noor"], "seasons": ["AW26"], "collections": ["Nocturne"], "item_types": ["sweater", "shoes"]}}
 ```
 - Applies to `changes.available` only. The node sends it only when at least one new feed entry visible to the client matches: AND between members, OR within a list, matched like the filters of 1.1 (folded, exact). Variant and asset entries match through their product; a `delete` matches on the object's last visible values; `grant` entries always match. Absent or empty members match everything.
 - `latest_seq` stays the global feed position and the receiver still reads the whole `/changes`: the filter reduces wake-ups, not the feed (a filtered feed is open decision 11).
@@ -338,42 +338,42 @@ Protocol profile (when the capability is advertised):
 | Id | Test |
 |---|---|
 | P-SRCH-1 | `products.search` advertised; without it, the suite checks that the node is 0.2-shaped (skips the rest) |
-| P-SRCH-2 | each filter on the Kestrel fixtures returns exactly the products in `expected/search/<case>.json` (season, collection, item_type, target_group, color_code, gtin as EAN-13 and GTIN-14, brand_id list) |
+| P-SRCH-2 | each filter on the MAISON NOOR fixtures returns exactly the products in `expected/search/<case>.json` (season, collection, item_type, target_group, color_code, gtin as EAN-13 and GTIN-14, brand_id list) |
 | P-SRCH-3 | OR within a list, AND between parameters; `color_code`+`gtin` must match one variant; matched products carry all their variants |
-| P-SRCH-4 | `q`: `merino`, `MÉRINO`, `crew merino` find KO-1001; a GTIN finds its product; one character → 400 `invalid_request` with `pointer` `query:q`; the fold vectors of `fixtures/search/fold.json` (through `q` on fixture names) |
+| P-SRCH-4 | `q`: `merino`, `MÉRINO`, `crew merino` find MN-1001; a GTIN finds its product; one character → 400 `invalid_request` with `pointer` `query:q`; the fold vectors of `fixtures/search/fold.json` (through `q` on fixture names) |
 | P-SRCH-5 | every sort key ascending and descending: order as expected; paging with `limit=1` gives the same sequence as `limit=100`; ties broken by `id` |
 | P-SRCH-6 | a cursor from `season=AW26` sent with `season=SS26` → 400 `cursor_invalid`; changing `limit` and `fields` between pages works |
 | P-SRCH-7 | `include=total` exact on every fixture case; absent without it; `include=nope` → 400 |
 | P-SRCH-8 | `fields=name`: only `id`, `brand_id`, `style_number`, `updated_at`, `name`; `fields=nope` → 400 with one `errors[]` entry; with `ids=` too |
-| P-SRCH-9 | the restricted client never finds `kestrel-trail` products through any filter, `q` or `gtin` |
+| P-SRCH-9 | the restricted client never finds `noor-atelier` products through any filter, `q` or `gtin` |
 | P-SRCH-10 | 101 values in one filter → 400 `limit_exceeded`; unknown sort → 400 `invalid_request`; `ids=` still ignores the other filters |
 | P-HOOK-2 | `limits.webhook_subscriptions_max` ≥ 5; that many subscriptions can be created, one more → 409 |
 | P-HOOK-3 | creation sends `webhook.verify`; with `verify: challenge` a receiver that echoes is created, one that answers 204 → 422 and nothing is created |
 | P-HOOK-4 | events carry `subscription_id` and `sequence` 1, 2, 3 … per subscription; a retry keeps `id` and `sequence` |
 | P-HOOK-5 | receiver answers 500, then 429 with `Retry-After: 5`, then 200: three attempts, the third not before 5 s, each with a valid signature and `OBX-Webhook-Attempt` 1, 2, 3; then visible in the delivery log with status codes and durations |
-| P-HOOK-6 | `filter.brand_ids: [kestrel-trail]`: an ingest write to `kestrel` gives no `changes.available`, one to `kestrel-trail` gives one within 60 s whose `latest_seq` ≥ the entry's `seq` |
+| P-HOOK-6 | `filter.brand_ids: [noor-atelier]`: an ingest write to `maison-noor` gives no `changes.available`, one to `noor-atelier` gives one within 60 s whose `latest_seq` ≥ the entry's `seq` |
 | P-HOOK-7 | redeliver by event id and by time range: same `id`, `sequence` and body, new timestamp |
 | P-HOOK-8 | paused: no events during writes; resume: one `changes.available` |
 | P-HOOK-9 | rotate with `overlap_seconds: 5`: two signatures (new first) during the overlap, only the new one after; the old secret alone stops verifying |
 | P-HOOK-10 | (if `webhooks.batch`) `max_events: 3`: `webhook.batch` with up to 3 events with their own ids; every body ≤ 256 KiB |
 | P-HOOK-11 | `410` from the receiver disables the subscription (`receiver_gone`); `PATCH status: active` re-activates it |
-| P-MEDIA-4 | replace `KO-1001_NVY_1` with other bytes (ingest, import or operator hook): exactly one `asset` upsert, same asset id, `previous_sha256` = the old `sha256`; a webhook subscriber gets `changes.available`; `If-None-Match` with the old ETag → 200 with the new bytes and ETag; a signed URL fetched before → new bytes; the same bytes again → no entry, no event |
+| P-MEDIA-4 | replace `MN-1001_NVY_1` with other bytes (ingest, import or operator hook): exactly one `asset` upsert, same asset id, `previous_sha256` = the old `sha256`; a webhook subscriber gets `changes.available`; `If-None-Match` with the old ETag → 200 with the new bytes and ETag; a signed URL fetched before → new bytes; the same bytes again → no entry, no event |
 
 Ingest and portal profiles:
 
 | Id | Test |
 |---|---|
-| I-IMP-12 | import `KO-1001_NVY_1.jpg` with new bytes: one asset upsert with `previous_sha256`; the same file again: all unchanged, no entries; a metadata-only change keeps `previous_sha256` |
+| I-IMP-12 | import `MN-1001_NVY_1.jpg` with new bytes: one asset upsert with `previous_sha256`; the same file again: all unchanged, no entries; a metadata-only change keeps `previous_sha256` |
 | A-CAT-2 | "replace image" through the admin catalog API gives the same entry and `previous_sha256` as the Ingest API |
 | A-NOTIF-1 | (if `portal.notifications`) subscription CRUD for a retailer user; brand outside the grant → 422; language not offered → 422; an admin cannot create one for a user |
-| A-NOTIF-2 | immediate: ingest a new Highland product → after `notifications/run` one delivery for the `collections: [Highland]` subscriber, none for `[Trail]`; 30 writes in a minute → one mail |
+| A-NOTIF-2 | immediate: ingest a new Nocturne product → after `notifications/run` one delivery for the `collections: [Nocturne]` subscriber, none for `[Riviera]`; 30 writes in a minute → one mail |
 | A-NOTIF-3 | weekly digest via `notifications/run`: new product, replaced image (marked replaced) and changed GTIN (old → new) in the right sections; an embargoed image is not mentioned; nothing new → no delivery |
 | A-NOTIF-4 | delivery headers: `List-Unsubscribe` with an https URL and `List-Unsubscribe-Post: List-Unsubscribe=One-Click`; `POST` with `List-Unsubscribe=One-Click` and no cookies → 200, subscription gone, again → 200; `GET` does not unsubscribe; an unknown token → 200 |
 | A-NOTIF-5 | a `nl` subscription gets Dutch names and `Content-Language: nl`; text part present; no tracking parameters in links |
 | A-NOTIF-6 | restricted or blocked retailer: no mail about brands outside its grant; deleted user → subscriptions gone |
 | A-NOTIF-7 | the admin sees subscriptions and deliveries (with headers and text for 7 days); `notifications.enabled: false` → nothing sent |
 
-Fixtures: `expected/search/*.json` (one file per case), `fixtures/search/fold.json` (fold vectors), a second image file for KO-1001_NVY_1 (`fixtures/replace/`), expected notification sections for the digest case.
+Fixtures: `expected/search/*.json` (one file per case), `fixtures/search/fold.json` (fold vectors), a second image file for MN-1001_NVY_1 (`fixtures/replace/`), expected notification sections for the digest case.
 
 ## Rollout
 

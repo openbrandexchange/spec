@@ -4,14 +4,14 @@ import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 
 const PAGES = [
-  { path: "protocol.html", title: "OBX Protocol (read side)", example: "pub_kestrel" },
+  { path: "protocol.html", title: "OBX Protocol (read side)", example: "pub_maison_noor" },
   { path: "ingest.html", title: "OBX Ingest API", example: "prd_1" },
   { path: "admin.html", title: "Node Admin", example: null },
 ];
 
 test("overview page links to every reference and passes axe", async ({ page }) => {
   await page.goto("/");
-  await expect(page).toHaveTitle(/API reference 0\.3\.0/);
+  await expect(page).toHaveTitle(/API reference 0\.3\.1/);
   for (const p of PAGES) await expect(page.locator(`a[href="${p.path}"]`)).toBeVisible();
   await expect(page.locator('a[href="schemas/v0.3/Product.json"]')).toBeVisible();
   const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();

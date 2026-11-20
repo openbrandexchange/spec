@@ -1,6 +1,6 @@
 # OBX Ingest API 0.3
 
-**Status:** v0.3.0. Optional; normative for nodes that offer it (capability `ingest`). The [OBX Protocol](protocol.md) is the standard; how content gets into a node is up to the node. Contract: [`openapi/obx-ingest.yaml`](../openapi/obx-ingest.yaml). RFC 2119 keywords as in [protocol.md](protocol.md).
+**Status:** v0.3.1. Optional; normative for nodes that offer it (capability `ingest`). The [OBX Protocol](protocol.md) is the standard; how content gets into a node is up to the node. Contract: [`openapi/obx-ingest.yaml`](../openapi/obx-ingest.yaml). RFC 2119 keywords as in [protocol.md](protocol.md).
 
 The Ingest API is how a brand's **own systems** publish to a node: a PIM or ERP connector, a nightly spreadsheet export, a DAM, the `obx` command-line tool, a GitHub Action, n8n/Make/Zapier. Because every conforming node speaks it, a brand's automation keeps working when it moves between nodes (self-hosted, a different runtime, a vendor).
 
@@ -26,7 +26,7 @@ Everything is addressed by the brand's **external id** in the path (percent-enco
 
 | Object | Path | Convention when the brand has no separate id |
 |---|---|---|
-| brand | `/brands/{external_id}` | slug of the brand name (`Kestrel Trail` → `kestrel-trail`) |
+| brand | `/brands/{external_id}` | slug of the brand name (`NOOR ATELIER` → `noor-atelier`) |
 | product | `/products/{external_id}` | the style number |
 | variant | `/variants/{external_id}` | `<style>-<color>-<size>[-<size_length>]`, with `/` and control characters written as `_` ([import-format.md §1.2.1](import-format.md#variant-identity)); never the GTIN, which can arrive late or change |
 | asset | `/assets/{external_id}` | `<style>_<color>_<position>` (the image filename pattern without qualifiers and extension); `<style>_ALL_<position>` for an image of all colours ([import-format.md](import-format.md#all-colours)) |
@@ -135,18 +135,18 @@ This section is normative and is what the conformance suite replays ([`fixtures/
 ## 10. Example
 
 ```sh
-URL=https://brands.kestrel.example/obx/v1/ingest
+URL=https://brands.maison-noor.example/obx/v1/ingest
 AUTH="Authorization: Bearer $OBX_TOKEN"
 curl -s -H "$AUTH" $URL | jq .renditions
-curl -s -X PUT -H "$AUTH" -H 'Content-Type: application/json' $URL/products/KO-1001 \
-  -d '{"style_number":"KO-1001","name":{"en":"Merino Crew Sweater","nl":"Merino trui met ronde hals"}}'
-curl -s -X PUT -H "$AUTH" -H 'Content-Type: application/json' $URL/variants/KO-1001-NVY-M \
-  -d '{"product_external_id":"KO-1001","gtin":"2000100101025","color":{"code":"NVY","name":{"en":"Navy"}},"size":"M"}'
-curl -s -X PUT -H "$AUTH" -H 'Content-Type: application/json' $URL/assets/KO-1001_NVY_1 \
-  -d '{"product_external_id":"KO-1001","color_code":"NVY","role":"packshot","view":"front","position":1}'
-curl -s -X PUT -H "$AUTH" -H 'Content-Type: image/jpeg' --data-binary @KO-1001_NVY_1.jpg \
-  -H "OBX-Content-SHA256: $(shasum -a 256 KO-1001_NVY_1.jpg | cut -d' ' -f1)" $URL/assets/KO-1001_NVY_1/files/original
-curl -s -X PATCH -H "$AUTH" -H 'Content-Type: application/merge-patch+json' $URL/products/KO-1001 -d '{"status":"unpublished"}'
+curl -s -X PUT -H "$AUTH" -H 'Content-Type: application/json' $URL/products/MN-1001 \
+  -d '{"style_number":"MN-1001","name":{"en":"Fine Merino Crew-Neck Sweater","nl":"Fijne merino trui met ronde hals"}}'
+curl -s -X PUT -H "$AUTH" -H 'Content-Type: application/json' $URL/variants/MN-1001-NVY-M \
+  -d '{"product_external_id":"MN-1001","gtin":"2000100101025","color":{"code":"NVY","name":{"en":"Navy"}},"size":"M"}'
+curl -s -X PUT -H "$AUTH" -H 'Content-Type: application/json' $URL/assets/MN-1001_NVY_1 \
+  -d '{"product_external_id":"MN-1001","color_code":"NVY","role":"packshot","view":"front","position":1}'
+curl -s -X PUT -H "$AUTH" -H 'Content-Type: image/jpeg' --data-binary @MN-1001_NVY_1.jpg \
+  -H "OBX-Content-SHA256: $(shasum -a 256 MN-1001_NVY_1.jpg | cut -d' ' -f1)" $URL/assets/MN-1001_NVY_1/files/original
+curl -s -X PATCH -H "$AUTH" -H 'Content-Type: application/merge-patch+json' $URL/products/MN-1001 -d '{"status":"unpublished"}'
 ```
 
 More recipes: [automation.md](automation.md).

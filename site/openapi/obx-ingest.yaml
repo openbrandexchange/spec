@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: OBX Ingest API (write side)
-  version: 0.3.0
+  version: 0.3.1
   summary: How a brand's own systems publish content to any OBX node.
   description: |
     **Optional; normative for nodes that offer it** (capability `ingest`). The OBX Protocol
@@ -94,8 +94,8 @@ paths:
                       - image/tiff
                     default_status: published
                     brands:
-                      - external_id: kestrel
-                        name: Kestrel
+                      - external_id: maison-noor
+                        name: MAISON NOOR
                     languages:
                       - nl
                       - en
@@ -133,11 +133,11 @@ paths:
               brand:
                 summary: A brand
                 value:
-                  name: Kestrel Trail
-                  website: https://kestrel.example/trail
+                  name: NOOR ATELIER
+                  website: https://maison-noor.example/atelier
                   description:
-                    en: Trail running gear.
-                    nl: Trailrunningkleding.
+                    en: "Resort pieces from the house of MAISON NOOR: fluid shorts and packable rainwear."
+                    nl: "Resortcollectie van het huis MAISON NOOR: soepele shorts en opvouwbare regenkleding."
       responses:
         "200":
           $ref: "#/components/responses/Result"
@@ -229,17 +229,17 @@ paths:
               minimal:
                 summary: A minimal product
                 value:
-                  style_number: KO-1007
+                  style_number: MN-1007
                   name:
                     en: Linen Shirt
               luggage:
                 summary: A suitcase with subtype, composition and features
                 value:
-                  brand_external_id: kestrel
-                  style_number: KO-1008
+                  brand_external_id: maison-noor
+                  style_number: MN-1008
                   name:
-                    en: Hardshell Cabin Spinner
-                    nl: Harde handbagagekoffer
+                    en: Voyage Hardshell Cabin Case
+                    nl: Harde handbagagekoffer Voyage
                   item_type: luggage
                   item_subtype: cabin
                   target_group: unisex
@@ -406,7 +406,7 @@ paths:
               variant:
                 summary: A size with EAN
                 value:
-                  product_external_id: KO-1007
+                  product_external_id: MN-1007
                   gtin: "2000100701010"
                   color:
                     code: SND
@@ -417,9 +417,9 @@ paths:
               measurements:
                 summary: A suitcase size with measurements and colour family
                 value:
-                  product_external_id: KO-1008
+                  product_external_id: MN-1008
                   gtin: "2000100801017"
-                  sku: KO-1008-BLK-CABIN
+                  sku: MN-1008-BLK-CABIN
                   color:
                     code: BLK
                     name:
@@ -526,7 +526,7 @@ paths:
               client:
                 summary: Image with client-made versions
                 value:
-                  product_external_id: KO-1007
+                  product_external_id: MN-1007
                   color_code: SND
                   role: packshot
                   view: front
@@ -1097,7 +1097,7 @@ paths:
                           obx_error: invalid_gtin
                           detail: Check digit should be 8.
                           value: "2000100101019"
-                    results_url: https://brands.kestrel.example/obx/v1/ingest/jobs/job_1/results
+                    results_url: https://brands.maison-noor.example/obx/v1/ingest/jobs/job_1/results
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -1218,7 +1218,7 @@ paths:
                           obx_error: invalid_gtin
                           detail: Check digit should be 8.
                           value: "2000100101019"
-                    results_url: https://brands.kestrel.example/obx/v1/ingest/jobs/job_1/results
+                    results_url: https://brands.maison-noor.example/obx/v1/ingest/jobs/job_1/results
         "401":
           $ref: "#/components/responses/Unauthorized"
         "404":
@@ -1440,7 +1440,7 @@ components:
       maxLength: 200
       pattern: ^[^\x00-\x1F\x7F/]+$
       examples:
-        - KO-1001
+        - MN-1001
     DateTime:
       type: string
       description: RFC 3339 timestamp, UTC recommended.
@@ -3213,14 +3213,14 @@ components:
               value:
                 kind: asset
                 id: ast_1
-                external_id: KO-1001_NVY_1
+                external_id: MN-1001_NVY_1
                 status: published
                 visibility: pending_files
                 etag: '"c3d4"'
                 created_at: 2026-09-28T10:00:00Z
                 updated_at: 2026-09-28T10:00:00Z
                 data:
-                  product_external_id: KO-1001
+                  product_external_id: MN-1001
                   color_code: NVY
                   role: packshot
                   view: front
@@ -3251,7 +3251,7 @@ components:
                 index: 0
                 op: upsert
                 kind: product
-                external_id: KO-1001
+                external_id: MN-1001
                 result: unchanged
                 id: prd_1
                 visibility: visible
@@ -3278,7 +3278,7 @@ components:
                 index: 0
                 op: upsert
                 kind: product
-                external_id: KO-1001
+                external_id: MN-1001
                 result: created
                 id: prd_1
                 visibility: visible

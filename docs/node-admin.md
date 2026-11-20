@@ -16,7 +16,7 @@ Rules for every node:
 - **Arrays.** Merge patch replaces arrays, so a client sends `home.blocks` as a whole.
 - `accent_color` is still honoured; `theme.colors.primary` wins when set.
 
-The fixture [`fixtures/examples/BrandingSettings.full.json`](../fixtures/examples/BrandingSettings.full.json) is a complete example (the Kestrel showroom, in English, Dutch and German); `bun run check` validates it. Each node SHOULD test a round trip of it.
+The fixture [`fixtures/examples/BrandingSettings.full.json`](../fixtures/examples/BrandingSettings.full.json) is a complete example (the MAISON NOOR showroom, in English, Dutch and German); `bun run check` validates it. Each node SHOULD test a round trip of it.
 
 ### Theme
 
@@ -57,7 +57,7 @@ A `products` block shows the listed style numbers in that order (ones the reader
 
 ### Links
 
-`link` is either a portal path that starts with a single `/` (`/catalog?item_type=sweater`, `/products/KO-1001`) or an `https://` URL. Nothing else is valid: no `http:`, `javascript:`, `data:` or `mailto:`, no `//host` and no `/\host`. The UI opens portal paths inside the portal and `https://` URLs in a new tab with `rel="noopener noreferrer"`.
+`link` is either a portal path that starts with a single `/` (`/catalog?item_type=sweater`, `/products/MN-1001`) or an `https://` URL. Nothing else is valid: no `http:`, `javascript:`, `data:` or `mailto:`, no `//host` and no `/\host`. The UI opens portal paths inside the portal and `https://` URLs in a new tab with `rel="noopener noreferrer"`.
 
 ### Images
 

@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: OBX Node Admin + Portal API
-  version: 0.3.0
+  version: 0.3.1
   summary: The API between the shared admin-ui and a node (brand admin + retailer portal).
   description: |
     **Non-normative.** Not part of the OBX standard; it is the contract between the shared
@@ -3194,7 +3194,7 @@ components:
         - "null"
       maxLength: 2000
       pattern: ^(/(?![/\\])|https://[^/\s])\S*$
-      description: A portal path starting with a single `/` (`/catalog?category=jeans`, `/products/KO-1001`) or an `https://` URL; nothing else (no `//host`, `http:`, `javascript:`, `mailto:`). The UI opens portal paths in the portal and `https://` URLs in a new tab with `rel="noopener noreferrer"`.
+      description: A portal path starting with a single `/` (`/catalog?category=jeans`, `/products/MN-1001`) or an `https://` URL; nothing else (no `//host`, `http:`, `javascript:`, `mailto:`). The UI opens portal paths in the portal and `https://` URLs in a new tab with `rel="noopener noreferrer"`.
     PortalFont:
       type:
         - string
@@ -5224,7 +5224,7 @@ components:
       maxLength: 200
       pattern: ^[^\x00-\x1F\x7F/]+$
       examples:
-        - KO-1001
+        - MN-1001
     RenditionName:
       type: string
       enum:
@@ -7068,7 +7068,7 @@ components:
           maximum: 999
         filename:
           type: string
-          description: Suggested download filename for the original, e.g. KO-1001_NVY_1.jpg.
+          description: Suggested download filename for the original, e.g. MN-1001_NVY_1.jpg.
           minLength: 1
           maxLength: 255
         alt_text:

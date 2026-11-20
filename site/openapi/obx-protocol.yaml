@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: OBX Protocol (read side)
-  version: 0.3.0
+  version: 0.3.1
   summary: How retailers' software discovers a brand node, gets access and pulls product content.
   description: |
     **Normative.** The Open Brand Exchange (OBX) Protocol is the read side of a brand node:
@@ -88,28 +88,28 @@ paths:
               schema:
                 $ref: "#/components/schemas/DiscoveryDocument"
               examples:
-                kestrel:
-                  summary: Kestrel Outfitters
+                maison-noor:
+                  summary: MAISON NOOR Group
                   value:
                     obx_version: "0.3"
-                    spec_version: 0.3.0
+                    spec_version: 0.3.1
                     node:
                       software: obx-node-go
-                      version: 0.3.0
+                      version: 0.3.1
                     publisher:
-                      id: pub_kestrel
-                      name: Kestrel Outfitters
-                      logo_url: https://brands.kestrel.example/logo.png
+                      id: pub_maison_noor
+                      name: MAISON NOOR Group
+                      logo_url: https://brands.maison-noor.example/logo.png
                       accent_color: "#1F4E5F"
-                      website: https://kestrel.example
-                      contact_email: trade@kestrel.example
+                      website: https://maison-noor.example
+                      contact_email: trade@maison-noor.example
                       welcome_text:
                         en: Welcome, retail partners.
                         nl: Welkom, retailpartners.
-                    api_base: https://brands.kestrel.example/obx/v1
-                    portal_url: https://brands.kestrel.example/
+                    api_base: https://brands.maison-noor.example/obx/v1
+                    portal_url: https://brands.maison-noor.example/
                     auth:
-                      token_endpoint: https://brands.kestrel.example/obx/v1/oauth/token
+                      token_endpoint: https://brands.maison-noor.example/obx/v1/oauth/token
                       scopes_supported:
                         - catalog:read
                         - media:read
@@ -118,8 +118,8 @@ paths:
                       token_endpoint_auth_methods_supported:
                         - client_secret_basic
                         - client_secret_post
-                    access_requests_url: https://brands.kestrel.example/obx/v1/access-requests
-                    ingest_url: https://brands.kestrel.example/obx/v1/ingest
+                    access_requests_url: https://brands.maison-noor.example/obx/v1/access-requests
+                    ingest_url: https://brands.maison-noor.example/obx/v1/ingest
                     capabilities:
                       - changes
                       - products
@@ -133,11 +133,11 @@ paths:
                       - ingest.server_renditions
                       - portal
                     brands:
-                      - id: brd_kestrel
-                        name: Kestrel
+                      - id: brd_maison_noor
+                        name: MAISON NOOR
                         logo_url: null
-                      - id: brd_trail
-                        name: Kestrel Trail
+                      - id: brd_noor_atelier
+                        name: NOOR ATELIER
                         logo_url: null
                     languages:
                       - nl
@@ -192,7 +192,7 @@ paths:
                     - portal
                     - api
                   requested_brand_ids: null
-                  message: We stock Kestrel since 2024.
+                  message: We stock MAISON NOOR since 2024.
       responses:
         "202":
           description: Request stored. Keep `request_token` to poll the status.
@@ -210,7 +210,7 @@ paths:
                     decided_at: null
                     reason: null
                     request_token: obxr_4f1c2b9e8d7a6c5b4a39281706f5e4d3
-                    status_url: https://brands.kestrel.example/obx/v1/access-requests/acr_1
+                    status_url: https://brands.maison-noor.example/obx/v1/access-requests/acr_1
         "403":
           $ref: "#/components/responses/Forbidden"
         "422":
@@ -249,7 +249,7 @@ paths:
                     decided_at: null
                     reason: null
                     request_token: obxr_4f1c2b9e8d7a6c5b4a39281706f5e4d3
-                    status_url: https://brands.kestrel.example/obx/v1/access-requests/acr_1
+                    status_url: https://brands.maison-noor.example/obx/v1/access-requests/acr_1
                 approved:
                   summary: Approved; credentials on the first read
                   value:
@@ -258,14 +258,14 @@ paths:
                     created_at: 2026-09-28T10:00:00Z
                     decided_at: 2026-09-28T10:00:00Z
                     reason: null
-                    status_url: https://brands.kestrel.example/obx/v1/access-requests/acr_1
+                    status_url: https://brands.maison-noor.example/obx/v1/access-requests/acr_1
                     portal:
                       invited: true
-                      login_url: https://brands.kestrel.example/login
+                      login_url: https://brands.maison-noor.example/login
                     credentials:
                       client_id: obxc_8Jk2m
                       client_secret: obxs_Qm9yZ2V0LW1lLW5vdC10aGlzLWlzLWZha2U
-                      token_endpoint: https://brands.kestrel.example/obx/v1/oauth/token
+                      token_endpoint: https://brands.maison-noor.example/obx/v1/oauth/token
                       scopes:
                         - catalog:read
                         - media:read
@@ -371,7 +371,7 @@ paths:
                       id: rtl_3
                       name: Example Store
                     brand_ids:
-                      - brd_kestrel
+                      - brd_maison_noor
                     scopes:
                       - catalog:read
                       - media:read
@@ -447,8 +447,8 @@ paths:
                         type: asset
                         op: delete
                         id: ast_7
-                        external_id: KO-1001_NVY_2
-                        brand_id: brd_kestrel
+                        external_id: MN-1001_NVY_2
+                        brand_id: brd_maison_noor
                         product_id: prd_1
                         updated_at: 2026-09-28T10:00:00Z
                       - seq: 1043
@@ -456,23 +456,23 @@ paths:
                         op: upsert
                         id: var_9
                         external_id: "2000100101025"
-                        brand_id: brd_kestrel
+                        brand_id: brd_maison_noor
                         product_id: prd_1
                         updated_at: 2026-09-28T10:00:00Z
                         data:
                           id: var_9
                           external_id: "2000100101025"
                           product_id: prd_1
-                          brand_id: brd_kestrel
+                          brand_id: brd_maison_noor
                           gtin: "02000100101025"
                           gtin_original: "2000100101025"
-                          sku: KO-1001-NVY-M
+                          sku: MN-1001-NVY-M
                           color:
                             code: NVY
                             name:
                               en: Navy
                               nl: Marineblauw
-                            supplier_color: Deep Navy
+                            supplier_color: Midnight
                             family: blue
                           size: M
                           size_length: null
@@ -861,7 +861,7 @@ paths:
                 value:
                   filter:
                     brand_ids:
-                      - brd_kestrel
+                      - brd_maison_noor
                     product_ids: null
                     gtins: null
                     updated_since: null
@@ -918,10 +918,10 @@ paths:
                     progress:
                       done: 27
                       total: 27
-                    manifest_url: https://brands.kestrel.example/obx/v1/exports/exp_1/manifest?exp=1790000000&sig=abc
+                    manifest_url: https://brands.maison-noor.example/obx/v1/exports/exp_1/manifest?exp=1790000000&sig=abc
                     parts:
                       - number: 1
-                        url: https://brands.kestrel.example/obx/v1/exports/exp_1/parts/1?exp=1790000000&sig=def
+                        url: https://brands.maison-noor.example/obx/v1/exports/exp_1/parts/1?exp=1790000000&sig=def
                         bytes: 1048576
                         sha256: "0000000000000000000000000000000000000000000000000000000000000000"
                         files: 27
@@ -1956,7 +1956,7 @@ components:
       maxLength: 200
       pattern: ^[^\x00-\x1F\x7F/]+$
       examples:
-        - KO-1001
+        - MN-1001
     Brand:
       $schema: https://json-schema.org/draft/2020-12/schema
       $id: https://openbrandexchange.com/schemas/v0.3/Brand.json
@@ -2774,7 +2774,7 @@ components:
           maximum: 999
         filename:
           type: string
-          description: Suggested download filename for the original, e.g. KO-1001_NVY_1.jpg.
+          description: Suggested download filename for the original, e.g. MN-1001_NVY_1.jpg.
           minLength: 1
           maxLength: 255
         alt_text:

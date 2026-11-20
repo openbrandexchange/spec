@@ -344,10 +344,10 @@ replaces the brand's as a whole; consumers read the product's, then the brand's.
 ```json
 "safety": {
   "manufacturer": {
-    "name": "Kestrel Outfitters B.V.",
+    "name": "MAISON NOOR Group B.V.",
     "address": "Voorbeeldstraat 1, 1234 AB Utrecht, NL",
-    "email": "safety@kestrel.example",
-    "url": "https://kestrel.example/safety"
+    "email": "safety@maison-noor.example",
+    "url": "https://maison-noor.example/safety"
   },
   "responsible_person": null,
   "warnings": [
@@ -375,7 +375,7 @@ New optional **`ppe`** object (protective equipment only, `null` otherwise):
   "category": "II",
   "standards": ["EN 1078:2012+A1:2012"],
   "notified_body": "0123",
-  "declaration_of_conformity_url": "https://kestrel.example/doc/KT-2101.pdf"
+  "declaration_of_conformity_url": "https://maison-noor.example/doc/NA-2101.pdf"
 }
 ```
 
@@ -447,9 +447,9 @@ One plain column per field, as in 0.2:
 | `packages` | `205x62x12 48.5; 105x55x8 21` (centimetres `x`-separated, then the gross weight in kg; one package per `;`) |
 | `feature:<key>` | `feature:seats` = `3`, `feature:sports` = `running\|trail_running` |
 | `care` (existing) | `wash_40@cover\|do_not_tumble_dry@cover\|spot_clean@filling` (`@part` optional) |
-| `safety_manufacturer`, `safety_responsible_person` | `Kestrel Outfitters B.V.; Voorbeeldstraat 1, 1234 AB Utrecht, NL; safety@kestrel.example` (name; address; email or url) |
+| `safety_manufacturer`, `safety_responsible_person` | `MAISON NOOR Group B.V.; Voorbeeldstraat 1, 1234 AB Utrecht, NL; safety@maison-noor.example` (name; address; email or url) |
 | `safety_warnings`, `safety_warnings:<lang>` | `wall_fixing_required: To prevent tipping over, …` (entries separated by `\|`) |
-| `ppe` | `II; EN 1078:2012+A1:2012; 0123; https://kestrel.example/doc/KT-2101.pdf` |
+| `ppe` | `II; EN 1078:2012+A1:2012; 0123; https://maison-noor.example/doc/NA-2101.pdf` |
 | `standards` | `EN 12520:2015\|EN 1022:2018` |
 | `svhc` | `none`, or `DEHP 204-211-0 117-81-7 @base` (entries separated by `\|`) |
 | `energy_class`, `eprel_registration_number` | `D`, `1234567` (per variant row) |
@@ -457,7 +457,7 @@ One plain column per field, as in 0.2:
 
 The brand-level `safety` default is set in the node's admin or through the Ingest API's brand
 upsert; a CSV row only overrides it per product. Documents arrive like images, named
-`{style}_{ALL|color}_{position}_{document_type}.pdf` (`KH-3001_ALL_1_assembly_instructions.pdf`),
+`{style}_{ALL|color}_{position}_{document_type}.pdf` (`MH-3001_ALL_1_assembly_instructions.pdf`),
 with `language` in `assets.csv`.
 
 ## Label completeness warnings (rule 10, extended)
@@ -515,32 +515,32 @@ whether it should start as opt-in.
 - **I-ING-x**: sending a 0.3 feature value to a node that advertises `spec_version` 0.2 gives
   `422`; the same to a 0.3 node is `created`.
 
-## Fixture ideas (fictional, Kestrel style)
+## Fixture ideas (fictional, MAISON NOOR style)
 
-A third fictional brand **Kestrel Home** (`kestrel-home`, style prefix `KH-`) next to Kestrel and
-Kestrel Trail, so the brand-restricted retailer test also covers it; sport goes to Kestrel Trail
-(`KT-`). GTINs stay in the restricted-circulation prefix `200`.
+A third fictional brand **MAISON NOOR HOME** (`maison-noor-home`, style prefix `MH-`) next to MAISON NOOR and
+NOOR ATELIER, so the brand-restricted retailer test also covers it; sport goes to NOOR ATELIER
+(`NA-`). GTINs stay in the restricted-circulation prefix `200`.
 
 | Style | Product | Exercises |
 |---|---|---|
-| KH-3001 | Oak Dining Table, extendable, 160 and 200 cm | `furniture`/`dining_table`, `component_materials` (solid oak, steel legs), `width_extended_cm`, two `packages`, `assembly_*`, `certifications` `fsc` (material), `care` `treat_with_oil` |
-| KH-3002 | Bouclé Three-Seater Sofa, left and right | `furniture`/`corner_sofa`, `materials` part `upholstery`, `seat_height_cm`, `seat_depth_cm`, `seats`, `orientation`, `detachable_parts: ["cover"]`, `standards` EN 12520, three packages |
-| KH-3003 | Bookcase 80 × 200 | `wall_fixing: required`, `safety.warnings` `wall_fixing_required` (nl + en), `max_load_kg`, assembly instructions as a `document` asset |
-| KH-3004 | Down Duvet, 140 × 200 and 240 × 220 | `bedding`/`duvet`, `materials` `cover: 100% cotton; filling: 90% down, 10% feather`, `contains_animal_origin: true`, `fill_weight_kg`, `warmth`, `fill_power`, `certifications` `downpass` |
-| KH-3005 | Percale Fitted Sheet, three mattress sizes | `home_textile`/`fitted_sheet`, `mattress_width_cm`, `mattress_length_cm`, `mattress_height_max_cm`, `thread_count`, `weave: percale` |
-| KH-3006 | Wool Rug 160 × 230 and 200 × 300 | `rug`, `materials` `pile: 100% wool; backing: 100% cotton`, `pile_height_cm`, `rug_construction: hand_tufted` |
-| KH-3007 | Linen Cushion with feather inner | care with `part` (`wash_40@cover`, `spot_clean@filling`), `animal_origin_unknown` NOT given (stated `yes`) |
-| KH-3008 | Opal Glass Pendant Lamp | `lighting`/`pendant`, `cable_length_cm`, `lamp_base: E27`, `light_source_included: false`, `light_source_replaceable: by_user`, `ip_rating` |
-| KH-3009 | LED Filament Bulb E27, 2700 K and 4000 K | `light_source`/`bulb`, `energy_label` per variant (two EPREL numbers), `luminous_flux_lm`, `dimmable`, a manufacturer outside the EU with a `responsible_person` |
-| KT-2101 | Trail Cycling Helmet, S/M and M/L | `protective_equipment`/`helmet`, `ppe` category II with EN 1078, `head_circumference_cm`, declaration of conformity as a `document` |
-| KT-2102 | Trail Running Shoe | `shoes`/`trail_running`, `footwear_materials`, `drop_mm`, `stack_height_mm`, `surface: ["trail"]`, `cushioning`, `sports`, `weight_kg` of one shoe |
-| KT-2103 | High-Support Sports Bra | `sports_bra`, `impact_support: high`, `fit: compression`, `materials` with `elastane` |
-| KT-2104 | Cork Yoga Mat | `fitness_equipment`/`mat`, `length_cm`, `component_materials` cork + `rubber`, `non_slip`, `svhc: []` |
-| KT-2105 | Sport Sunglasses | `eyewear`/`sport_glasses`, `lens_filter_category: 3`, `ppe` category I without notified body |
+| MH-3001 | Oak Dining Table, extendable, 160 and 200 cm | `furniture`/`dining_table`, `component_materials` (solid oak, steel legs), `width_extended_cm`, two `packages`, `assembly_*`, `certifications` `fsc` (material), `care` `treat_with_oil` |
+| MH-3002 | Bouclé Three-Seater Sofa, left and right | `furniture`/`corner_sofa`, `materials` part `upholstery`, `seat_height_cm`, `seat_depth_cm`, `seats`, `orientation`, `detachable_parts: ["cover"]`, `standards` EN 12520, three packages |
+| MH-3003 | Bookcase 80 × 200 | `wall_fixing: required`, `safety.warnings` `wall_fixing_required` (nl + en), `max_load_kg`, assembly instructions as a `document` asset |
+| MH-3004 | Down Duvet, 140 × 200 and 240 × 220 | `bedding`/`duvet`, `materials` `cover: 100% cotton; filling: 90% down, 10% feather`, `contains_animal_origin: true`, `fill_weight_kg`, `warmth`, `fill_power`, `certifications` `downpass` |
+| MH-3005 | Percale Fitted Sheet, three mattress sizes | `home_textile`/`fitted_sheet`, `mattress_width_cm`, `mattress_length_cm`, `mattress_height_max_cm`, `thread_count`, `weave: percale` |
+| MH-3006 | Wool Rug 160 × 230 and 200 × 300 | `rug`, `materials` `pile: 100% wool; backing: 100% cotton`, `pile_height_cm`, `rug_construction: hand_tufted` |
+| MH-3007 | Linen Cushion with feather inner | care with `part` (`wash_40@cover`, `spot_clean@filling`), `animal_origin_unknown` NOT given (stated `yes`) |
+| MH-3008 | Opal Glass Pendant Lamp | `lighting`/`pendant`, `cable_length_cm`, `lamp_base: E27`, `light_source_included: false`, `light_source_replaceable: by_user`, `ip_rating` |
+| MH-3009 | LED Filament Bulb E27, 2700 K and 4000 K | `light_source`/`bulb`, `energy_label` per variant (two EPREL numbers), `luminous_flux_lm`, `dimmable`, a manufacturer outside the EU with a `responsible_person` |
+| NA-2101 | Cycling Helmet, S/M and M/L | `protective_equipment`/`helmet`, `ppe` category II with EN 1078, `head_circumference_cm`, declaration of conformity as a `document` |
+| NA-2102 | Trail Running Shoe | `shoes`/`trail_running`, `footwear_materials`, `drop_mm`, `stack_height_mm`, `surface: ["trail"]`, `cushioning`, `sports`, `weight_kg` of one shoe |
+| NA-2103 | High-Support Sports Bra | `sports_bra`, `impact_support: high`, `fit: compression`, `materials` with `elastane` |
+| NA-2104 | Cork Yoga Mat | `fitness_equipment`/`mat`, `length_cm`, `component_materials` cork + `rubber`, `non_slip`, `svhc: []` |
+| NA-2105 | Sport Sunglasses | `eyewear`/`sport_glasses`, `lens_filter_category: 3`, `ppe` category I without notified body |
 
 Plus `fixtures/imports/` files for I-IMP-9 and I-IMP-10, and `label-warnings.csv` rows for the
-new codes. Existing products (KO-*, KT-2001, KT-2002) do not change, except that the brand
-Kestrel gets a `safety` default so that `manufacturer_missing` is not raised for the 0.2 fixtures.
+new codes. Existing products (MN-*, NA-2001, NA-2002) do not change, except that the brand
+MAISON NOOR gets a `safety` default so that `manufacturer_missing` is not raised for the 0.2 fixtures.
 
 ## Rollout (one release of everything, as 0.2)
 
@@ -596,9 +596,9 @@ Each with a recommendation; the draft above follows the recommendations.
     item 17), yet 0.2 warns `fibre_composition_missing` for `bag`, `backpack` and `luggage`.**
     Recommendation: correct the legal wording in a 0.2.x patch now, and stop the warning for
     `luggage` and travel bags in 0.3 (composition stays recommended).
-13. **Fixtures: a new fictional brand Kestrel Home (`KH-`), or home products under Kestrel?**
+13. **Fixtures: a new fictional brand MAISON NOOR HOME (`MH-`), or home products under MAISON NOOR?**
     Recommendation: a new brand, so the brand-restricted retailer test also covers a third brand;
-    sport goes to Kestrel Trail (`KT-21xx`).
+    sport goes to NOOR ATELIER (`NA-21xx`).
 14. **An optional `fedas_code` next to `gpc_brick`?** Sport retailers' ERPs classify with the FEDAS
     product classification key, and Photopilot sees it in fashion and sport feeds.
     Recommendation: not in 0.3; use `attr:fedas_code` until the licence terms of the FEDAS key

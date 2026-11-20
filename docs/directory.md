@@ -12,13 +12,13 @@ Schema: [Directory](../schemas/Directory.json) / [DirectoryEntry](../schemas/Dir
   "updated_at": "2026-09-28T10:00:00Z",
   "entries": [
     {
-      "id": "kestrel-outfitters",
-      "name": "Kestrel Outfitters",
-      "discovery_url": "https://brands.kestrel.example/.well-known/obx",
-      "website": "https://kestrel.example",
-      "brands": ["Kestrel", "Kestrel Trail"],
+      "id": "maison-noor-group",
+      "name": "MAISON NOOR Group",
+      "discovery_url": "https://brands.maison-noor.example/.well-known/obx",
+      "website": "https://maison-noor.example",
+      "brands": ["MAISON NOOR", "NOOR ATELIER"],
       "countries": ["NL", "BE", "DE"],
-      "categories": ["fashion", "outdoor"],
+      "categories": ["fashion", "shoes", "accessories"],
       "languages": ["nl", "en"],
       "listed_at": "2026-09-28"
     }

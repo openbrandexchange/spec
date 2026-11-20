@@ -13,7 +13,7 @@ Publishing should happen by itself: your PIM, ERP, DAM or a shared folder alread
 
 All recipes need two values from your portal's admin, **Automatic upload → Access keys → New key** (an *automatic upload key*; the API calls it an ingest token):
 
-- `OBX_URL`: your node's address, for example `https://brands.kestrel.example`
+- `OBX_URL`: your node's address, for example `https://brands.maison-noor.example`
 - `OBX_TOKEN`: the token (starts with `obxi_`, shown once; store it as a secret)
 
 Give each system its own token, so you can revoke one without breaking the others, and restrict it to the brands it publishes.
@@ -23,7 +23,7 @@ Give each system its own token, so you can revoke one without breaking the other
 `obx` (from [obx-go](https://github.com/openbrandexchange/obx-go)) is a single program for Windows, macOS and Linux. It reads `OBX_URL` and `OBX_TOKEN` from the environment (or `--url` / `--token`).
 
 ```sh
-obx login https://brands.kestrel.example           # once per computer: stores the upload key (or --token obxi_…)
+obx login https://brands.maison-noor.example           # once per computer: stores the upload key (or --token obxi_…)
 obx info                                           # check the key, see limits, brands and languages
 obx push ./export                                  # a folder with products.csv, optional assets.csv and the images
 obx push --csv products.csv --images ./images      # a CSV and a folder (or zip) of images
@@ -37,7 +37,7 @@ obx logout                                         # forget the stored key
 
 `--csv products.csv` also sends an `assets.csv` found in the same folder, so the rights, embargo dates and AI labels in it arrive with the images (an import without it keeps what the images already have: [import-format.md rule 8](import-format.md#4-processing-rules)). Other `push` options: `--assets-csv <file>` (another assets file), `--language nl` (language of the plain `name`/`description` columns), `--no-wait` (start the job and exit), `--json` (machine-readable output). `obx <command> --help` lists everything.
 
-For **retailers**, `obx pull https://brands.kestrel.example --out ./kestrel` mirrors a brand's catalog with an API key (`--client-id`/`--client-secret` or `OBX_CLIENT_ID`/`OBX_CLIENT_SECRET`): article data plus, by default, the `web` version of every image. `--renditions original,web,square,thumb` picks other versions (originals only when the brand allows them), and `--follow` keeps it up to date from the change feed.
+For **retailers**, `obx pull https://brands.maison-noor.example --out ./maison-noor` mirrors a brand's catalog with an API key (`--client-id`/`--client-secret` or `OBX_CLIENT_ID`/`OBX_CLIENT_SECRET`): article data plus, by default, the `web` version of every image. `--renditions original,web,square,thumb` picks other versions (originals only when the brand allows them), and `--follow` keeps it up to date from the change feed.
 
 What `obx push` does, so you know it is cheap to run often: it hashes every image, asks the node which ones it already has, uploads only new or changed images (large files resumably), generates web/square/thumb versions itself when the node needs that, and starts one import job with the CSV and an image manifest. Unchanged products and images cause no work at the node and no updates for retailers. It waits for the job and prints a summary; exit code `0` = all good, `2` = done but some rows had errors (listed), `1` = failed.
 
@@ -56,7 +56,7 @@ Choose how often (hourly, daily at a time, weekly, or manual), and **Upsert** (o
 Let your PIM/ERP/DAM or a colleague save exports into a folder, and run:
 
 ```sh
-export OBX_URL=https://brands.kestrel.example OBX_TOKEN=obxi_…
+export OBX_URL=https://brands.maison-noor.example OBX_TOKEN=obxi_…
 obx watch /data/outbox
 ```
 
@@ -72,7 +72,7 @@ docker run -d --restart unless-stopped -e OBX_URL -e OBX_TOKEN -v /data/outbox:/
 Linux/macOS, every night at 02:30 (`crontab -e`):
 
 ```cron
-30 2 * * * OBX_URL=https://brands.kestrel.example OBX_TOKEN=obxi_… /usr/local/bin/obx push --csv /exports/products.csv --images /exports/images >> /var/log/obx.log 2>&1
+30 2 * * * OBX_URL=https://brands.maison-noor.example OBX_TOKEN=obxi_… /usr/local/bin/obx push --csv /exports/products.csv --images /exports/images >> /var/log/obx.log 2>&1
 ```
 
 Windows (PowerShell, once):
@@ -80,7 +80,7 @@ Windows (PowerShell, once):
 ```powershell
 $action = New-ScheduledTaskAction -Execute "C:\Tools\obx.exe" -Argument "push --csv D:\Export\products.csv --images D:\Export\images"
 $trigger = New-ScheduledTaskTrigger -Daily -At 2:30am
-[Environment]::SetEnvironmentVariable("OBX_URL", "https://brands.kestrel.example", "Machine")
+[Environment]::SetEnvironmentVariable("OBX_URL", "https://brands.maison-noor.example", "Machine")
 [Environment]::SetEnvironmentVariable("OBX_TOKEN", "obxi_…", "Machine")
 Register-ScheduledTask -TaskName "Publish to OBX" -Action $action -Trigger $trigger -User "SYSTEM"
 ```
@@ -123,12 +123,12 @@ Use a plain **HTTP Request** step. Authentication: header `Authorization` = `Bea
 
 1. **Product** (for example when a product changes in your PIM): method `PUT`, URL `{OBX_URL}/obx/v1/ingest/products/{style number}`, JSON body:
    ```json
-   {"style_number": "KO-1001", "name": {"en": "Merino Crew Sweater", "nl": "Merino trui met ronde hals"},
+   {"style_number": "MN-1001", "name": {"en": "Fine Merino Crew-Neck Sweater", "nl": "Fijne merino trui met ronde hals"},
     "item_type": "sweater", "season": "AW26", "materials": [{"part": {"code": "main"}, "fibers": [{"material": {"code": "merino_wool"}, "percentage": 100}]}]}
    ```
-2. **Size / colour**: `PUT {OBX_URL}/obx/v1/ingest/variants/KO-1001-NVY-M` (your own id for the variant: style, colour and size; not the EAN, which may arrive later or change) with `{"product_external_id": "KO-1001", "gtin": "2000100101025", "color": {"code": "NVY", "name": {"en": "Navy"}}, "size": "M"}`.
-3. **Image**: first `PUT {OBX_URL}/obx/v1/ingest/assets/KO-1001_NVY_1` with `{"product_external_id": "KO-1001", "color_code": "NVY", "role": "packshot", "view": "front", "position": 1}`, then `PUT {OBX_URL}/obx/v1/ingest/assets/KO-1001_NVY_1/files/original` with the **binary** file as body (n8n: "Send Binary Data"; Make: "Request content" = the file data; Zapier: Webhooks "Custom Request" with the file). On nodes that do not render images themselves (`GET {OBX_URL}/obx/v1/ingest` shows `"server_generated": false`) use `obx` (or the admin's Imports screen) instead: they make the web versions on your computer and upload them with the original. A scheduled import delivers originals only, so on such a node its images are served in their original size until the web versions are added.
-4. **Take something offline**: `PATCH {OBX_URL}/obx/v1/ingest/products/KO-1001`, header `Content-Type: application/merge-patch+json`, body `{"status": "unpublished"}`.
+2. **Size / colour**: `PUT {OBX_URL}/obx/v1/ingest/variants/MN-1001-NVY-M` (your own id for the variant: style, colour and size; not the EAN, which may arrive later or change) with `{"product_external_id": "MN-1001", "gtin": "2000100101025", "color": {"code": "NVY", "name": {"en": "Navy"}}, "size": "M"}`.
+3. **Image**: first `PUT {OBX_URL}/obx/v1/ingest/assets/MN-1001_NVY_1` with `{"product_external_id": "MN-1001", "color_code": "NVY", "role": "packshot", "view": "front", "position": 1}`, then `PUT {OBX_URL}/obx/v1/ingest/assets/MN-1001_NVY_1/files/original` with the **binary** file as body (n8n: "Send Binary Data"; Make: "Request content" = the file data; Zapier: Webhooks "Custom Request" with the file). On nodes that do not render images themselves (`GET {OBX_URL}/obx/v1/ingest` shows `"server_generated": false`) use `obx` (or the admin's Imports screen) instead: they make the web versions on your computer and upload them with the original. A scheduled import delivers originals only, so on such a node its images are served in their original size until the web versions are added.
+4. **Take something offline**: `PATCH {OBX_URL}/obx/v1/ingest/products/MN-1001`, header `Content-Type: application/merge-patch+json`, body `{"status": "unpublished"}`.
 
 Every call is safe to repeat: the same data twice changes nothing.
 
@@ -150,10 +150,10 @@ done
 
 # 2. One batch of up to 1000 operations (NDJSON), processed in order.
 cat > batch.ndjson <<'EOF'
-{"op":"upsert","kind":"product","external_id":"KO-1001","data":{"style_number":"KO-1001","name":{"en":"Merino Crew Sweater"}}}
-{"op":"upsert","kind":"variant","external_id":"KO-1001-NVY-M","data":{"product_external_id":"KO-1001","gtin":"2000100101025","color":{"code":"NVY"},"size":"M"}}
-{"op":"upsert","kind":"asset","external_id":"KO-1001_NVY_1","data":{"product_external_id":"KO-1001","color_code":"NVY","role":"packshot","view":"front","position":1,"files":{"original":{"sha256":"<sha of KO-1001_NVY_1.jpg>"}}}}
-{"op":"unpublish","kind":"product","external_id":"KO-0999"}
+{"op":"upsert","kind":"product","external_id":"MN-1001","data":{"style_number":"MN-1001","name":{"en":"Fine Merino Crew-Neck Sweater"}}}
+{"op":"upsert","kind":"variant","external_id":"MN-1001-NVY-M","data":{"product_external_id":"MN-1001","gtin":"2000100101025","color":{"code":"NVY"},"size":"M"}}
+{"op":"upsert","kind":"asset","external_id":"MN-1001_NVY_1","data":{"product_external_id":"MN-1001","color_code":"NVY","role":"packshot","view":"front","position":1,"files":{"original":{"sha256":"<sha of MN-1001_NVY_1.jpg>"}}}}
+{"op":"unpublish","kind":"product","external_id":"MN-0999"}
 EOF
 curl -s -X POST -H "$AUTH" -H 'Content-Type: application/x-ndjson' -H "Idempotency-Key: nightly-$(date +%F)" \
      --data-binary @batch.ndjson "$URL/batch" | jq '.summary // .'

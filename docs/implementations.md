@@ -60,7 +60,7 @@ The three portals are the same product in three runtimes: the same admin UI, the
 
 `obx-go/scripts/interop.sh` runs the same automation against all three portals and compares what comes out, with node ids, timestamps, cursors and signed URLs replaced by stable labels:
 
-1. first-run setup, then `obx push` of `fixtures/kestrel` (76 new);
+1. first-run setup, then `obx push` of `fixtures/maison-noor` (76 new);
 2. `obx pull` with all four image versions;
 3. `obx-interop trace`: the whole change feed, every product and the sha256 of every downloaded file, then [`fixtures/ingest/script.ndjson`](../fixtures/ingest/script.ndjson) one operation at a time (including the image replacement, the position conflict, the asset unpublish, the product unpublish and republish and the deletes), recording the result, the new `/changes` entries, the ingest record and the product after every step;
 4. an incremental and a fresh `obx pull`.

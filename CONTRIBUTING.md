@@ -28,7 +28,7 @@ A normative change updates, in the same pull request:
 
 `bun run check` must pass; CI also verifies that `site/` matches the sources.
 
-Style: short sentences, active voice, RFC 2119 keywords in capitals only when they are meant normatively, `snake_case` field names, examples with the fictional *Kestrel Outfitters* (GTINs with the restricted `200` prefix, `.example` domains). Never put real customer data in fixtures or examples. User-facing words follow the [glossary](docs/glossary.md).
+Style: short sentences, active voice, RFC 2119 keywords in capitals only when they are meant normatively, `snake_case` field names, examples with the fictional fashion house *MAISON NOOR* (GTINs with the restricted `200` prefix, `.example` domains). Never put real customer data in fixtures or examples. User-facing words follow the [glossary](docs/glossary.md).
 
 ## Sign your commits (DCO)
 

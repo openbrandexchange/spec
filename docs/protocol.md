@@ -1,6 +1,6 @@
 # OBX Protocol 0.3
 
-**Status:** v0.3.0. Normative. Machine-readable contract: [`openapi/obx-protocol.yaml`](../openapi/obx-protocol.yaml) and [`schemas/`](../schemas). Where this document and the OpenAPI file disagree, report it; until fixed, this document wins.
+**Status:** v0.3.1. Normative. Machine-readable contract: [`openapi/obx-protocol.yaml`](../openapi/obx-protocol.yaml) and [`schemas/`](../schemas). Where this document and the OpenAPI file disagree, report it; until fixed, this document wins.
 
 **The OBX Protocol is the standard.** It is what retailers' software reads, and passing its conformance profile is what "OBX-conformant" means ([conformance.md](conformance.md)). The [Ingest API](ingest.md), the [import format](import-format.md) and the Node Admin + Portal API are optional companions: how content gets into a node and how a brand runs it is up to the node. New here? [OBX in 10 minutes](quickstart.md) walks a retailer's developer through the five calls that matter.
 
@@ -527,7 +527,7 @@ Nodes store retailer company data and contact persons. Protocol responses never 
 The longer walk-through is [OBX in 10 minutes](quickstart.md).
 
 ```sh
-HOST=https://brands.kestrel.example
+HOST=https://brands.maison-noor.example
 curl -s $HOST/.well-known/obx | jq .api_base
 TOKEN=$(curl -s -u "$CLIENT_ID:$CLIENT_SECRET" -d grant_type=client_credentials $HOST/obx/v1/oauth/token | jq -r .access_token)
 curl -s -H "Authorization: Bearer $TOKEN" "$HOST/obx/v1/changes?limit=500"          # snapshot, then keep next_cursor

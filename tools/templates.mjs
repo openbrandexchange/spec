@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 // Excel templates for brands, generated from the specification so they cannot drift:
-//   templates/products.xlsx  the columns of fixtures/kestrel/products.csv, in that order
+//   templates/products.xlsx  the columns of fixtures/maison-noor/products.csv, in that order
 //   templates/assets.xlsx    the assets.csv columns of docs/import-format.md 2.3, in that order
 // Every dropdown is derived from schemas/ (enums) or, for the open vocabularies that the
 // schemas only constrain by pattern, from the RECOMMENDED keys in docs/ - never typed by hand.
-// The example rows are the Kestrel fixtures, value for value.
+// The example rows are the MAISON NOOR fixtures, value for value.
 //
 //   node tools/templates.mjs           # (re)write templates/*.xlsx
 //   node tools/templates.mjs --check   # fail when templates/ is stale, the example rows are not
@@ -386,7 +386,7 @@ function describeAssetColumn(name, m) {
 // ------------------------------------------------------------------ read me
 function readMe(kind, m, example) {
   const H = (t) => ({ t, h: true });
-  const imgs = readdirSync(join(root, "fixtures", "kestrel", "images")).filter((f) => f.startsWith(`${example.style}_`)).sort();
+  const imgs = readdirSync(join(root, "fixtures", "maison-noor", "images")).filter((f) => f.startsWith(`${example.style}_`)).sort();
   const colours = [...new Set(imgs.map((f) => f.split("_")[1]))].join(" and ");
   const kleuren = colours.replace(" and ", " en ");
   const quals = `role: ${m.roles.join(", ")}; view: ${m.views.join(", ")}`;
@@ -406,7 +406,7 @@ function readMe(kind, m, example) {
           "1. Optional file. You only need it to add usage rights, an embargo, alt text or an AI label to images. One row per image; file is the image's file name.",
           "2. An empty cell keeps what the image already has (or the node's default for a new image).",
         ]),
-    `3. The yellow rows are an example (the fictional brand Kestrel). Delete them before you add your own ${kind === "products" ? "products" : "images"}.`,
+    `3. The yellow rows are an example (the fictional brand MAISON NOOR). Delete them before you add your own ${kind === "products" ? "products" : "images"}.`,
     "4. Columns with a dropdown: choose from the list. Where other values are allowed, Excel shows a note when you type your own value; click OK to keep it.",
     "5. The tab Explanation (English) or Uitleg (Dutch) says per column what to fill in, whether it is required and which values are allowed.",
     "6. Delete the columns you do not use. For a product that is already on your node an empty cell removes the stored value, a missing column keeps it.",
@@ -424,7 +424,7 @@ function readMe(kind, m, example) {
     "position = 1 to 999, no leading zero; 1 is the main image. The same style, colour and position again replaces that image.",
     `qualifier (optional, in any order): ${quals}. Without a role the image is a packshot.`,
     `ext = ${m.extensions.join(", ")}. The colour code ALL means the image belongs to every colour of the product (e.g. a size chart).`,
-    `Example (Kestrel ${example.style}, ${example.name}, colours ${colours}): ${imgs.join(", ")}. A size chart for all colours: ${example.style}_ALL_9_size_chart.png.`,
+    `Example (MAISON NOOR ${example.style}, ${example.name}, colours ${colours}): ${imgs.join(", ")}. A size chart for all colours: ${example.style}_ALL_9_size_chart.png.`,
     "",
     H("Sending it"),
     "Put products.csv, the images (folders do not matter) and, if you made one, assets.csv in one zip, and upload it in the admin of your OBX node (Import), or let the node pick the files up from your SFTP or S3 folder every night.",
@@ -443,7 +443,7 @@ function readMe(kind, m, example) {
           "1. Dit bestand is optioneel. Je hebt het alleen nodig om gebruiksrechten, een embargo, alt-tekst of een AI-label aan afbeeldingen te geven. Eén rij per afbeelding; file is de bestandsnaam.",
           "2. Een lege cel houdt wat de afbeelding al heeft (of de standaard van de node voor een nieuwe afbeelding).",
         ]),
-    `3. De gele rijen zijn een voorbeeld (het verzonnen merk Kestrel). Verwijder ze voordat je je eigen ${kind === "products" ? "producten" : "afbeeldingen"} toevoegt.`,
+    `3. De gele rijen zijn een voorbeeld (het verzonnen merk MAISON NOOR). Verwijder ze voordat je je eigen ${kind === "products" ? "producten" : "afbeeldingen"} toevoegt.`,
     "4. Kolommen met een keuzelijst: kies uit de lijst. Waar ook andere waarden mogen, toont Excel een melding als je zelf iets typt; klik OK om het te houden.",
     "5. Het tabblad Uitleg (Nederlands) of Explanation (Engels) zegt per kolom wat je invult, of het verplicht is en welke waarden mogen.",
     "6. Verwijder de kolommen die je niet gebruikt. Voor een product dat al op je node staat, wist een lege cel de opgeslagen waarde; een ontbrekende kolom laat die staan.",
@@ -461,7 +461,7 @@ function readMe(kind, m, example) {
     "position = 1 tot en met 999, zonder voorloopnul; 1 is de hoofdafbeelding. Dezelfde style, kleur en positie nog eens vervangt die afbeelding.",
     `qualifier (optioneel, in willekeurige volgorde): ${quals}. Zonder role is de afbeelding een packshot.`,
     `ext = ${m.extensions.join(", ")}. De kleurcode ALL betekent dat de afbeelding bij alle kleuren van het product hoort (bijvoorbeeld een maattabel).`,
-    `Voorbeeld (Kestrel ${example.style}, ${example.nameNl}, kleuren ${kleuren}): ${imgs.join(", ")}. Een maattabel voor alle kleuren: ${example.style}_ALL_9_size_chart.png.`,
+    `Voorbeeld (MAISON NOOR ${example.style}, ${example.nameNl}, kleuren ${kleuren}): ${imgs.join(", ")}. Een maattabel voor alle kleuren: ${example.style}_ALL_9_size_chart.png.`,
     "",
     H("Versturen"),
     "Zet products.csv, de afbeeldingen (mappen maken niet uit) en, als je die hebt, assets.csv in één zip en upload die in de beheeromgeving van je OBX-node (Importeren), of laat de node de bestanden elke nacht uit je SFTP- of S3-map ophalen.",
@@ -474,8 +474,8 @@ const LIST_SHEET = "Lists";
 
 /** Builds the model of one workbook: columns, example rows and the lists its dropdowns use. */
 export function workbookModel(kind, m = specModel()) {
-  const kestrel = join(root, "fixtures", "kestrel");
-  const products = parseCSV(readFileSync(join(kestrel, "products.csv"), "utf8"));
+  const catalog = join(root, "fixtures", "maison-noor");
+  const products = parseCSV(readFileSync(join(catalog, "products.csv"), "utf8"));
   const p = (col) => products[1][products[0].indexOf(col)];
   const example = { style: p("style_number"), name: p("name:en"), nameNl: p("name:nl"), colorName: p("color_name:en"), colorNameNl: p("color_name:nl") };
   let header, rows, columns, extra;
@@ -487,12 +487,12 @@ export function workbookModel(kind, m = specModel()) {
       .filter((c) => !header.includes(c) && !/:<lang>$/.test(c) && c !== "feature:<key>" && !["name", "description", "color_name"].includes(c))
       .map((c) => ({ name: c, required: [m.columnDoc[c].required, REQUIRED_NL[m.columnDoc[c].required] ?? m.columnDoc[c].required], text: [textFor(c, null, 0), textFor(c, null, 1)], allowed: [m.columnDoc[c].notes, ""] }));
   } else {
-    const fixture = parseCSV(readFileSync(join(kestrel, "assets.csv"), "utf8"));
+    const fixture = parseCSV(readFileSync(join(catalog, "assets.csv"), "utf8"));
     const langs = fixture[0].filter((c) => c.startsWith("alt_text:")).map((c) => c.split(":")[1]);
     header = m.order23.flatMap((c) => (c === "alt_text:<lang>" ? langs.map((l) => `alt_text:${l}`) : [c]));
     const fh = fixture[0];
     const missing = fh.filter((c) => !header.includes(c));
-    if (missing.length) throw new Error(`fixtures/kestrel/assets.csv has columns that docs/import-format.md 2.3 does not list: ${missing.join(", ")}`);
+    if (missing.length) throw new Error(`fixtures/maison-noor/assets.csv has columns that docs/import-format.md 2.3 does not list: ${missing.join(", ")}`);
     rows = fixture.slice(1).map((r) => header.map((c) => (fh.includes(c) ? r[fh.indexOf(c)] ?? "" : "")));
     columns = header.map((c) => describeAssetColumn(c, m));
     extra = Object.keys(m.assetDoc)
@@ -646,19 +646,19 @@ export async function checkWorkbook(buf, model) {
   const width = model.header.length;
   const got = [];
   ws.eachRow({ includeEmpty: false }, (row) => got.push(Array.from({ length: width }, (_, i) => cellText(row.getCell(i + 1)))));
-  const csv = parseCSV(readFileSync(join(root, "fixtures", "kestrel", `${model.kind}.csv`), "utf8"));
+  const csv = parseCSV(readFileSync(join(root, "fixtures", "maison-noor", `${model.kind}.csv`), "utf8"));
   const fh = csv[0];
   if (model.kind === "products") {
-    if (JSON.stringify(got[0]) !== JSON.stringify(fh)) problems.push(`${model.sheet} header differs from fixtures/kestrel/products.csv`);
+    if (JSON.stringify(got[0]) !== JSON.stringify(fh)) problems.push(`${model.sheet} header differs from fixtures/maison-noor/products.csv`);
   } else {
     // assets.xlsx has every column of docs 2.3; the fixture's columns must be a subsequence of it.
     const idx = fh.map((c) => got[0].indexOf(c));
-    if (idx.some((x, k) => x < 0 || (k && x <= idx[k - 1]))) problems.push(`${model.sheet} header does not contain the columns of fixtures/kestrel/assets.csv in order`);
+    if (idx.some((x, k) => x < 0 || (k && x <= idx[k - 1]))) problems.push(`${model.sheet} header does not contain the columns of fixtures/maison-noor/assets.csv in order`);
     const empty = got[0].map((c, i) => (fh.includes(c) ? null : i)).filter((i) => i !== null);
     got.slice(1).forEach((r, ri) => empty.forEach((i) => { if (r[i] !== "") problems.push(`${model.sheet} row ${ri + 2} column ${got[0][i]} is not in the fixture but has "${r[i]}"`); }));
     for (let k = 0; k < got.length; k++) got[k] = idx.map((i) => got[k][i] ?? "");
   }
-  if (got.length !== csv.length) problems.push(`${model.sheet} has ${got.length - 1} rows, fixtures/kestrel/${model.kind}.csv has ${csv.length - 1}`);
+  if (got.length !== csv.length) problems.push(`${model.sheet} has ${got.length - 1} rows, fixtures/maison-noor/${model.kind}.csv has ${csv.length - 1}`);
   for (let r = 1; r < Math.min(got.length, csv.length); r++) {
     for (let c = 0; c < fh.length; c++) {
       const a = got[r][c], b = csv[r][c] ?? "";
@@ -739,7 +739,7 @@ async function main() {
     console.error(`✗ templates:\n  ${problems.join("\n  ")}`);
     process.exit(1);
   }
-  if (check) console.log("✓ templates: products.xlsx and assets.xlsx match the spec, the Kestrel fixtures and the schema enums.");
+  if (check) console.log("✓ templates: products.xlsx and assets.xlsx match the spec, the MAISON NOOR fixtures and the schema enums.");
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) await main();

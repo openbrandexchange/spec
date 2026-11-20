@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: OBX Protocol (read side)
-  version: 0.3.0
+  version: 0.3.1
   summary: How retailers' software discovers a brand node, gets access and pulls product content.
   description: |
     **Normative.** The Open Brand Exchange (OBX) Protocol is the read side of a brand node:
@@ -84,9 +84,9 @@ paths:
             application/json:
               schema: {$ref: '../schemas/DiscoveryDocument.json'}
               examples:
-                kestrel:
-                  summary: Kestrel Outfitters
-                  value: {$ref: '../fixtures/examples/DiscoveryDocument.kestrel.json'}
+                maison-noor:
+                  summary: MAISON NOOR Group
+                  value: {$ref: '../fixtures/examples/DiscoveryDocument.maison-noor.json'}
         '429': {$ref: '#/components/responses/TooManyRequests'}
         '503':
           description: '`setup_required`: the node has not completed first-run setup.'

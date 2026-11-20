@@ -2,12 +2,12 @@
 
 For a **retailer's developer** who wants a brand's products, sizes, EANs and final images in a shop, PIM or ERP. You need `curl` and `jq`, and nothing else. Everything here is the [OBX Protocol](protocol.md), the part of OBX that every brand's portal speaks. The Ingest API, the import format and the admin API are for the brand's side and you do not need them.
 
-The examples use the fictional brand portal `https://brands.kestrel.example` and its test catalog ([`fixtures/kestrel`](../fixtures/kestrel)).
+The examples use the fictional brand portal `https://brands.maison-noor.example` and its test catalog ([`fixtures/maison-noor`](../fixtures/maison-noor)).
 
 ## 1. Discovery: what does this brand offer?
 
 ```sh
-HOST=https://brands.kestrel.example
+HOST=https://brands.maison-noor.example
 curl -s $HOST/.well-known/obx | jq '{obx_version, api_base, token: .auth.token_endpoint, capabilities, brands: [.brands[].name]}'
 ```
 
@@ -272,7 +272,7 @@ curl -s -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
 Every asset has `renditions`: `web` (JPEG, at most 2000 px), `square` (the web image on a white square), `thumb` (at most 600 px) and, if the brand allows it for you, `original` (the exact uploaded file).
 
 ```sh
-curl -s -H "Authorization: Bearer $TOKEN" -o KO-1008_BLK_1.jpg "$HOST/obx/v1/assets/<asset id>/renditions/web"
+curl -s -H "Authorization: Bearer $TOKEN" -o MN-1008_BLK_1.jpg "$HOST/obx/v1/assets/<asset id>/renditions/web"
 ```
 
 Or use the rendition's `url`: when `url_expires_at` is set it works without a token until then; read the asset again (`GET /obx/v1/assets/{id}`) for a fresh one. Every rendition has a `sha256`: download only when it changed, and check the bytes. Details: [protocol.md §5.5](protocol.md#55-renditions).
