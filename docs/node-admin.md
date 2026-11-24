@@ -12,7 +12,7 @@ A brand can make its portal look like its own showroom without code: colours, fo
 
 Rules for every node:
 
-- **Optional and nullable.** Every member may be absent or `null`; that means the node default, the look before 0.3.1. Old clients keep working.
+- **Optional and nullable.** Every member may be absent or `null`; that means the neutral default of that member ([below](#neutral-default)). Old clients keep working.
 - **Forward compatible.** Unknown members inside `theme`, `login`, `home` and in any block, and blocks of an unknown `type`, MUST be stored and returned unchanged. The UI ignores them. Known members are validated (enumerations, colour pattern, lengths); an invalid value is `422 validation_failed` with a JSON pointer.
 - **Texts** shown to retailers are per language (`{"en": "…", "nl": "…"}`, BCP 47 keys as in LocalizedText), at most 2,000 characters per language; a text block's `body` at most 10,000. Plain text only: the UI never renders HTML or Markdown from them, and a blank line in `body` starts a paragraph. The UI shows the reader's language, else the brand's default language, else any.
 - **Size.** The whole `branding` object, serialised, MUST be at most 64 KiB.
@@ -21,6 +21,33 @@ Rules for every node:
 - `accent_color` is still honoured; `theme.colors.primary` wins when set.
 
 The fixture [`fixtures/examples/BrandingSettings.full.json`](../fixtures/examples/BrandingSettings.full.json) is a complete example (the MAISON NOOR showroom, in English, Dutch and German); `bun run check` validates it. Each node SHOULD test a round trip of it.
+
+### <a id="neutral-default"></a>Neutral default
+
+A portal is the brand's, also when the brand has styled nothing or only a part. (Amendment, draft for 0.4.)
+
+- **Per member.** A node resolves every member of `theme` and `login` on its own: the brand's value when it is set, else the neutral default below. One missing colour never resets the others. `theme.colors.primary` falls back to `accent_color`, then to the default.
+- **Never the vendor's look.** A node MUST NOT show its own or its software vendor's branding inside a brand's portal: no vendor name, logo, favicon, colours or brand fonts, on any page served for the brand (login, request access, catalogue, e-mails it sends for the brand, error and loading pages, also while the node is still looking up which brand a host belongs to). Without a logo the portal shows the brand's `display_name` as text; without a favicon it serves none or a neutral one. What the brand chose itself is not vendor branding, even when it is the same colour.
+- **Contrast.** A node MAY derive further tokens (hover, borders, dark-scheme variants) from the five colours and MAY adjust text or button colours so text keeps a contrast of at least 4.5:1 (WCAG 2.2 AA); it MUST NOT replace a brand colour with a vendor colour to do so.
+- **The defaults.** A node SHOULD use these values; any it uses instead MUST be neutral (no hue of its own: greys, black and white).
+
+  | Member | Neutral default |
+  |---|---|
+  | `color_scheme` | `light` |
+  | `colors.primary` | `#1f2937` |
+  | `colors.secondary` | `#4b5563` |
+  | `colors.background` | `#faf9f7` (dark: `#121212`) |
+  | `colors.surface` | `#ffffff` (dark: `#1c1c1c`) |
+  | `colors.text` | `#1a1a1a` (dark: `#f2f0ec`) |
+  | `heading_font`, `body_font` | `system` |
+  | `radius` | `medium` |
+  | `grid_density` | `comfortable` |
+  | `card_style` | `plain` |
+  | `image_fit` | `contain` |
+  | `image_background` | `#ffffff` |
+  | `login.layout` | `centered` |
+
+[`fixtures/expected/branding-fallback.json`](../fixtures/expected/branding-fallback.json) lists settings (empty, an accent colour only, a partial theme, a full theme) with the theme a node resolves from them; `bun run check` recomputes each case. The shared admin UI SHOULD test it.
 
 ### Theme
 

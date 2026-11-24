@@ -3234,7 +3234,7 @@ components:
         - string
         - "null"
       pattern: ^#[0-9a-fA-F]{6}$
-      description: "`#rrggbb`; null uses the node default."
+      description: "`#rrggbb`; null uses the neutral default of the member (node-admin.md, Neutral default)."
     ImageId:
       type: string
       pattern: ^[A-Za-z0-9_-]{1,64}$
@@ -3302,7 +3302,7 @@ components:
     BrandingTheme:
       type: object
       additionalProperties: true
-      description: Look of the portal. Every member is optional; null or absent uses the node default (the look before 0.3.1). Nodes MUST store and return members they do not know unchanged; the UI ignores them.
+      description: Look of the portal. Every member is optional; null or absent uses that member's neutral default (node-admin.md, Neutral default), never the node vendor's look. Nodes MUST store and return members they do not know unchanged; the UI ignores them.
       properties:
         color_scheme:
           type:

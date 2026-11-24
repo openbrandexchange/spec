@@ -130,6 +130,7 @@ The actions and the hook's input and output are described in obx-go's [docs/conf
 | A-SRC-1 | import source with `https://127.0.0.1/…` → 422 `unsafe_url`; credentials never returned |
 | A-PORT-1 | retailer: product list, facets, detail, GTIN paste, selection, product zip, selection zip (entries and names, `assets.csv` with a row per image), CSV (canonical columns, formula-escaped), download job with file (`assets.csv` carries the embargo of `MN-1002_BLK_2`); the `qualifier` filter of the product list and of download filters, and the facet `qualifiers` (a product matches when any fibre of any part has any chosen code) |
 | A-PORT-2 | retailer restricted to `maison-noor` never sees `noor-atelier` anywhere; originals hidden when not allowed |
+| A-THEME-1 | portal appearance with nothing or part styled ([node-admin.md](node-admin.md#neutral-default)): for each case of [`expected/branding-fallback.json`](../fixtures/expected/branding-fallback.json) the runner `PATCH`es the settings, then `GET /admin/api/public/branding` and the viewer return them unchanged; the public login page and the catalogue served for the brand contain neither the node's software name nor its logo or favicon (the operator names them with a new runner option `--vendor-marks`, to be added to obx-conformance); the resolved look is checked by the admin UI's own tests |
 | A-STAT-1 | downloads by retailers appear in stats; admin preview downloads do not |
 
 ## Security profile
