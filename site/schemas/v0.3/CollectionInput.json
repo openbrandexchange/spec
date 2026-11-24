@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openbrandexchange.com/schemas/v0.3/CollectionInput.json",
+  "type": "object",
+  "title": "CollectionInput",
+  "description": "Write model of a collection release record (Ingest API `PUT /collections/{external_id}`, admin catalog). A product whose `collection` names no record is not held.",
+  "properties": {
+    "brand_external_id": {
+      "anyOf": [
+        {
+          "$ref": "Common.json#/$defs/ExternalId"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "MAY be omitted when the node has exactly one brand."
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200,
+      "description": "The `collection` value of its products. Unique per brand among records (409 `conflict`)."
+    },
+    "season": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 100
+    },
+    "state": {
+      "type": "string",
+      "enum": [
+        "held",
+        "released"
+      ],
+      "description": "held: the collection's products, their variants and assets are not visible to any retailer. released: visible. Omitted on create: `held` when `release_at` is in the future, else `released`; omitted on replace: kept."
+    },
+    "release_at": {
+      "anyOf": [
+        {
+          "$ref": "Common.json#/$defs/DateTime"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Scheduled release. While `state` is `held` and this moment has passed, the node releases the collection (state becomes `released`, `released_at` = this value). null = no schedule."
+    },
+    "released_at": {
+      "anyOf": [
+        {
+          "$ref": "Common.json#/$defs/DateTime"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "readOnly": true,
+      "description": "Read-only (Ingest GET): when the collection last became visible, null while it never was. Ignored on write."
+    }
+  },
+  "required": [
+    "name"
+  ],
+  "additionalProperties": false,
+  "patternProperties": {
+    "^x-[a-z0-9]+-[a-z0-9_-]+$": true
+  }
+}

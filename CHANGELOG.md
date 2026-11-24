@@ -4,6 +4,9 @@ All notable changes to the Open Brand Exchange specification. Format: [Keep a Ch
 
 ## [Unreleased]
 
+### Added
+- **Draft [proposal 0006](docs/proposals/0006-collection-release.md): collection release (embargo per collection).** Additive, target 0.4. A brand can hold a collection (the products whose `collection` equals its name) until it is released, now or at a scheduled `release_at`. Held products, their variants and assets are not visible to any retailer ([protocol.md §5.10](docs/protocol.md#510-collections), visibility rule 3). New capability `collections`, schema [Collection](schemas/Collection.json) with `GET /obx/v1/collections` and `/collections/{id}`, change type `collection` (an upsert on release, a delete on hold, before the product cascade); Ingest `PUT`/`PATCH`/`DELETE /collections/{external_id}` with [CollectionInput](schemas/CollectionInput.json) and batch kind `collection` ([ingest.md §3.5](docs/ingest.md#35-collections), rule 12 of §8); Node Admin `/admin/api/catalog/collections` and `portal.hold_new_collections`. Conformance I-COLL-1 and P-COLL-1 with the scenario in [`fixtures/collections/`](fixtures/collections); `bun run check` validates it like the ingest replay.
+
 ## [0.3.1] - 2026-11-21
 
 Portal appearance in the Node Admin API, and new test data: MAISON NOOR replaces Kestrel. Additive for implementations (the protocol, the Ingest API and the import format do not change); the fixtures change, so every node and the conformance suite update to them together. Released together with obx-go 0.3.1, admin-ui 0.3.1 and the reference nodes 0.3.1, which use the new fixtures.

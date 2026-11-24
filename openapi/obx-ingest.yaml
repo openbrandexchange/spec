@@ -408,6 +408,74 @@ paths:
         '415': {$ref: '#/components/responses/UnsupportedMediaType'}
         '422': {$ref: '#/components/responses/ValidationFailed'}
 
+  /collections/{external_id}:
+    parameters:
+      - $ref: '#/components/parameters/ExternalId'
+    get:
+      tags: [Catalog]
+      operationId: getIngestCollection
+      summary: Read a collection release record (proposal 0006)
+      responses:
+        '200': {$ref: '#/components/responses/Record'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
+    put:
+      tags: [Catalog]
+      operationId: putIngestCollection
+      summary: Create or replace a collection release record
+      description: |
+        Holds or releases the brand's products whose `collection` equals `name` (ingest.md §3.5).
+        The brand MUST exist (422 `unknown_parent`); `name` is unique per brand among records (409 `conflict`).
+        Holding a collection writes delete entries for every visible product in it (with its
+        variants and assets); releasing it writes the upserts.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '../schemas/CollectionInput.json'}
+            examples:
+              scheduled:
+                summary: Held until a scheduled release
+                value: {$ref: '../fixtures/examples/CollectionInput.scheduled.json'}
+      responses:
+        '200': {$ref: '#/components/responses/Result'}
+        '201': {$ref: '#/components/responses/ResultCreated'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '412': {$ref: '#/components/responses/PreconditionFailed'}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
+        '429': {$ref: '#/components/responses/TooManyRequests'}
+    patch:
+      tags: [Catalog]
+      operationId: patchIngestCollection
+      summary: Hold, release or schedule a collection (JSON merge patch)
+      description: '`{"state": "released"}` releases now; `{"state": "held"}` holds; `{"release_at": "…"}` schedules (a moment in the past releases now).'
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/merge-patch+json:
+            schema: {type: object}
+      responses:
+        '200': {$ref: '#/components/responses/Result'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
+    delete:
+      tags: [Catalog]
+      operationId: deleteIngestCollection
+      summary: Delete a collection release record
+      description: Its products are no longer held (they become visible when nothing else hides them). Needs `ingest:delete`.
+      responses:
+        '200': {$ref: '#/components/responses/Result'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+
   /blobs/{sha256}:
     parameters:
       - name: sha256

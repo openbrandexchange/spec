@@ -558,6 +558,77 @@ paths:
           $ref: "#/components/responses/NotFound"
         "429":
           $ref: "#/components/responses/TooManyRequests"
+  /obx/v1/collections:
+    get:
+      tags:
+        - Catalog
+      operationId: listCollections
+      summary: Released collections visible to the caller (capability `collections`)
+      description: |
+        Every released collection of a visible brand, newest `released_at` first, then by `id`.
+        Held collections are never listed. Not paginated (a node has few collections);
+        a node MAY answer at most 1000. Proposal 0006.
+      parameters:
+        - name: brand_id
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/Id"
+      responses:
+        "200":
+          description: Released collections.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Collection"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "501":
+          $ref: "#/components/responses/NotImplemented"
+  /obx/v1/collections/{id}:
+    get:
+      tags:
+        - Catalog
+      operationId: getCollection
+      summary: One released collection
+      description: A held collection, or one of a brand outside the grant, is `404 not_found`.
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "200":
+          description: The collection.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Collection"
+              examples:
+                released:
+                  summary: A released collection
+                  value:
+                    id: col_3
+                    external_id: solstice
+                    brand_id: brd_maison_noor
+                    name: Solstice
+                    season: SS27
+                    released_at: 2027-01-15T09:00:00Z
+                    updated_at: 2027-01-15T09:00:00Z
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "501":
+          $ref: "#/components/responses/NotImplemented"
   /obx/v1/products:
     get:
       tags:
@@ -1500,7 +1571,7 @@ components:
           items:
             type: string
             pattern: ^[a-z][a-z0-9_.-]*$
-          description: "Supported optional features. Defined: changes, products, by_gtin, renditions, exports, webhooks, usage, access_requests, ingest, ingest.server_renditions, portal. Unknown values MUST be ignored."
+          description: "Supported optional features. Defined: changes, products, by_gtin, renditions, exports, webhooks, usage, access_requests, ingest, ingest.server_renditions, portal, collections. Unknown values MUST be ignored."
           uniqueItems: true
         brands:
           type: array
@@ -1992,6 +2063,46 @@ components:
         - id
         - external_id
         - name
+        - updated_at
+      additionalProperties: false
+      patternProperties:
+        ^x-[a-z0-9]+-[a-z0-9_-]+$: true
+    Collection:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      $id: https://openbrandexchange.com/schemas/v0.3/Collection.json
+      type: object
+      title: Collection
+      description: "A released collection (drop) of one brand: the products whose `collection` equals `name`. Only released collections are visible; a held collection does not exist for retailers (proposal 0006)."
+      properties:
+        id:
+          $ref: "#/components/schemas/Id"
+        external_id:
+          $ref: "#/components/schemas/ExternalId"
+        brand_id:
+          $ref: "#/components/schemas/Id"
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: Equals `Product.collection` of every product in the collection (exact, case-sensitive).
+        season:
+          type:
+            - string
+            - "null"
+          maxLength: 100
+          description: Informative; membership is by `name` only.
+        released_at:
+          $ref: "#/components/schemas/DateTime"
+          description: "When the collection became visible: the scheduled `release_at`, or the time of the write that released it."
+        updated_at:
+          $ref: "#/components/schemas/DateTime"
+      required:
+        - id
+        - external_id
+        - brand_id
+        - name
+        - season
+        - released_at
         - updated_at
       additionalProperties: false
       patternProperties:
@@ -2997,6 +3108,7 @@ components:
           type: string
           enum:
             - brand
+            - collection
             - product
             - variant
             - asset
@@ -3007,7 +3119,7 @@ components:
           enum:
             - upsert
             - delete
-          description: "upsert: the object is visible to you with this current state. delete: tombstone, the object is no longer visible to you (deleted, unpublished, parent hidden, outside grant, rights expired)."
+          description: "upsert: the object is visible to you with this current state. delete: tombstone, the object is no longer visible to you (deleted, unpublished, parent hidden, outside grant, collection held, rights expired)."
         id:
           $ref: "#/components/schemas/Id"
         external_id:
@@ -3027,9 +3139,10 @@ components:
           $ref: "#/components/schemas/DateTime"
           description: "upsert: the object's updated_at. delete: when it stopped being visible."
         data:
-          description: "Present on upsert (never on delete): the CURRENT representation (Brand, Product without variants/assets, Variant, Asset or Grant according to type)."
+          description: "Present on upsert (never on delete): the CURRENT representation (Brand, Collection, Product without variants/assets, Variant, Asset or Grant according to type)."
           anyOf:
             - $ref: "#/components/schemas/Brand"
+            - $ref: "#/components/schemas/Collection"
             - $ref: "#/components/schemas/Product"
             - $ref: "#/components/schemas/Variant"
             - $ref: "#/components/schemas/Asset"

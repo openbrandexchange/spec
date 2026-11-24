@@ -825,6 +825,71 @@ paths:
         '415': {$ref: '#/components/responses/UnsupportedMediaType'}
         '422': {$ref: '#/components/responses/ValidationFailed'}
 
+  /admin/api/catalog/collections:
+    get:
+      tags: [Catalog]
+      operationId: adminListCollections
+      summary: All collection release records (held and released), proposal 0006
+      responses:
+        '200':
+          description: Collection records.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: {$ref: '../schemas/IngestRecord.json'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+  /admin/api/catalog/collections/{external_id}:
+    parameters:
+      - $ref: '#/components/parameters/ExternalId'
+    put:
+      tags: [Catalog]
+      operationId: adminPutCollection
+      summary: Create or replace a collection release record
+      parameters:
+        - $ref: '#/components/parameters/Csrf'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '../schemas/CollectionInput.json'}
+      responses:
+        '200': {$ref: '#/components/responses/IngestResult'}
+        '201': {$ref: '#/components/responses/IngestResult'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
+    patch:
+      tags: [Catalog]
+      operationId: adminPatchCollection
+      summary: Set the release of a collection (hold, release now, schedule)
+      description: 'The release toggle of the admin UI: `{"state": "released"}`, `{"state": "held"}` or `{"release_at": "…"}`. Same results and change entries as the Ingest API.'
+      parameters:
+        - $ref: '#/components/parameters/Csrf'
+      requestBody:
+        required: true
+        content:
+          application/merge-patch+json:
+            schema: {type: object}
+      responses:
+        '200': {$ref: '#/components/responses/IngestResult'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
+    delete:
+      tags: [Catalog]
+      operationId: adminDeleteCollection
+      summary: Delete a collection release record (its products are no longer held)
+      parameters:
+        - $ref: '#/components/parameters/Csrf'
+      responses:
+        '200': {$ref: '#/components/responses/IngestResult'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
   /admin/api/catalog/blobs/{sha256}:
     parameters:
       - name: sha256
@@ -2700,6 +2765,7 @@ components:
             allow_original_download: {type: boolean, default: true}
             allow_article_data_export: {type: boolean, default: true}
             retailer_api_self_service: {type: boolean, default: false}
+            hold_new_collections: {type: boolean, default: false, description: 'When true, a product write that names a `collection` without a record creates the record as `held` (proposal 0006). Existing collections are not affected.'}
             languages:
               type: array
               minItems: 1

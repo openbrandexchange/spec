@@ -158,7 +158,7 @@ The webhook is a wake-up call and carries no catalog data; `/changes` stays the 
 
 It MUST work on every hostname the node answers on, including a brand's custom domain. Before first-run setup a node answers `503` with `setup_required`.
 
-**Capabilities** (unknown values MUST be ignored): `changes`, `products`, `by_gtin`, `renditions` (all REQUIRED for the protocol conformance profile), and OPTIONAL `exports`, `webhooks`, `usage`, `access_requests`, `ingest`, `ingest.server_renditions`, `portal`. An endpoint of a capability that is not offered answers `501 not_implemented`.
+**Capabilities** (unknown values MUST be ignored): `changes`, `products`, `by_gtin`, `renditions` (all REQUIRED for the protocol conformance profile), and OPTIONAL `exports`, `webhooks`, `usage`, `access_requests`, `ingest`, `ingest.server_renditions`, `portal`, `collections` ([5.10](#510-collections)). An endpoint of a capability that is not offered answers `501 not_implemented`.
 
 Brands can be listed in public **directories** (lists of discovery URLs, no data); see [directory.md](directory.md).
 
@@ -274,11 +274,11 @@ An object is **visible** to a retailer when all of the following hold:
 
 1. the node is set up, the retailer is active and the client is not revoked;
 2. **brand**: status `published` and in the retailer's grant;
-3. **product**: status `published` and its brand is visible;
+3. **product**: status `published`, its brand is visible, and it is not in a held collection ([5.10](#510-collections));
 4. **variant**: status `published` and its product is visible;
 5. **asset**: status `published`, its product is visible, its original and all renditions exist, and `rights.expires_at` is `null` or in the future.
 
-Everything the protocol returns (lists, lookups, `/changes`, exports, renditions) follows this single rule. An object that is not visible is answered with `404 not_found`, never `403` (no existence leak).
+Everything the protocol returns (lists, lookups, `/changes`, exports, renditions) follows this single rule. A node that does not hold collections treats rule 3's last condition as always true. An object that is not visible is answered with `404 not_found`, never `403` (no existence leak).
 
 ### 5.9 Article data
 
@@ -391,21 +391,32 @@ What EU law requires a seller to show, and where OBX carries it. Only the first 
 
 Regulation (EU) No 1007/2011 applies to textile products, which include products made of at least 80 % textile fibres by weight. Measurements, features, colour family and the second size are product information without an EU labelling requirement. Imports and the Ingest API warn when a product misses what its label needs (`fibre_composition_missing`, `animal_origin_unknown`, `footwear_materials_missing`, `fibre_percentages_not_100`, and `material_unknown` for a material code outside the vocabulary; [import-format.md rule 10](import-format.md#label-completeness)); a warning never blocks publishing.
 
+### 5.10 Collections
+
+Added by [proposal 0006](proposals/0006-collection-release.md) (draft, target 0.4). A brand can hold a **collection** (a drop) back until it is released, so retailers see it all at once.
+
+- **Membership.** A collection is a record of one brand with a `name`. A product is in it when its `collection` equals that `name` exactly (byte for byte after trimming). A product whose `collection` names no record, or is `null`, is in no collection and is never held.
+- **Held** (`state: held`): the products in the collection are not visible (§5.8 rule 3), and so neither are their variants and assets. This is stronger than an embargo on an asset (§5.6): an embargoed asset is delivered and may not be shown; a held product is not delivered at all, in no list, lookup, export, rendition or `/changes` `data`, and answers `404 not_found`. A node MUST NOT reveal that a held collection exists to a retailer.
+- **Released** (`state: released`): its products follow the other rules of §5.8. A held collection with a `release_at` in the past is released: the node MUST NOT make its products visible before `release_at`, SHOULD make them visible within 60 seconds after it and MUST within one hour; `released_at` is then `release_at`.
+- **Reading.** With the capability `collections`, `GET /obx/v1/collections` lists the released collections of the visible brands ([Collection](../schemas/Collection.json): `id`, `external_id`, `brand_id`, `name`, `season`, `released_at`, `updated_at`; newest `released_at` first) and `GET /obx/v1/collections/{id}` reads one. A collection of a visible brand is visible when it is released, also before any product is in it.
+- **Change feed.** A visible collection has `type: collection` entries ([6.3](#63-ordering-within-one-write)). Releasing writes an `upsert` for the collection, then the entries of every product that becomes visible (product, variants, assets, products by `external_id`); holding writes the `delete` entries in the same order. The collection `upsert` is the signal a consumer (or a buyer notification) can act on; older clients skip the unknown type and still get the products.
+- **Not visible to retailers, but to the brand.** How records are created and changed is the node's business ([ingest.md §3.5](ingest.md#35-collections), Node Admin API). A node MAY let brand staff preview held collections in its admin; that preview is never reachable with a retailer's session or client.
+
 ## 6. The change feed
 
 `GET /obx/v1/changes?cursor=<opaque>&limit=<1..500, default 100>` returns a [ChangesPage](../schemas/ChangesPage.json): `changes`, `next_cursor` (always present), `has_more` and `phase`.
 
-Each [Change](../schemas/Change.json) has `seq`, `type` (`brand`, `product`, `variant`, `asset`, `grant`), `op` (`upsert`, `delete`), `id`, `external_id`, `brand_id`, `product_id` (variants and assets), `updated_at`, and on upserts `data`: the **current** representation of the object (products without `variants`/`assets`).
+Each [Change](../schemas/Change.json) has `seq`, `type` (`brand`, `collection`, `product`, `variant`, `asset`, `grant`), `op` (`upsert`, `delete`), `id`, `external_id`, `brand_id`, `product_id` (variants and assets), `updated_at`, and on upserts `data`: the **current** representation of the object (products without `variants`/`assets`).
 
 ### 6.1 Snapshot, then live
-- **Without a cursor** the node starts a **snapshot**: one `upsert` for every object currently visible to the caller, ordered brands, products, variants, assets (by `id` within a type), `phase: "snapshot"`. The node remembers the highest `seq` at the start (the high-water mark).
+- **Without a cursor** the node starts a **snapshot**: one `upsert` for every object currently visible to the caller, ordered brands, collections, products, variants, assets (by `id` within a type), `phase: "snapshot"`. The node remembers the highest `seq` at the start (the high-water mark).
 - When the snapshot is exhausted the feed continues **live** from the high-water mark. Pages never mix phases; the last snapshot page has `has_more: true`, so the first page with `phase: "live"` tells the consumer the snapshot is complete. A consumer MAY then delete local objects from this node that it did not see during the snapshot (mark and sweep). Snapshot entries carry the object's latest `seq`.
 - **With a cursor** the node returns entries after it. Entries appear in `seq` order.
 - While `has_more` is `true`, request the next page immediately with `next_cursor` ([§2.1](#pagination)). When `has_more` is `false`, poll again later with `next_cursor` (RECOMMENDED no more than once per 60 s, or immediately on a `changes.available` webhook, [§2.2](#notifications)).
 
 ### 6.2 What a consumer sees
 - Only entries of brands in its grant, and its own `grant` entries.
-- `delete` entries (tombstones) for every transition from visible to not visible: deleted, unpublished, a parent hidden, rights expired, removed from the grant scope via brand unpublish. Deletes carry no `data`. A consumer MUST ignore deletes for ids it does not know.
+- `delete` entries (tombstones) for every transition from visible to not visible: deleted, unpublished, a parent hidden, its collection held, rights expired, removed from the grant scope via brand unpublish. Deletes carry no `data`. A consumer MUST ignore deletes for ids it does not know.
 - An `upsert` entry whose object is not visible at read time is **omitted** (a later delete entry covers it). So an upsert always carries data of a visible object.
 - **At-least-once:** the same object may appear several times; `data` is always current and `updated_at`/`sha256` let consumers be idempotent. Snapshot entries for objects changed during the snapshot may repeat in the live phase.
 - Consumers MUST tolerate a child entry (variant, asset) whose parent they have not seen yet.
@@ -429,6 +440,7 @@ A `grant` entry (`data`: the new Grant) with `resync: true` means the visible se
 | `GET /obx/v1/products?ids=&brand_id=&updated_since=&cursor=&limit=` | ProductDetail, keyset pagination by `id`, `limit` ≤ 100 (default 25). For synchronisation use `/changes`. |
 | `GET /obx/v1/products/{id}` | ProductDetail, `ETag`, `If-None-Match` |
 | `GET\|POST /obx/v1/products:by-gtin` | GTIN lookup (below) |
+| `GET /obx/v1/collections`, `GET /obx/v1/collections/{id}` | released collections (capability `collections`, [5.10](#510-collections)) |
 | `GET /obx/v1/assets/{id}` | one Asset (fresh signed URLs) |
 | `GET /obx/v1/assets/{id}/renditions/{name}` | bytes (section 5.5) |
 

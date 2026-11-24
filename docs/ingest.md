@@ -29,6 +29,7 @@ Everything is addressed by the brand's **external id** in the path (percent-enco
 | brand | `/brands/{external_id}` | slug of the brand name (`NOOR ATELIER` → `noor-atelier`) |
 | product | `/products/{external_id}` | the style number |
 | variant | `/variants/{external_id}` | `<style>-<color>-<size>[-<size_length>]`, with `/` and control characters written as `_` ([import-format.md §1.2.1](import-format.md#variant-identity)); never the GTIN, which can arrive late or change |
+| collection | `/collections/{external_id}` | slug of the collection name (`Solstice` → `solstice`) |
 | asset | `/assets/{external_id}` | `<style>_<color>_<position>` (the image filename pattern without qualifiers and extension); `<style>_ALL_<position>` for an image of all colours ([import-format.md](import-format.md#all-colours)) |
 
 Parents are referenced by external id in the body (`brand_external_id`, `product_external_id`). `brand_external_id` MAY be omitted when the node has exactly one brand. The node assigns the protocol `id`s and returns them in results.
@@ -58,6 +59,16 @@ The response is an [IngestResult](../schemas/IngestResult.json): `result` is `cr
 
 ### 3.3 DELETE
 `DELETE` needs `ingest:delete`. Deleting a product deletes its variants and assets. Deleting a brand that still has products fails with `409 conflict`. Deleting something that does not exist returns `200` with `result: unchanged` (idempotent).
+
+### 3.5 Collections
+
+[Proposal 0006](proposals/0006-collection-release.md) (draft). `PUT /collections/{external_id}` with a [CollectionInput](../schemas/CollectionInput.json) (`brand_external_id`, `name`, `season`, `state`, `release_at`) creates or replaces a collection record; `PATCH` changes part of it; `DELETE` (needs `ingest:delete`) removes it, after which its products are no longer held. In a batch the kind is `collection`; `publish` and `unpublish` do not apply to it (`422 validation_failed`).
+
+- The brand MUST exist (`422 unknown_parent`). `name` is unique per brand among records (`409 conflict`); it matches products by their `collection`, exactly ([protocol.md §5.10](protocol.md#510-collections)).
+- `state` omitted on create: `held` when `release_at` is in the future, else `released`. `{"state": "released"}` releases now; `{"release_at": "<future>"}` with `state: held` schedules; a `release_at` in the past releases now.
+- Records can exist before their products (a brand holds the drop, then loads it) and products before their record.
+- A node MAY offer a setting that creates a `held` record when a product write names a collection that has none (Node Admin `portal.hold_new_collections`). It never holds an existing collection on its own.
+- The Ingest `GET` returns the record as an [IngestRecord](../schemas/IngestRecord.json) of kind `collection` with read-only `released_at` and `visibility` (`visible` when released and its brand is published, else `hidden`).
 
 ### 3.4 Validation rules
 - Variant `gtin`: 8, 12, 13 or 14 digits with a correct check digit (`422 invalid_gtin`), unique within the node among non-deleted variants, compared as GTIN-14 (`409 gtin_conflict`; the Problem's `errors[0]` has `pointer` `/gtin` and a `detail` that names the external id of the variant that has the GTIN and of its product, so automation can address that variant instead). The external id in the path is the key: unlike a CSV row without `variant_id`, a `PUT` never looks a variant up by its GTIN, so a GTIN can be added to or changed on a variant at any time without changing its id.
@@ -121,6 +132,7 @@ This section is normative and is what the conformance suite replays ([`fixtures/
 9. **Rights expiry** writes a delete entry for the asset no later than one hour after `expires_at`.
 10. **Timing.** Entries are readable in `/changes` once the write's response has been sent (read-your-writes), except asynchronous rendering (rule 6) and jobs (entries appear as each operation completes, in operation order).
 11. **Failed operations** produce no entries.
+12. **Collections** ([§3.5](#35-collections)). Releasing a collection (state, schedule or deleting a held record) writes an upsert for the collection when it becomes visible, then the cascade of every product in it that becomes visible, products by `external_id`; holding it writes the deletes in the same order. A product write that moves a product into or out of a held collection is a cascade of that product only. A scheduled release writes its entries when the node releases ([protocol.md §5.10](protocol.md#510-collections)), not at the write. Creating or changing a held record that no retailer can see writes nothing for the collection itself.
 
 ## 9. Limits (minimums a node MUST support)
 

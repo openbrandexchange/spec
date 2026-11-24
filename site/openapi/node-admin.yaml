@@ -1086,6 +1086,92 @@ paths:
           $ref: "#/components/responses/UnsupportedMediaType"
         "422":
           $ref: "#/components/responses/ValidationFailed"
+  /admin/api/catalog/collections:
+    get:
+      tags:
+        - Catalog
+      operationId: adminListCollections
+      summary: All collection release records (held and released), proposal 0006
+      responses:
+        "200":
+          description: Collection records.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/IngestRecord"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /admin/api/catalog/collections/{external_id}:
+    parameters:
+      - $ref: "#/components/parameters/ExternalId"
+    put:
+      tags:
+        - Catalog
+      operationId: adminPutCollection
+      summary: Create or replace a collection release record
+      parameters:
+        - $ref: "#/components/parameters/Csrf"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CollectionInput"
+      responses:
+        "200":
+          $ref: "#/components/responses/IngestResult"
+        "201":
+          $ref: "#/components/responses/IngestResult"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+    patch:
+      tags:
+        - Catalog
+      operationId: adminPatchCollection
+      summary: Set the release of a collection (hold, release now, schedule)
+      description: 'The release toggle of the admin UI: `{"state": "released"}`, `{"state": "held"}` or `{"release_at": "…"}`. Same results and change entries as the Ingest API.'
+      parameters:
+        - $ref: "#/components/parameters/Csrf"
+      requestBody:
+        required: true
+        content:
+          application/merge-patch+json:
+            schema:
+              type: object
+      responses:
+        "200":
+          $ref: "#/components/responses/IngestResult"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+    delete:
+      tags:
+        - Catalog
+      operationId: adminDeleteCollection
+      summary: Delete a collection release record (its products are no longer held)
+      parameters:
+        - $ref: "#/components/parameters/Csrf"
+      responses:
+        "200":
+          $ref: "#/components/responses/IngestResult"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
   /admin/api/catalog/blobs/{sha256}:
     parameters:
       - name: sha256
@@ -3889,6 +3975,10 @@ components:
             retailer_api_self_service:
               type: boolean
               default: false
+            hold_new_collections:
+              type: boolean
+              default: false
+              description: When true, a product write that names a `collection` without a record creates the record as `held` (proposal 0006). Existing collections are not affected.
             languages:
               type: array
               minItems: 1
@@ -5247,6 +5337,7 @@ components:
             - product
             - variant
             - asset
+            - collection
         id:
           $ref: "#/components/schemas/Id"
         external_id:
@@ -5362,6 +5453,7 @@ components:
             - product
             - variant
             - asset
+            - collection
         external_id:
           $ref: "#/components/schemas/ExternalId"
         result:
@@ -6353,6 +6445,50 @@ components:
         - product_external_id
         - role
         - position
+      additionalProperties: false
+      patternProperties:
+        ^x-[a-z0-9]+-[a-z0-9_-]+$: true
+    CollectionInput:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      $id: https://openbrandexchange.com/schemas/v0.3/CollectionInput.json
+      type: object
+      title: CollectionInput
+      description: Write model of a collection release record (Ingest API `PUT /collections/{external_id}`, admin catalog). A product whose `collection` names no record is not held.
+      properties:
+        brand_external_id:
+          anyOf:
+            - $ref: "#/components/schemas/ExternalId"
+            - type: "null"
+          description: MAY be omitted when the node has exactly one brand.
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: The `collection` value of its products. Unique per brand among records (409 `conflict`).
+        season:
+          type:
+            - string
+            - "null"
+          maxLength: 100
+        state:
+          type: string
+          enum:
+            - held
+            - released
+          description: "held: the collection's products, their variants and assets are not visible to any retailer. released: visible. Omitted on create: `held` when `release_at` is in the future, else `released`; omitted on replace: kept."
+        release_at:
+          anyOf:
+            - $ref: "#/components/schemas/DateTime"
+            - type: "null"
+          description: Scheduled release. While `state` is `held` and this moment has passed, the node releases the collection (state becomes `released`, `released_at` = this value). null = no schedule.
+        released_at:
+          anyOf:
+            - $ref: "#/components/schemas/DateTime"
+            - type: "null"
+          readOnly: true
+          description: "Read-only (Ingest GET): when the collection last became visible, null while it never was. Ignored on write."
+      required:
+        - name
       additionalProperties: false
       patternProperties:
         ^x-[a-z0-9]+-[a-z0-9_-]+$: true
