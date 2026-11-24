@@ -275,7 +275,7 @@ Every asset has `renditions`: `web` (JPEG, at most 2000 px), `square` (the web i
 curl -s -H "Authorization: Bearer $TOKEN" -o MN-1008_BLK_1.jpg "$HOST/obx/v1/assets/<asset id>/renditions/web"
 ```
 
-Or use the rendition's `url`: when `url_expires_at` is set it works without a token until then; read the asset again (`GET /obx/v1/assets/{id}`) for a fresh one. Every rendition has a `sha256`: download only when it changed, and check the bytes. Details: [protocol.md §5.5](protocol.md#55-renditions).
+Or use the rendition's `url`: when `url_expires_at` is set it works without a token until then; read the asset again (`GET /obx/v1/assets/{id}`) for a fresh one. Do not store the URL itself: keep the asset id and the `sha256`, which is the cache key and stays the same when the URL is signed again. Every rendition has a `sha256`: download only when it changed, and check the bytes. Details: [protocol.md §5.5](protocol.md#55-renditions).
 
 ## 8. Get notified instead of polling
 

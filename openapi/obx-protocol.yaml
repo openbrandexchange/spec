@@ -586,7 +586,7 @@ paths:
       tags: [Media]
       operationId: getAsset
       summary: One asset (fresh rendition URLs)
-      description: Use this to refresh expired signed rendition URLs.
+      description: Use this to refresh expired signed rendition URLs. Signing again changes only `url` and `url_expires_at`; `sha256` is the cache key.
       security:
         - oauth2: [media:read]
       parameters:
@@ -641,7 +641,7 @@ paths:
               description: '`inline; filename="<filename>"` (renditions get `_web`/`_square`/`_thumb` before a `.jpg` extension).'
               schema: {type: string}
             Cache-Control:
-              description: private, max-age<=3600
+              description: '`private, max-age=<n>`, with `n` at most the seconds left until the signed URL''s `url_expires_at` (protocol.md §5.5.1).'
               schema: {type: string}
           content:
             image/*:
@@ -660,7 +660,7 @@ paths:
           description: Not modified.
         '401': {$ref: '#/components/responses/Unauthorized'}
         '403':
-          description: '`insufficient_scope`, `original_not_allowed` or `forbidden` (e.g. expired signature).'
+          description: '`insufficient_scope`, `original_not_allowed`, `url_expired` (an intact signature past its expiry: read the asset again) or `forbidden` (a changed signature, or an expired one on nodes that do not distinguish).'
           content:
             application/problem+json:
               schema: {$ref: '../schemas/Problem.json'}

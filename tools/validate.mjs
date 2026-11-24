@@ -146,6 +146,16 @@ const sigVec = readJSON(join(exDir, "webhook-signature-vector.json"));
   if (`v1=${hex}` !== sigVec.header) fail("webhook-signature-vector.json", "signature does not match");
   check("WebhookEvent", JSON.parse(sigVec.raw_body), "webhook-signature-vector.json raw_body");
 }
+// Signing again (proposal 0007): two reads of one rendition differ only in url and url_expires_at.
+{
+  const first = readJSON(join(exDir, "Rendition.signed.json"));
+  const again = readJSON(join(exDir, "Rendition.signed-again.json"));
+  for (const key of new Set([...Object.keys(first), ...Object.keys(again)])) {
+    checked++;
+    const same = JSON.stringify(first[key]) === JSON.stringify(again[key]);
+    if (["url", "url_expires_at"].includes(key) ? same : !same) fail("Rendition.signed-again.json", `${key} must ${same ? "differ" : "stay the same"} after signing again`);
+  }
+}
 
 // ---------------------------------------------------------------- expected protocol objects
 const PLACEHOLDERS = {
