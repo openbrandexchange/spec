@@ -829,8 +829,12 @@ paths:
       tags:
         - Files
       operationId: createUpload
-      summary: Start a resumable multipart upload
-      description: For files above `max_upload_bytes`. If the node already has the sha256 it answers 200 with the Blob and no upload is needed.
+      summary: Start a resumable multipart upload, or a direct upload to storage
+      description: |
+        For files above `max_upload_bytes`. If the node already has the sha256 it answers 200 with the Blob and no upload is needed.
+        With `transfer: direct` (capability `ingest.direct_upload`, proposal 0008) the answer carries presigned storage URLs:
+        `put` for one PUT (`mode: single`) or `part_urls` (`mode: multipart`); the client sends the bytes there, without the
+        ingest token, and then calls `complete`. A node without the capability ignores `transfer` and answers a node upload.
       requestBody:
         required: true
         content:
@@ -849,6 +853,13 @@ paths:
                   minimum: 1
                 content_type:
                   type: string
+                transfer:
+                  type: string
+                  enum:
+                    - node
+                    - direct
+                  default: node
+                  description: "`direct`: presigned URLs to the node's storage instead of parts through the node."
       responses:
         "200":
           description: Blob already present.
@@ -888,6 +899,52 @@ paths:
                       - 3
                     status: open
                     expires_at: 2026-09-29T10:00:00Z
+                direct-single:
+                  summary: Direct upload, one presigned PUT
+                  value:
+                    id: upl_7
+                    sha256: 5239e5c1f68ea623d2e6f57e249080855ba0b8322c452f880170a017c72452f0
+                    bytes: 10970
+                    content_type: image/png
+                    part_bytes: 8388608
+                    parts_total: 1
+                    received_parts: []
+                    status: open
+                    expires_at: 2026-09-29T10:00:00Z
+                    transfer: direct
+                    mode: single
+                    put:
+                      url: https://storage.maison-noor.example/obx-uploads/upl_7?X-Amz-Expires=3600&X-Amz-Signature=5f1c0d2e
+                      headers:
+                        Content-Type: image/png
+                        Content-Length: "10970"
+                      expires_at: 2026-09-28T11:00:00Z
+                direct-multipart:
+                  summary: Direct upload in parts, part 1 received
+                  value:
+                    id: upl_8
+                    sha256: "4444444444444444444444444444444444444444444444444444444444444444"
+                    bytes: 20971520
+                    content_type: image/tiff
+                    part_bytes: 8388608
+                    parts_total: 3
+                    received_parts:
+                      - 1
+                    status: open
+                    expires_at: 2026-09-29T10:00:00Z
+                    transfer: direct
+                    mode: multipart
+                    part_urls:
+                      - number: 2
+                        url: https://storage.maison-noor.example/obx-uploads/upl_8?partNumber=2&uploadId=2~f00d&X-Amz-Expires=3600&X-Amz-Signature=a2b2
+                        headers:
+                          Content-Length: "8388608"
+                        expires_at: 2026-09-28T11:00:00Z
+                      - number: 3
+                        url: https://storage.maison-noor.example/obx-uploads/upl_8?partNumber=3&uploadId=2~f00d&X-Amz-Expires=3600&X-Amz-Signature=a3b3
+                        headers:
+                          Content-Length: "4194304"
+                        expires_at: 2026-09-28T11:00:00Z
         "401":
           $ref: "#/components/responses/Unauthorized"
         "413":
@@ -934,6 +991,7 @@ paths:
         - Files
       operationId: abortUpload
       summary: Abort an upload
+      description: Also for direct uploads; the node aborts the storage upload and removes every part it received (proposal 0008).
       responses:
         "204":
           description: Aborted.
@@ -1000,9 +1058,35 @@ paths:
         - Files
       operationId: completeUpload
       summary: Assemble the parts into a blob
-      description: Verifies size and sha256. Missing parts give 409 `upload_incomplete`; a hash mismatch gives 422 `checksum_mismatch` (the upload is aborted).
+      description: |
+        Verifies size and sha256. Missing parts give 409 `upload_incomplete`; a hash mismatch gives 422 `checksum_mismatch` (the upload is aborted).
+        For a direct upload the node reads the object from its storage and computes size and sha256 itself; the client MAY send
+        the storage's part ETags, which the node MAY use instead of listing the parts.
       parameters:
         - $ref: "#/components/parameters/IdPath"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                parts:
+                  type: array
+                  maxItems: 10000
+                  items:
+                    type: object
+                    required:
+                      - number
+                      - etag
+                    properties:
+                      number:
+                        type: integer
+                        minimum: 1
+                        maximum: 10000
+                      etag:
+                        type: string
+                        maxLength: 200
       responses:
         "200":
           description: The blob.
@@ -3014,6 +3098,7 @@ components:
         parts_total:
           type: integer
           minimum: 1
+          maximum: 10000
         received_parts:
           type: array
           items:
@@ -3029,6 +3114,63 @@ components:
             - expired
         expires_at:
           $ref: "#/components/schemas/DateTime"
+        transfer:
+          type: string
+          enum:
+            - node
+            - direct
+          description: "node: parts go to PUT /uploads/{id}/parts/{n} on the node. direct: bytes go straight to storage through presigned URLs (capability ingest.direct_upload, proposal 0008). Absent = node."
+        mode:
+          type: string
+          enum:
+            - single
+            - multipart
+          description: "Direct uploads only: one PUT to `put`, or one PUT per part to `part_urls`."
+        put:
+          type: object
+          properties:
+            url:
+              $ref: "#/components/schemas/Url"
+              description: Presigned storage URL (https). Send the bytes with PUT, exactly the headers in `headers`, and never the ingest token.
+            headers:
+              type: object
+              additionalProperties:
+                type: string
+              description: Headers the signature covers (at least Content-Length; Content-Type for a single PUT). Send them exactly.
+            expires_at:
+              $ref: "#/components/schemas/DateTime"
+          required:
+            - url
+            - headers
+            - expires_at
+          additionalProperties: false
+          description: "Direct single upload: where to PUT the whole file."
+        part_urls:
+          type: array
+          description: "Direct multipart upload: a presigned URL for every part not yet received (fresh on every GET). Every part except the last is exactly part_bytes."
+          items:
+            type: object
+            properties:
+              number:
+                type: integer
+                minimum: 1
+                maximum: 10000
+              url:
+                $ref: "#/components/schemas/Url"
+                description: Presigned storage URL (https). Send the bytes with PUT, exactly the headers in `headers`, and never the ingest token.
+              headers:
+                type: object
+                additionalProperties:
+                  type: string
+                description: Headers the signature covers (at least Content-Length; Content-Type for a single PUT). Send them exactly.
+              expires_at:
+                $ref: "#/components/schemas/DateTime"
+            required:
+              - number
+              - url
+              - headers
+              - expires_at
+            additionalProperties: false
       required:
         - id
         - sha256

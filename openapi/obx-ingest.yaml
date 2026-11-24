@@ -532,8 +532,12 @@ paths:
     post:
       tags: [Files]
       operationId: createUpload
-      summary: Start a resumable multipart upload
-      description: For files above `max_upload_bytes`. If the node already has the sha256 it answers 200 with the Blob and no upload is needed.
+      summary: Start a resumable multipart upload, or a direct upload to storage
+      description: |
+        For files above `max_upload_bytes`. If the node already has the sha256 it answers 200 with the Blob and no upload is needed.
+        With `transfer: direct` (capability `ingest.direct_upload`, proposal 0008) the answer carries presigned storage URLs:
+        `put` for one PUT (`mode: single`) or `part_urls` (`mode: multipart`); the client sends the bytes there, without the
+        ingest token, and then calls `complete`. A node without the capability ignores `transfer` and answers a node upload.
       requestBody:
         required: true
         content:
@@ -545,6 +549,11 @@ paths:
                 sha256: {$ref: '../schemas/Common.json#/$defs/Sha256'}
                 bytes: {type: integer, minimum: 1}
                 content_type: {type: string}
+                transfer:
+                  type: string
+                  enum: [node, direct]
+                  default: node
+                  description: '`direct`: presigned URLs to the node''s storage instead of parts through the node.'
       responses:
         '200':
           description: Blob already present.
@@ -564,6 +573,12 @@ paths:
                 upload:
                   summary: Multipart upload in progress
                   value: {$ref: '../fixtures/examples/Upload.example.json'}
+                direct-single:
+                  summary: Direct upload, one presigned PUT
+                  value: {$ref: '../fixtures/examples/Upload.direct-single.json'}
+                direct-multipart:
+                  summary: Direct upload in parts, part 1 received
+                  value: {$ref: '../fixtures/examples/Upload.direct-multipart.json'}
         '401': {$ref: '#/components/responses/Unauthorized'}
         '413': {$ref: '#/components/responses/PayloadTooLarge'}
         '415': {$ref: '#/components/responses/UnsupportedMediaType'}
@@ -590,6 +605,7 @@ paths:
       tags: [Files]
       operationId: abortUpload
       summary: Abort an upload
+      description: Also for direct uploads; the node aborts the storage upload and removes every part it received (proposal 0008).
       responses:
         '204':
           description: Aborted.
@@ -631,9 +647,28 @@ paths:
       tags: [Files]
       operationId: completeUpload
       summary: Assemble the parts into a blob
-      description: Verifies size and sha256. Missing parts give 409 `upload_incomplete`; a hash mismatch gives 422 `checksum_mismatch` (the upload is aborted).
+      description: |
+        Verifies size and sha256. Missing parts give 409 `upload_incomplete`; a hash mismatch gives 422 `checksum_mismatch` (the upload is aborted).
+        For a direct upload the node reads the object from its storage and computes size and sha256 itself; the client MAY send
+        the storage's part ETags, which the node MAY use instead of listing the parts.
       parameters:
         - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                parts:
+                  type: array
+                  maxItems: 10000
+                  items:
+                    type: object
+                    required: [number, etag]
+                    properties:
+                      number: {type: integer, minimum: 1, maximum: 10000}
+                      etag: {type: string, maxLength: 200}
       responses:
         '200':
           description: The blob.

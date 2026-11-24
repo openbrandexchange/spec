@@ -1672,7 +1672,7 @@ components:
           items:
             type: string
             pattern: ^[a-z][a-z0-9_.-]*$
-          description: "Supported optional features. Defined: changes, products, by_gtin, renditions, exports, webhooks, usage, access_requests, ingest, ingest.server_renditions, portal, collections, collections.scheduled_release. Unknown values MUST be ignored."
+          description: "Supported optional features. Defined: changes, products, by_gtin, renditions, exports, webhooks, usage, access_requests, ingest, ingest.server_renditions, ingest.direct_upload, portal, collections, collections.scheduled_release. Unknown values MUST be ignored."
           uniqueItems: true
         brands:
           type: array

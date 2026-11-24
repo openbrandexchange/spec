@@ -158,7 +158,7 @@ The webhook is a wake-up call and carries no catalog data; `/changes` stays the 
 
 It MUST work on every hostname the node answers on, including a brand's custom domain. Before first-run setup a node answers `503` with `setup_required`.
 
-**Capabilities** (unknown values MUST be ignored): `changes`, `products`, `by_gtin`, `renditions` (all REQUIRED for the protocol conformance profile), and OPTIONAL `exports`, `webhooks`, `usage`, `access_requests`, `ingest`, `ingest.server_renditions`, `portal`, `collections` ([5.10](#510-collections)), `collections.scheduled_release` ([5.10](#510-collections)), `documents` ([5.11](#511-collection-documents)). An endpoint of a capability that is not offered answers `501 not_implemented`.
+**Capabilities** (unknown values MUST be ignored): `changes`, `products`, `by_gtin`, `renditions` (all REQUIRED for the protocol conformance profile), and OPTIONAL `exports`, `webhooks`, `usage`, `access_requests`, `ingest`, `ingest.server_renditions`, `ingest.direct_upload` ([ingest.md §4](ingest.md#files)), `portal`, `collections` ([5.10](#510-collections)), `collections.scheduled_release` ([5.10](#510-collections)), `documents` ([5.11](#511-collection-documents)). An endpoint of a capability that is not offered answers `501 not_implemented`.
 
 Brands can be listed in public **directories** (lists of discovery URLs, no data); see [directory.md](directory.md).
 
