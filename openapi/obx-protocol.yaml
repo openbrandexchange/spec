@@ -381,6 +381,77 @@ paths:
         '429': {$ref: '#/components/responses/TooManyRequests'}
         '501': {$ref: '#/components/responses/NotImplemented'}
 
+  /obx/v1/collections/{id}/documents:
+    get:
+      tags: [Catalog]
+      operationId: listCollectionDocuments
+      summary: Documents of a released collection (capability `documents`, proposal 0009)
+      description: |
+        Every document the caller may read: one entry per kind, language and price level, each
+        with a fresh URL. A price level the caller may not get is not listed. Held collections
+        and collections outside the grant are `404`.
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200':
+          description: The caller's documents.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: {$ref: '../schemas/Document.json'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '429': {$ref: '#/components/responses/TooManyRequests'}
+        '501': {$ref: '#/components/responses/NotImplemented'}
+  /obx/v1/collections/{id}/documents/{kind}:
+    get:
+      tags: [Catalog]
+      operationId: getCollectionDocument
+      summary: The document's bytes (PDF)
+      description: |
+        Authorised by Bearer token (scope catalog:read) or by the signature of a `Document.url`.
+        Only the products and colours visible to the caller appear in it. `prices=wholesale`
+        for a caller the brand does not allow it is `403 forbidden`. Responses carry
+        `Cache-Control: private` (`no-store` for wholesale) and `Content-Disposition: attachment`.
+      security:
+        - oauth2: [catalog:read]
+        - signedUrl: []
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+        - name: kind
+          in: path
+          required: true
+          schema: {type: string, enum: [linesheet, lookbook]}
+        - name: language
+          in: query
+          required: false
+          description: A content language of the node; default its first.
+          schema: {$ref: '../schemas/Common.json#/$defs/LanguageTag'}
+        - name: prices
+          in: query
+          required: false
+          schema: {type: string, enum: [none, retail, wholesale], default: none}
+      responses:
+        '200':
+          description: The PDF.
+          headers:
+            OBX-Content-SHA256: {$ref: '#/components/headers/OBX-Content-SHA256'}
+            Cache-Control:
+              schema: {type: string}
+          content:
+            application/pdf:
+              schema: {type: string, contentMediaType: application/pdf}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '429': {$ref: '#/components/responses/TooManyRequests'}
+        '501': {$ref: '#/components/responses/NotImplemented'}
+
   /obx/v1/products:
     get:
       tags: [Catalog]
