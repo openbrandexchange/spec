@@ -83,11 +83,17 @@ The response is an [IngestResult](../schemas/IngestResult.json): `result` is `cr
 
 ## 4. <a id="files"></a>Files
 
-Bytes are content-addressed by lowercase hex **sha256**. Three ways to get bytes in:
+Bytes are content-addressed by lowercase hex **sha256**. Four ways to get bytes in (the fourth only with `ingest.direct_upload`):
 
 1. **Per asset file:** `PUT /assets/{external_id}/files/{original|web|square|thumb}` with the raw bytes and `Content-Type`. `OBX-Content-SHA256` is RECOMMENDED and verified when present (`422 checksum_mismatch`). The asset metadata must exist first.
 2. **Blobs, then metadata (atomic, RECOMMENDED for automation):** `HEAD /blobs/{sha256}` (200 = the node already has it; 404 = upload it), `PUT /blobs/{sha256}` raw bytes, then `PUT /assets/{external_id}` with `files: {"original": {"sha256": …}, "web": {"sha256": …, "width": …, "height": …}, …}`. Unknown sha256 → `422 blob_missing`. Unreferenced blobs MAY be garbage-collected after 24 hours.
 3. **Resumable multipart** for files above `limits.max_upload_bytes`: `POST /uploads` with `{sha256, bytes, content_type}` (answers the existing Blob if the node already has it), `PUT /uploads/{id}/parts/{n}` (every part except the last exactly `part_bytes`, ≥ 5 MiB, re-sending a part replaces it), `GET /uploads/{id}` to see `received_parts` and resume, `POST /uploads/{id}/complete` (checks size and sha256; missing parts `409 upload_incomplete`), `DELETE /uploads/{id}` to abort. Sessions expire after 24 hours.
+4. **Direct to storage** (capability `ingest.direct_upload`, [proposal 0008](proposals/0008-direct-upload.md), draft): the same session with `"transfer": "direct"` in `POST /uploads`. The bytes go to the node's object storage through presigned URLs, not through the node.
+   - The answer has `mode`: `single` with `put` (one URL with the `headers` its signature covers, at least `Content-Length` and `Content-Type`), or `multipart` with `part_urls` (one per part not yet received, each with its `Content-Length`). Every part except the last is exactly `part_bytes` (≥ 5 MiB), at most 10,000 parts. The node chooses the mode; a node MAY answer `single` up to `max_upload_bytes` and SHOULD answer `multipart` above it.
+   - The client sends each `PUT` with exactly those headers and MUST NOT send `Authorization` or any ingest token to a storage URL. A presigned URL is valid at least 15 minutes and at most 24 hours (`expires_at`); `GET /uploads/{id}` returns `received_parts` and fresh URLs for the missing parts, so an upload can be resumed after its URLs expired. Re-sending a part replaces it.
+   - `POST /uploads/{id}/complete` (optional body `{"parts": [{"number", "etag"}]}` with the storage's ETags): the node MUST check the size and compute the sha256 of the stored bytes itself, never trusting the client; missing parts are `409 upload_incomplete`, a size or hash mismatch is `422 checksum_mismatch`, after which the node deletes the stored object and the upload is `aborted`. On success the answer is the Blob, exactly as for method 3.
+   - `bytes` above `max_object_bytes` is `413` at `POST /uploads`; the signature binds each URL to its length, so storage refuses a larger body.
+   - **Cleanup.** `DELETE /uploads/{id}` aborts the storage upload and removes every received part. A node MUST remove the parts and objects of aborted, failed and expired uploads no later than 24 hours after they ended (a storage lifecycle rule is enough), and MUST NOT count them against a brand's storage or limits.
 
 Accepted originals: at least `image/jpeg`, `image/png`, `image/webp` (`image/tiff` OPTIONAL; see `accepted_content_types`). Nodes MUST derive width and height of JPEG, PNG and WebP originals from the file header (no decoding needed); for other types the client sends them in `files.original`. Nodes MUST enforce `max_upload_bytes` (`413`) and MUST store originals unmodified.
 
@@ -141,6 +147,7 @@ This section is normative and is what the conformance suite replays ([`fixtures/
 | single request upload (`max_upload_bytes`) | 25 MiB (RECOMMENDED 100 MiB) |
 | original via multipart (`max_object_bytes`) | 500 MiB |
 | multipart part size (`part_bytes`) | 5 MiB (RECOMMENDED 8 MiB) |
+| direct upload URL lifetime | 15 minutes (at most 24 hours) |
 | operations per batch | 1000 |
 | import upload (`max_import_bytes`) | 500 MiB |
 
