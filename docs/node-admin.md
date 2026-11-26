@@ -4,7 +4,7 @@
 
 ## Collection release
 
-[Proposal 0006](proposals/0006-collection-release.md) (draft). `GET /admin/api/catalog/collections` lists every collection record, held or released; `PUT`/`PATCH`/`DELETE /admin/api/catalog/collections/{external_id}` behave exactly like the Ingest API (same results, same change entries). The release toggle of the admin UI is a `PATCH` of `state` (`held`, `released`) or `release_at`. `portal.hold_new_collections` (default `false`) makes a product write that names a new collection create its record as `held`.
+[Proposal 0006](proposals/0006-collection-release.md) (draft). `GET /admin/api/catalog/collections` lists every collection record, held or released; `PUT`/`PATCH`/`DELETE /admin/api/catalog/collections/{external_id}` behave exactly like the Ingest API (same results, same change entries). The release toggle of the admin UI is a `PATCH` of `state` (`held`, `released`) or `release_at` (only on a node with `collections.scheduled_release`). The admin sets membership per colour by the record's external id. `portal.hold_new_collections` (default `false`) makes a product or variant write that names a new `collection_external_id` create its record as `held`.
 
 ## Portal appearance
 

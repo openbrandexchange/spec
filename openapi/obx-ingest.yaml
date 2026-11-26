@@ -424,10 +424,11 @@ paths:
       operationId: putIngestCollection
       summary: Create or replace a collection release record
       description: |
-        Holds or releases the brand's products whose `collection` equals `name` (ingest.md §3.5).
-        The brand MUST exist (422 `unknown_parent`); `name` is unique per brand among records (409 `conflict`).
-        Holding a collection writes delete entries for every visible product in it (with its
-        variants and assets); releasing it writes the upserts.
+        Holds or releases the colours whose effective `collection_external_id` is this record (ingest.md §3.5).
+        The brand MUST exist (422 `unknown_parent`); `name` is unique per brand and season among records (409 `conflict`).
+        Holding a collection writes delete entries for every visible colour in it (variants and their
+        assets, and the product when all its colours are held); releasing it writes the upserts.
+        A future `release_at` needs `collections.scheduled_release` (else 422 `validation_failed`).
       parameters:
         - $ref: '#/components/parameters/IfMatch'
       requestBody:
@@ -452,7 +453,7 @@ paths:
       tags: [Catalog]
       operationId: patchIngestCollection
       summary: Hold, release or schedule a collection (JSON merge patch)
-      description: '`{"state": "released"}` releases now; `{"state": "held"}` holds; `{"release_at": "…"}` schedules (a moment in the past releases now).'
+      description: '`{"state": "released"}` releases now; `{"state": "held"}` holds; `{"release_at": "…"}` schedules on a node with `collections.scheduled_release` (a moment in the past releases now).'
       parameters:
         - $ref: '#/components/parameters/IfMatch'
       requestBody:

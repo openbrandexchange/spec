@@ -1571,7 +1571,7 @@ components:
           items:
             type: string
             pattern: ^[a-z][a-z0-9_.-]*$
-          description: "Supported optional features. Defined: changes, products, by_gtin, renditions, exports, webhooks, usage, access_requests, ingest, ingest.server_renditions, portal, collections. Unknown values MUST be ignored."
+          description: "Supported optional features. Defined: changes, products, by_gtin, renditions, exports, webhooks, usage, access_requests, ingest, ingest.server_renditions, portal, collections, collections.scheduled_release. Unknown values MUST be ignored."
           uniqueItems: true
         brands:
           type: array
@@ -2072,7 +2072,7 @@ components:
       $id: https://openbrandexchange.com/schemas/v0.3/Collection.json
       type: object
       title: Collection
-      description: "A released collection (drop) of one brand: the products whose `collection` equals `name`. Only released collections are visible; a held collection does not exist for retailers (proposal 0006)."
+      description: "A released collection (drop) of one brand. Membership is per colour and by id: the variants (and the assets of their colour) whose effective `collection_id` is this `id`. Only released collections are visible; a held collection does not exist for retailers (proposal 0006)."
       properties:
         id:
           $ref: "#/components/schemas/Id"
@@ -2084,13 +2084,13 @@ components:
           type: string
           minLength: 1
           maxLength: 200
-          description: Equals `Product.collection` of every product in the collection (exact, case-sensitive).
+          description: Display name. Unique per brand and season among records; membership never goes by name.
         season:
           type:
             - string
             - "null"
           maxLength: 100
-          description: Informative; membership is by `name` only.
+          description: Informative; the same name may be reused in another season.
         released_at:
           $ref: "#/components/schemas/DateTime"
           description: "When the collection became visible: the scheduled `release_at`, or the time of the write that released it."
@@ -2608,6 +2608,11 @@ components:
           maxLength: 200
         color:
           $ref: "#/components/schemas/Color"
+        collection_id:
+          anyOf:
+            - $ref: "#/components/schemas/Id"
+            - type: "null"
+          description: "Proposal 0006 (optional member): the id of the released collection of this variant's colour, or null."
         size:
           type:
             - string
@@ -3018,8 +3023,13 @@ components:
           type:
             - string
             - "null"
-          description: Collection name.
+          description: Collection name (informative). Membership of a released collection is `collection_id`.
           maxLength: 200
+        collection_id:
+          anyOf:
+            - $ref: "#/components/schemas/Id"
+            - type: "null"
+          description: "Proposal 0006 (optional member): the id of the released collection the product's own colours belong to, or null. A variant's `collection_id` can differ (membership is per colour)."
         materials:
           anyOf:
             - $ref: "#/components/schemas/Materials"

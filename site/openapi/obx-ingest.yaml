@@ -673,10 +673,11 @@ paths:
       operationId: putIngestCollection
       summary: Create or replace a collection release record
       description: |
-        Holds or releases the brand's products whose `collection` equals `name` (ingest.md §3.5).
-        The brand MUST exist (422 `unknown_parent`); `name` is unique per brand among records (409 `conflict`).
-        Holding a collection writes delete entries for every visible product in it (with its
-        variants and assets); releasing it writes the upserts.
+        Holds or releases the colours whose effective `collection_external_id` is this record (ingest.md §3.5).
+        The brand MUST exist (422 `unknown_parent`); `name` is unique per brand and season among records (409 `conflict`).
+        Holding a collection writes delete entries for every visible colour in it (variants and their
+        assets, and the product when all its colours are held); releasing it writes the upserts.
+        A future `release_at` needs `collections.scheduled_release` (else 422 `validation_failed`).
       parameters:
         - $ref: "#/components/parameters/IfMatch"
       requestBody:
@@ -716,7 +717,7 @@ paths:
         - Catalog
       operationId: patchIngestCollection
       summary: Hold, release or schedule a collection (JSON merge patch)
-      description: '`{"state": "released"}` releases now; `{"state": "held"}` holds; `{"release_at": "…"}` schedules (a moment in the past releases now).'
+      description: '`{"state": "released"}` releases now; `{"state": "held"}` holds; `{"release_at": "…"}` schedules on a node with `collections.scheduled_release` (a moment in the past releases now).'
       parameters:
         - $ref: "#/components/parameters/IfMatch"
       requestBody:
@@ -2407,6 +2408,12 @@ components:
             - string
             - "null"
           maxLength: 200
+          description: Collection name as the brand writes it (informative). Membership of a collection release record is by `collection_external_id` (proposal 0006).
+        collection_external_id:
+          anyOf:
+            - $ref: "#/components/schemas/ExternalId"
+            - type: "null"
+          description: "Proposal 0006: the external id of the collection release record its colours belong to. A variant's own `collection_external_id` overrides it for that variant's colour. A value without a record holds nothing (the record may come later). null or absent: in no collection."
         materials:
           anyOf:
             - $ref: "#/components/schemas/Materials"
@@ -2605,6 +2612,11 @@ components:
           maxLength: 200
         color:
           $ref: "#/components/schemas/Color"
+        collection_external_id:
+          anyOf:
+            - $ref: "#/components/schemas/ExternalId"
+            - type: "null"
+          description: "Proposal 0006: the collection release record of this variant's colour, overriding the product's `collection_external_id`. Membership is per colour: every variant of one colour of a product MUST have the same effective collection (422 `validation_failed`, pointer `/collection_external_id`)."
         size:
           type:
             - string
@@ -2906,7 +2918,7 @@ components:
       $id: https://openbrandexchange.com/schemas/v0.3/CollectionInput.json
       type: object
       title: CollectionInput
-      description: Write model of a collection release record (Ingest API `PUT /collections/{external_id}`, admin catalog). A product whose `collection` names no record is not held.
+      description: Write model of a collection release record (Ingest API `PUT /collections/{external_id}`, admin catalog). Products and variants point at it with `collection_external_id`; a value without a record holds nothing.
       properties:
         brand_external_id:
           anyOf:
@@ -2917,7 +2929,7 @@ components:
           type: string
           minLength: 1
           maxLength: 200
-          description: The `collection` value of its products. Unique per brand among records (409 `conflict`).
+          description: Display name. Unique per brand and season among records (409 `conflict`); not used for membership.
         season:
           type:
             - string
@@ -2933,7 +2945,7 @@ components:
           anyOf:
             - $ref: "#/components/schemas/DateTime"
             - type: "null"
-          description: Scheduled release. While `state` is `held` and this moment has passed, the node releases the collection (state becomes `released`, `released_at` = this value). null = no schedule.
+          description: "Scheduled release, a MAY of proposal 0006 (capability `collections.scheduled_release`). A node that offers it: while `state` is `held` and this moment has passed, it releases the collection (state becomes `released`, `released_at` = this value). A node without it answers a future value with 422 `validation_failed` (pointer `/release_at`); a value in the past releases now on every node. null = no schedule."
         released_at:
           anyOf:
             - $ref: "#/components/schemas/DateTime"

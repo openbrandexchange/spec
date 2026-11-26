@@ -3,7 +3,7 @@
   "$id": "https://openbrandexchange.com/schemas/v0.3/CollectionInput.json",
   "type": "object",
   "title": "CollectionInput",
-  "description": "Write model of a collection release record (Ingest API `PUT /collections/{external_id}`, admin catalog). A product whose `collection` names no record is not held.",
+  "description": "Write model of a collection release record (Ingest API `PUT /collections/{external_id}`, admin catalog). Products and variants point at it with `collection_external_id`; a value without a record holds nothing.",
   "properties": {
     "brand_external_id": {
       "anyOf": [
@@ -20,7 +20,7 @@
       "type": "string",
       "minLength": 1,
       "maxLength": 200,
-      "description": "The `collection` value of its products. Unique per brand among records (409 `conflict`)."
+      "description": "Display name. Unique per brand and season among records (409 `conflict`); not used for membership."
     },
     "season": {
       "type": [
@@ -46,7 +46,7 @@
           "type": "null"
         }
       ],
-      "description": "Scheduled release. While `state` is `held` and this moment has passed, the node releases the collection (state becomes `released`, `released_at` = this value). null = no schedule."
+      "description": "Scheduled release, a MAY of proposal 0006 (capability `collections.scheduled_release`). A node that offers it: while `state` is `held` and this moment has passed, it releases the collection (state becomes `released`, `released_at` = this value). A node without it answers a future value with 422 `validation_failed` (pointer `/release_at`); a value in the past releases now on every node. null = no schedule."
     },
     "released_at": {
       "anyOf": [

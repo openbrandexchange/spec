@@ -1,18 +1,24 @@
 {"op":"upsert","kind":"collection","external_id":"solstice","data":{"brand_external_id":"maison-noor","name":"Solstice","season":"SS27","state":"held"}}
-{"op":"upsert","kind":"product","external_id":"MN-7001","data":{"brand_external_id":"maison-noor","style_number":"MN-7001","name":{"en":"Solstice Linen Shirt","nl":"Solstice linnen blouse"},"item_type":"shirt","target_group":"women","season":"SS27","collection":"Solstice","materials":[{"part":{"code":"main"},"fibers":[{"material":{"code":"linen"},"percentage":100}]}],"care":[{"code":"wash_30"}]}}
+{"op":"upsert","kind":"product","external_id":"MN-7001","data":{"brand_external_id":"maison-noor","style_number":"MN-7001","name":{"en":"Solstice Linen Shirt","nl":"Solstice linnen blouse"},"item_type":"shirt","target_group":"women","season":"SS27","collection":"Solstice","collection_external_id":"solstice","materials":[{"part":{"code":"main"},"fibers":[{"material":{"code":"linen"},"percentage":100}]}],"care":[{"code":"wash_30"}]}}
 {"op":"upsert","kind":"variant","external_id":"MN-7001-SND-M","data":{"product_external_id":"MN-7001","gtin":"2007001001010","color":{"code":"SND","name":{"en":"Sand","nl":"Zand"}},"size":"M"}}
 {"op":"upsert","kind":"asset","external_id":"MN-7001_SND_1","data":{"product_external_id":"MN-7001","color_code":"SND","role":"packshot","view":"front","position":1,"files":{"original":{"sha256":"5239e5c1f68ea623d2e6f57e249080855ba0b8322c452f880170a017c72452f0"}}}}
-{"op":"upsert","kind":"product","external_id":"MN-7002","data":{"brand_external_id":"maison-noor","style_number":"MN-7002","name":{"en":"Solstice Linen Trousers","nl":"Solstice linnen broek"},"item_type":"trousers","target_group":"women","season":"SS27","collection":"Solstice","materials":[{"part":{"code":"main"},"fibers":[{"material":{"code":"linen"},"percentage":100}]}],"care":[{"code":"wash_30"}],"status":"unpublished"}}
+{"op":"upsert","kind":"product","external_id":"MN-7002","data":{"brand_external_id":"maison-noor","style_number":"MN-7002","name":{"en":"Solstice Linen Trousers","nl":"Solstice linnen broek"},"item_type":"trousers","target_group":"women","season":"SS27","collection":"Solstice","collection_external_id":"solstice","materials":[{"part":{"code":"main"},"fibers":[{"material":{"code":"linen"},"percentage":100}]}],"care":[{"code":"wash_30"}],"status":"unpublished"}}
 {"op":"patch","kind":"collection","external_id":"solstice","data":{"state":"released"}}
 {"op":"patch","kind":"collection","external_id":"solstice","data":{"state":"released"}}
 {"op":"patch","kind":"collection","external_id":"solstice","data":{"state":"held"}}
-{"op":"patch","kind":"product","external_id":"MN-7001","data":{"collection":"Equinox"}}
-{"op":"patch","kind":"product","external_id":"MN-7001","data":{"collection":"Solstice"}}
+{"op":"patch","kind":"product","external_id":"MN-7001","data":{"collection_external_id":"equinox"}}
+{"op":"patch","kind":"product","external_id":"MN-7001","data":{"collection_external_id":"solstice"}}
 {"op":"patch","kind":"collection","external_id":"solstice","data":{"release_at":"2026-01-01T09:00:00Z"}}
 {"op":"patch","kind":"collection","external_id":"solstice","data":{"state":"held","release_at":"2099-01-01T09:00:00Z"}}
 {"op":"publish","kind":"collection","external_id":"solstice"}
-{"op":"upsert","kind":"collection","external_id":"solstice-copy","data":{"brand_external_id":"maison-noor","name":"Solstice","state":"released"}}
+{"op":"upsert","kind":"collection","external_id":"solstice-copy","data":{"brand_external_id":"maison-noor","name":"Solstice","season":"SS27","state":"released"}}
 {"op":"upsert","kind":"collection","external_id":"riviera-27","data":{"brand_external_id":"noor-atelier-unknown","name":"Riviera","state":"held"}}
 {"op":"delete","kind":"collection","external_id":"solstice"}
 {"op":"upsert","kind":"collection","external_id":"equinox","data":{"brand_external_id":"maison-noor","name":"Equinox","season":"AW27"}}
 {"op":"delete","kind":"collection","external_id":"equinox"}
+{"op":"upsert","kind":"collection","external_id":"riviera","data":{"brand_external_id":"maison-noor","name":"Riviera","season":"SS27","state":"held"}}
+{"op":"upsert","kind":"variant","external_id":"MN-7001-OLV-M","data":{"product_external_id":"MN-7001","gtin":"2007001001027","color":{"code":"OLV","name":{"en":"Olive","nl":"Olijf"}},"collection_external_id":"riviera","size":"M"}}
+{"op":"upsert","kind":"asset","external_id":"MN-7001_OLV_1","data":{"product_external_id":"MN-7001","color_code":"OLV","role":"packshot","view":"front","position":1,"files":{"original":{"sha256":"76bf426f7368ac7ed36a88723a9516137d7be5445a54de7081e96c679d8ece85"}}}}
+{"op":"upsert","kind":"variant","external_id":"MN-7001-SND-L","data":{"product_external_id":"MN-7001","gtin":"2007001001034","color":{"code":"SND","name":{"en":"Sand","nl":"Zand"}},"collection_external_id":"riviera","size":"L"}}
+{"op":"patch","kind":"collection","external_id":"riviera","data":{"state":"released"}}
+{"op":"patch","kind":"collection","external_id":"riviera","data":{"state":"held"}}

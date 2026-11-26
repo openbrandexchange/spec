@@ -1,5 +1,5 @@
 {
-  "description": "Live /changes entries (after draining the initial snapshot) produced by replaying script.ndjson in order on a fresh node whose only brand is the setup brand maison-noor, read by a retailer client without brand restriction. after_op = 0-based index of the operation that produced the entry. Runs separately from fixtures/ingest (proposal 0006).",
+  "description": "Live /changes entries (after draining the initial snapshot) produced by replaying script.ndjson in order on a fresh node whose only brand is the setup brand maison-noor, read by a retailer client without brand restriction. after_op = 0-based index of the operation that produced the entry. Membership is per colour and by collection_external_id. Runs separately from fixtures/ingest (proposal 0006).",
   "changes": [
     {
       "after_op": 5,
@@ -162,6 +162,42 @@
       "type": "collection",
       "op": "delete",
       "external_id": "equinox"
+    },
+    {
+      "after_op": 22,
+      "type": "collection",
+      "op": "upsert",
+      "external_id": "riviera"
+    },
+    {
+      "after_op": 22,
+      "type": "variant",
+      "op": "upsert",
+      "external_id": "MN-7001-OLV-M"
+    },
+    {
+      "after_op": 22,
+      "type": "asset",
+      "op": "upsert",
+      "external_id": "MN-7001_OLV_1"
+    },
+    {
+      "after_op": 23,
+      "type": "collection",
+      "op": "delete",
+      "external_id": "riviera"
+    },
+    {
+      "after_op": 23,
+      "type": "variant",
+      "op": "delete",
+      "external_id": "MN-7001-OLV-M"
+    },
+    {
+      "after_op": 23,
+      "type": "asset",
+      "op": "delete",
+      "external_id": "MN-7001_OLV_1"
     }
   ]
 }

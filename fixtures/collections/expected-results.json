@@ -127,5 +127,48 @@
     "kind": "collection",
     "external_id": "equinox",
     "result": "deleted"
+  },
+  {
+    "index": 18,
+    "op": "upsert",
+    "kind": "collection",
+    "external_id": "riviera",
+    "result": "created"
+  },
+  {
+    "index": 19,
+    "op": "upsert",
+    "kind": "variant",
+    "external_id": "MN-7001-OLV-M",
+    "result": "created"
+  },
+  {
+    "index": 20,
+    "op": "upsert",
+    "kind": "asset",
+    "external_id": "MN-7001_OLV_1",
+    "result": "created"
+  },
+  {
+    "index": 21,
+    "op": "upsert",
+    "kind": "variant",
+    "external_id": "MN-7001-SND-L",
+    "result": "error",
+    "obx_error": "validation_failed"
+  },
+  {
+    "index": 22,
+    "op": "patch",
+    "kind": "collection",
+    "external_id": "riviera",
+    "result": "updated"
+  },
+  {
+    "index": 23,
+    "op": "patch",
+    "kind": "collection",
+    "external_id": "riviera",
+    "result": "updated"
   }
 ]

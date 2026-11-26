@@ -3,7 +3,7 @@
   "$id": "https://openbrandexchange.com/schemas/v0.3/Collection.json",
   "type": "object",
   "title": "Collection",
-  "description": "A released collection (drop) of one brand: the products whose `collection` equals `name`. Only released collections are visible; a held collection does not exist for retailers (proposal 0006).",
+  "description": "A released collection (drop) of one brand. Membership is per colour and by id: the variants (and the assets of their colour) whose effective `collection_id` is this `id`. Only released collections are visible; a held collection does not exist for retailers (proposal 0006).",
   "properties": {
     "id": {
       "$ref": "Common.json#/$defs/Id"
@@ -18,7 +18,7 @@
       "type": "string",
       "minLength": 1,
       "maxLength": 200,
-      "description": "Equals `Product.collection` of every product in the collection (exact, case-sensitive)."
+      "description": "Display name. Unique per brand and season among records; membership never goes by name."
     },
     "season": {
       "type": [
@@ -26,7 +26,7 @@
         "null"
       ],
       "maxLength": 100,
-      "description": "Informative; membership is by `name` only."
+      "description": "Informative; the same name may be reused in another season."
     },
     "released_at": {
       "$ref": "Common.json#/$defs/DateTime",
