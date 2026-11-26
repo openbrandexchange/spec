@@ -1698,6 +1698,7 @@ components:
         - access_revoked
         - insufficient_scope
         - forbidden
+        - url_expired
         - not_found
         - method_not_allowed
         - conflict
