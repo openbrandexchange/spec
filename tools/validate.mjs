@@ -177,6 +177,17 @@ for (const file of readdirSync(expDir).sort()) {
   } else if (file.startsWith("asset-")) check("Asset", doc, file);
 }
 {
+  // Collection documents (proposal 0009): who gets which price level.
+  const levels = readJSON(join(schemaDir, "Document.json")).properties.prices.enum;
+  for (const c of readJSON(join(expDir, "document-access.json")).cases) {
+    checked++;
+    if (!levels.includes(c.prices)) fail("expected/document-access.json", `unknown prices ${c.prices}`);
+    if (![200, 401, 403, 404].includes(c.get)) fail("expected/document-access.json", `unexpected status ${c.get}`);
+    if (c.list !== (c.get === 200)) fail("expected/document-access.json", `${c.caller} / ${c.prices}: listed exactly when it can be read`);
+    if (c.prices === "wholesale" && c.get === 200 && !c.caller.includes("signed-in portal user")) fail("expected/document-access.json", `${c.caller}: wholesale only for logged-in retailers, never an API client`);
+  }
+}
+{
   const lookup = substitute(readJSON(join(expDir, "gtin-lookup.json")));
   lookup.products = lookup.products.map((p) => expectedProducts[p.slice(10, -2)]).filter(Boolean);
   check("GtinLookupResult", lookup, "gtin-lookup.json");
