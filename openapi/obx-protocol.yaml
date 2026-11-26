@@ -329,6 +329,58 @@ paths:
         '404': {$ref: '#/components/responses/NotFound'}
         '429': {$ref: '#/components/responses/TooManyRequests'}
 
+  /obx/v1/collections:
+    get:
+      tags: [Catalog]
+      operationId: listCollections
+      summary: Released collections visible to the caller (capability `collections`)
+      description: |
+        Every released collection of a visible brand, newest `released_at` first, then by `id`.
+        Held collections are never listed. Not paginated (a node has few collections);
+        a node MAY answer at most 1000. Proposal 0006.
+      parameters:
+        - name: brand_id
+          in: query
+          required: false
+          schema: {$ref: '../schemas/Common.json#/$defs/Id'}
+      responses:
+        '200':
+          description: Released collections.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: {$ref: '../schemas/Collection.json'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '429': {$ref: '#/components/responses/TooManyRequests'}
+        '501': {$ref: '#/components/responses/NotImplemented'}
+  /obx/v1/collections/{id}:
+    get:
+      tags: [Catalog]
+      operationId: getCollection
+      summary: One released collection
+      description: A held collection, or one of a brand outside the grant, is `404 not_found`.
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200':
+          description: The collection.
+          content:
+            application/json:
+              schema: {$ref: '../schemas/Collection.json'}
+              examples:
+                released:
+                  summary: A released collection
+                  value: {$ref: '../fixtures/examples/Collection.solstice.json'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '429': {$ref: '#/components/responses/TooManyRequests'}
+        '501': {$ref: '#/components/responses/NotImplemented'}
+
   /obx/v1/products:
     get:
       tags: [Catalog]

@@ -652,6 +652,104 @@ paths:
           $ref: "#/components/responses/UnsupportedMediaType"
         "422":
           $ref: "#/components/responses/ValidationFailed"
+  /collections/{external_id}:
+    parameters:
+      - $ref: "#/components/parameters/ExternalId"
+    get:
+      tags:
+        - Catalog
+      operationId: getIngestCollection
+      summary: Read a collection release record (proposal 0006)
+      responses:
+        "200":
+          $ref: "#/components/responses/Record"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      tags:
+        - Catalog
+      operationId: putIngestCollection
+      summary: Create or replace a collection release record
+      description: |
+        Holds or releases the colours whose effective `collection_external_id` is this record (ingest.md §3.5).
+        The brand MUST exist (422 `unknown_parent`); `name` is unique per brand and season among records (409 `conflict`).
+        Holding a collection writes delete entries for every visible colour in it (variants and their
+        assets, and the product when all its colours are held); releasing it writes the upserts.
+        A future `release_at` needs `collections.scheduled_release` (else 422 `validation_failed`).
+      parameters:
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CollectionInput"
+            examples:
+              scheduled:
+                summary: Held until a scheduled release
+                value:
+                  brand_external_id: maison-noor
+                  name: Solstice
+                  season: SS27
+                  state: held
+                  release_at: 2027-01-15T09:00:00Z
+      responses:
+        "200":
+          $ref: "#/components/responses/Result"
+        "201":
+          $ref: "#/components/responses/ResultCreated"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "412":
+          $ref: "#/components/responses/PreconditionFailed"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+    patch:
+      tags:
+        - Catalog
+      operationId: patchIngestCollection
+      summary: Hold, release or schedule a collection (JSON merge patch)
+      description: '`{"state": "released"}` releases now; `{"state": "held"}` holds; `{"release_at": "…"}` schedules on a node with `collections.scheduled_release` (a moment in the past releases now).'
+      parameters:
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/merge-patch+json:
+            schema:
+              type: object
+      responses:
+        "200":
+          $ref: "#/components/responses/Result"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+    delete:
+      tags:
+        - Catalog
+      operationId: deleteIngestCollection
+      summary: Delete a collection release record
+      description: Its products are no longer held (they become visible when nothing else hides them). Needs `ingest:delete`.
+      responses:
+        "200":
+          $ref: "#/components/responses/Result"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
   /blobs/{sha256}:
     parameters:
       - name: sha256
@@ -1714,6 +1812,7 @@ components:
             - product
             - variant
             - asset
+            - collection
         id:
           $ref: "#/components/schemas/Id"
         external_id:
@@ -1842,6 +1941,7 @@ components:
             - product
             - variant
             - asset
+            - collection
         external_id:
           $ref: "#/components/schemas/ExternalId"
         result:
@@ -2308,6 +2408,12 @@ components:
             - string
             - "null"
           maxLength: 200
+          description: Collection name as the brand writes it (informative). Membership of a collection release record is by `collection_external_id` (proposal 0006).
+        collection_external_id:
+          anyOf:
+            - $ref: "#/components/schemas/ExternalId"
+            - type: "null"
+          description: "Proposal 0006: the external id of the collection release record its colours belong to. A variant's own `collection_external_id` overrides it for that variant's colour. A value without a record holds nothing (the record may come later). null or absent: in no collection."
         materials:
           anyOf:
             - $ref: "#/components/schemas/Materials"
@@ -2506,6 +2612,11 @@ components:
           maxLength: 200
         color:
           $ref: "#/components/schemas/Color"
+        collection_external_id:
+          anyOf:
+            - $ref: "#/components/schemas/ExternalId"
+            - type: "null"
+          description: "Proposal 0006: the collection release record of this variant's colour, overriding the product's `collection_external_id`. Membership is per colour: every variant of one colour of a product MUST have the same effective collection (422 `validation_failed`, pointer `/collection_external_id`)."
         size:
           type:
             - string
@@ -2802,6 +2913,50 @@ components:
       additionalProperties: false
       patternProperties:
         ^x-[a-z0-9]+-[a-z0-9_-]+$: true
+    CollectionInput:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      $id: https://openbrandexchange.com/schemas/v0.3/CollectionInput.json
+      type: object
+      title: CollectionInput
+      description: Write model of a collection release record (Ingest API `PUT /collections/{external_id}`, admin catalog). Products and variants point at it with `collection_external_id`; a value without a record holds nothing.
+      properties:
+        brand_external_id:
+          anyOf:
+            - $ref: "#/components/schemas/ExternalId"
+            - type: "null"
+          description: MAY be omitted when the node has exactly one brand.
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: Display name. Unique per brand and season among records (409 `conflict`); not used for membership.
+        season:
+          type:
+            - string
+            - "null"
+          maxLength: 100
+        state:
+          type: string
+          enum:
+            - held
+            - released
+          description: "held: the collection's products, their variants and assets are not visible to any retailer. released: visible. Omitted on create: `held` when `release_at` is in the future, else `released`; omitted on replace: kept."
+        release_at:
+          anyOf:
+            - $ref: "#/components/schemas/DateTime"
+            - type: "null"
+          description: "Scheduled release, a MAY of proposal 0006 (capability `collections.scheduled_release`). A node that offers it: while `state` is `held` and this moment has passed, it releases the collection (state becomes `released`, `released_at` = this value). A node without it answers a future value with 422 `validation_failed` (pointer `/release_at`); a value in the past releases now on every node. null = no schedule."
+        released_at:
+          anyOf:
+            - $ref: "#/components/schemas/DateTime"
+            - type: "null"
+          readOnly: true
+          description: "Read-only (Ingest GET): when the collection last became visible, null while it never was. Ignored on write."
+      required:
+        - name
+      additionalProperties: false
+      patternProperties:
+        ^x-[a-z0-9]+-[a-z0-9_-]+$: true
     Blob:
       $schema: https://json-schema.org/draft/2020-12/schema
       $id: https://openbrandexchange.com/schemas/v0.3/Blob.json
@@ -2901,7 +3056,7 @@ components:
             - delete
             - publish
             - unpublish
-          description: upsert = PUT (create or replace); patch = JSON merge patch; publish/unpublish = patch of status.
+          description: upsert = PUT (create or replace); patch = JSON merge patch; publish/unpublish = patch of status. publish/unpublish do not apply to kind collection (422 validation_failed); patch its state instead.
         kind:
           type: string
           enum:
@@ -2909,11 +3064,12 @@ components:
             - product
             - variant
             - asset
+            - collection
         external_id:
           $ref: "#/components/schemas/ExternalId"
         data:
           type: object
-          description: "upsert: BrandInput|ProductInput|VariantInput|AssetInput by kind. patch: merge patch of that. Absent for delete/publish/unpublish."
+          description: "upsert: BrandInput|ProductInput|VariantInput|AssetInput|CollectionInput by kind. patch: merge patch of that. Absent for delete/publish/unpublish."
         if_match:
           type:
             - string

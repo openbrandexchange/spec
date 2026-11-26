@@ -158,7 +158,7 @@ The webhook is a wake-up call and carries no catalog data; `/changes` stays the 
 
 It MUST work on every hostname the node answers on, including a brand's custom domain. Before first-run setup a node answers `503` with `setup_required`.
 
-**Capabilities** (unknown values MUST be ignored): `changes`, `products`, `by_gtin`, `renditions` (all REQUIRED for the protocol conformance profile), and OPTIONAL `exports`, `webhooks`, `usage`, `access_requests`, `ingest`, `ingest.server_renditions`, `portal`. An endpoint of a capability that is not offered answers `501 not_implemented`.
+**Capabilities** (unknown values MUST be ignored): `changes`, `products`, `by_gtin`, `renditions` (all REQUIRED for the protocol conformance profile), and OPTIONAL `exports`, `webhooks`, `usage`, `access_requests`, `ingest`, `ingest.server_renditions`, `portal`, `collections` ([5.10](#510-collections)), `collections.scheduled_release` ([5.10](#510-collections)). An endpoint of a capability that is not offered answers `501 not_implemented`.
 
 Brands can be listed in public **directories** (lists of discovery URLs, no data); see [directory.md](directory.md).
 
@@ -274,11 +274,11 @@ An object is **visible** to a retailer when all of the following hold:
 
 1. the node is set up, the retailer is active and the client is not revoked;
 2. **brand**: status `published` and in the retailer's grant;
-3. **product**: status `published` and its brand is visible;
-4. **variant**: status `published` and its product is visible;
-5. **asset**: status `published`, its product is visible, its original and all renditions exist, and `rights.expires_at` is `null` or in the future.
+3. **product**: status `published`, its brand is visible, and not all of its colours are held ([5.10](#510-collections));
+4. **variant**: status `published`, its product is visible and its colour is not held;
+5. **asset**: status `published`, its product is visible, its colour is not held (an asset of all colours: none of the conditions), its original and all renditions exist, and `rights.expires_at` is `null` or in the future.
 
-Everything the protocol returns (lists, lookups, `/changes`, exports, renditions) follows this single rule. An object that is not visible is answered with `404 not_found`, never `403` (no existence leak).
+Everything the protocol returns (lists, lookups, `/changes`, exports, renditions) follows this single rule. A node that does not hold collections treats the "held" conditions of rules 3 to 5 as always met. An object that is not visible is answered with `404 not_found`, never `403` (no existence leak).
 
 ### 5.9 Article data
 
@@ -391,21 +391,33 @@ What EU law requires a seller to show, and where OBX carries it. Only the first 
 
 Regulation (EU) No 1007/2011 applies to textile products, which include products made of at least 80 % textile fibres by weight. Measurements, features, colour family and the second size are product information without an EU labelling requirement. Imports and the Ingest API warn when a product misses what its label needs (`fibre_composition_missing`, `animal_origin_unknown`, `footwear_materials_missing`, `fibre_percentages_not_100`, and `material_unknown` for a material code outside the vocabulary; [import-format.md rule 10](import-format.md#label-completeness)); a warning never blocks publishing.
 
+### 5.10 Collections
+
+Added by [proposal 0006](proposals/0006-collection-release.md) (draft, target 0.4). A brand can hold a **collection** (a drop) back until it is released, so retailers see it all at once.
+
+- **Membership is per colour, by id.** A collection is a record of one brand with an `external_id` (the key) and a `name` (for people; unique per brand and season, so `Essentials` can return every season). A product and a variant point at a record with `collection_external_id` in the Ingest API; a variant's own value wins over its product's, and every variant of one colour of a product MUST have the same effective value, so a style can have one colour in one drop and another colour in the next. An asset of a colour belongs to that colour's collection (the product's when the product has no variant of the colour); an asset of all colours belongs to none. `Product.collection` stays a free, informative string and never decides membership. A value that names no record, or `null`, holds nothing. Read models carry the released collection as `collection_id` on the product and the variant.
+- **Held** (`state: held`): the variants of the held colours and the assets of those colours are not visible (§5.8 rules 4 and 5); a product is not visible when all of its colours are held (a product without variants: when its own collection is held, rule 3). This is stronger than an embargo on an asset (§5.6): an embargoed asset is delivered and may not be shown; a held product is not delivered at all, in no list, lookup, export, rendition or `/changes` `data`, and answers `404 not_found`. A node MUST NOT reveal that a held collection exists to a retailer.
+- **Released** (`state: released`): its colours follow the other rules of §5.8.
+- **Scheduled release is a MAY.** A node MAY offer `release_at` (capability `collections.scheduled_release`). A node that offers it MUST NOT make a held collection visible before `release_at`, SHOULD within 60 seconds after it and MUST within one hour; `released_at` is then `release_at`, so every node reports the same moment. A node without it refuses a future `release_at` (`422 validation_failed`), so a brand never believes a drop is scheduled when it is not; a `release_at` in the past releases at once on every node.
+- **Reading.** With the capability `collections`, `GET /obx/v1/collections` lists the released collections of the visible brands ([Collection](../schemas/Collection.json): `id`, `external_id`, `brand_id`, `name`, `season`, `released_at`, `updated_at`; newest `released_at` first) and `GET /obx/v1/collections/{id}` reads one. A collection of a visible brand is visible when it is released, also before any product is in it.
+- **Change feed.** A visible collection has `type: collection` entries ([6.3](#63-ordering-within-one-write)). Releasing writes an `upsert` for the collection, then, per product with a colour in it (products by `external_id`), the entries of what becomes visible: the product when it was hidden, the variants and assets of the released colours; holding writes the `delete` entries in the same order. The collection `upsert` is the signal a consumer (or a buyer notification) can act on; older clients skip the unknown type and still get the products.
+- **Not visible to retailers, but to the brand.** How records are created and changed is the node's business ([ingest.md §3.5](ingest.md#35-collections), Node Admin API). A node MAY let brand staff preview held collections in its admin; that preview is never reachable with a retailer's session or client.
+
 ## 6. The change feed
 
 `GET /obx/v1/changes?cursor=<opaque>&limit=<1..500, default 100>` returns a [ChangesPage](../schemas/ChangesPage.json): `changes`, `next_cursor` (always present), `has_more` and `phase`.
 
-Each [Change](../schemas/Change.json) has `seq`, `type` (`brand`, `product`, `variant`, `asset`, `grant`), `op` (`upsert`, `delete`), `id`, `external_id`, `brand_id`, `product_id` (variants and assets), `updated_at`, and on upserts `data`: the **current** representation of the object (products without `variants`/`assets`).
+Each [Change](../schemas/Change.json) has `seq`, `type` (`brand`, `collection`, `product`, `variant`, `asset`, `grant`), `op` (`upsert`, `delete`), `id`, `external_id`, `brand_id`, `product_id` (variants and assets), `updated_at`, and on upserts `data`: the **current** representation of the object (products without `variants`/`assets`).
 
 ### 6.1 Snapshot, then live
-- **Without a cursor** the node starts a **snapshot**: one `upsert` for every object currently visible to the caller, ordered brands, products, variants, assets (by `id` within a type), `phase: "snapshot"`. The node remembers the highest `seq` at the start (the high-water mark).
+- **Without a cursor** the node starts a **snapshot**: one `upsert` for every object currently visible to the caller, ordered brands, collections, products, variants, assets (by `id` within a type), `phase: "snapshot"`. The node remembers the highest `seq` at the start (the high-water mark).
 - When the snapshot is exhausted the feed continues **live** from the high-water mark. Pages never mix phases; the last snapshot page has `has_more: true`, so the first page with `phase: "live"` tells the consumer the snapshot is complete. A consumer MAY then delete local objects from this node that it did not see during the snapshot (mark and sweep). Snapshot entries carry the object's latest `seq`.
 - **With a cursor** the node returns entries after it. Entries appear in `seq` order.
 - While `has_more` is `true`, request the next page immediately with `next_cursor` ([§2.1](#pagination)). When `has_more` is `false`, poll again later with `next_cursor` (RECOMMENDED no more than once per 60 s, or immediately on a `changes.available` webhook, [§2.2](#notifications)).
 
 ### 6.2 What a consumer sees
 - Only entries of brands in its grant, and its own `grant` entries.
-- `delete` entries (tombstones) for every transition from visible to not visible: deleted, unpublished, a parent hidden, rights expired, removed from the grant scope via brand unpublish. Deletes carry no `data`. A consumer MUST ignore deletes for ids it does not know.
+- `delete` entries (tombstones) for every transition from visible to not visible: deleted, unpublished, a parent hidden, its collection held, rights expired, removed from the grant scope via brand unpublish. Deletes carry no `data`. A consumer MUST ignore deletes for ids it does not know.
 - An `upsert` entry whose object is not visible at read time is **omitted** (a later delete entry covers it). So an upsert always carries data of a visible object.
 - **At-least-once:** the same object may appear several times; `data` is always current and `updated_at`/`sha256` let consumers be idempotent. Snapshot entries for objects changed during the snapshot may repeat in the live phase.
 - Consumers MUST tolerate a child entry (variant, asset) whose parent they have not seen yet.
@@ -429,6 +441,7 @@ A `grant` entry (`data`: the new Grant) with `resync: true` means the visible se
 | `GET /obx/v1/products?ids=&brand_id=&updated_since=&cursor=&limit=` | ProductDetail, keyset pagination by `id`, `limit` ≤ 100 (default 25). For synchronisation use `/changes`. |
 | `GET /obx/v1/products/{id}` | ProductDetail, `ETag`, `If-None-Match` |
 | `GET\|POST /obx/v1/products:by-gtin` | GTIN lookup (below) |
+| `GET /obx/v1/collections`, `GET /obx/v1/collections/{id}` | released collections (capability `collections`, [5.10](#510-collections)) |
 | `GET /obx/v1/assets/{id}` | one Asset (fresh signed URLs) |
 | `GET /obx/v1/assets/{id}/renditions/{name}` | bytes (section 5.5) |
 

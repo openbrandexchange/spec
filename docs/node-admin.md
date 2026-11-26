@@ -2,6 +2,10 @@
 
 **Non-normative.** The Node Admin + Portal API ([`openapi/node-admin.yaml`](../openapi/node-admin.yaml)) is the contract between the shared [admin-ui](https://github.com/openbrandexchange/admin-ui) and the reference nodes. It is not part of the OBX standard and is versioned with the nodes and the UI ([versioning](versioning.md)). The OpenAPI file is complete; this page explains the parts that need more than a field list.
 
+## Collection release
+
+[Proposal 0006](proposals/0006-collection-release.md) (draft). `GET /admin/api/catalog/collections` lists every collection record, held or released; `PUT`/`PATCH`/`DELETE /admin/api/catalog/collections/{external_id}` behave exactly like the Ingest API (same results, same change entries). The release toggle of the admin UI is a `PATCH` of `state` (`held`, `released`) or `release_at` (only on a node with `collections.scheduled_release`). The admin sets membership per colour by the record's external id. `portal.hold_new_collections` (default `false`) makes a product or variant write that names a new `collection_external_id` create its record as `held`.
+
 ## Portal appearance
 
 A brand can make its portal look like its own showroom without code: colours, fonts, a login page with its own image and a start page built from blocks. Everything lives in `branding` of `GET`/`PATCH /admin/api/settings` (schema `BrandingSettings`), a JSON merge patch like the other settings. The admin UI previews from the settings it is editing; there is no preview endpoint. The protocol (`/obx/v1`) does not change.

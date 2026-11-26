@@ -1,0 +1,174 @@
+[
+  {
+    "index": 0,
+    "op": "upsert",
+    "kind": "collection",
+    "external_id": "solstice",
+    "result": "created"
+  },
+  {
+    "index": 1,
+    "op": "upsert",
+    "kind": "product",
+    "external_id": "MN-7001",
+    "result": "created"
+  },
+  {
+    "index": 2,
+    "op": "upsert",
+    "kind": "variant",
+    "external_id": "MN-7001-SND-M",
+    "result": "created"
+  },
+  {
+    "index": 3,
+    "op": "upsert",
+    "kind": "asset",
+    "external_id": "MN-7001_SND_1",
+    "result": "created"
+  },
+  {
+    "index": 4,
+    "op": "upsert",
+    "kind": "product",
+    "external_id": "MN-7002",
+    "result": "created"
+  },
+  {
+    "index": 5,
+    "op": "patch",
+    "kind": "collection",
+    "external_id": "solstice",
+    "result": "updated"
+  },
+  {
+    "index": 6,
+    "op": "patch",
+    "kind": "collection",
+    "external_id": "solstice",
+    "result": "unchanged"
+  },
+  {
+    "index": 7,
+    "op": "patch",
+    "kind": "collection",
+    "external_id": "solstice",
+    "result": "updated"
+  },
+  {
+    "index": 8,
+    "op": "patch",
+    "kind": "product",
+    "external_id": "MN-7001",
+    "result": "updated"
+  },
+  {
+    "index": 9,
+    "op": "patch",
+    "kind": "product",
+    "external_id": "MN-7001",
+    "result": "updated"
+  },
+  {
+    "index": 10,
+    "op": "patch",
+    "kind": "collection",
+    "external_id": "solstice",
+    "result": "updated"
+  },
+  {
+    "index": 11,
+    "op": "patch",
+    "kind": "collection",
+    "external_id": "solstice",
+    "result": "updated"
+  },
+  {
+    "index": 12,
+    "op": "publish",
+    "kind": "collection",
+    "external_id": "solstice",
+    "result": "error",
+    "obx_error": "validation_failed"
+  },
+  {
+    "index": 13,
+    "op": "upsert",
+    "kind": "collection",
+    "external_id": "solstice-copy",
+    "result": "error",
+    "obx_error": "conflict"
+  },
+  {
+    "index": 14,
+    "op": "upsert",
+    "kind": "collection",
+    "external_id": "riviera-27",
+    "result": "error",
+    "obx_error": "unknown_parent"
+  },
+  {
+    "index": 15,
+    "op": "delete",
+    "kind": "collection",
+    "external_id": "solstice",
+    "result": "deleted"
+  },
+  {
+    "index": 16,
+    "op": "upsert",
+    "kind": "collection",
+    "external_id": "equinox",
+    "result": "created"
+  },
+  {
+    "index": 17,
+    "op": "delete",
+    "kind": "collection",
+    "external_id": "equinox",
+    "result": "deleted"
+  },
+  {
+    "index": 18,
+    "op": "upsert",
+    "kind": "collection",
+    "external_id": "riviera",
+    "result": "created"
+  },
+  {
+    "index": 19,
+    "op": "upsert",
+    "kind": "variant",
+    "external_id": "MN-7001-OLV-M",
+    "result": "created"
+  },
+  {
+    "index": 20,
+    "op": "upsert",
+    "kind": "asset",
+    "external_id": "MN-7001_OLV_1",
+    "result": "created"
+  },
+  {
+    "index": 21,
+    "op": "upsert",
+    "kind": "variant",
+    "external_id": "MN-7001-SND-L",
+    "result": "error",
+    "obx_error": "validation_failed"
+  },
+  {
+    "index": 22,
+    "op": "patch",
+    "kind": "collection",
+    "external_id": "riviera",
+    "result": "updated"
+  },
+  {
+    "index": 23,
+    "op": "patch",
+    "kind": "collection",
+    "external_id": "riviera",
+    "result": "updated"
+  }
+]

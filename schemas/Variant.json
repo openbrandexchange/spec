@@ -50,6 +50,17 @@
     "color": {
       "$ref": "Color.json"
     },
+    "collection_id": {
+      "anyOf": [
+        {
+          "$ref": "Common.json#/$defs/Id"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Proposal 0006 (optional member): the id of the released collection of this variant's colour, or null."
+    },
     "size": {
       "type": [
         "string",

@@ -182,27 +182,38 @@ for (const file of readdirSync(expDir).sort()) {
   check("GtinLookupResult", lookup, "gtin-lookup.json");
 }
 
-// ---------------------------------------------------------------- ingest scenario
+// ---------------------------------------------------------------- ingest scenarios
+// fixtures/ingest (the ingest replay) and fixtures/collections (collection release, proposal 0006)
+// share one shape: script.ndjson, expected-results.json, expected-changes.json, blobs from ingest/files.
 const ingestDir = join(root, "fixtures", "ingest");
-const inputSchema = { brand: "BrandInput", product: "ProductInput", variant: "VariantInput", asset: "AssetInput" };
-const ops = readFileSync(join(ingestDir, "script.ndjson"), "utf8").split("\n").filter(Boolean).map((l) => JSON.parse(l));
-const results = readJSON(join(ingestDir, "expected-results.json"));
+const inputSchema = { brand: "BrandInput", product: "ProductInput", variant: "VariantInput", asset: "AssetInput", collection: "CollectionInput" };
 const blobShas = new Set(Object.values(readJSON(join(ingestDir, "files", "files.json"))).map((f) => f.sha256));
-ops.forEach((op, i) => {
-  const where = `ingest/script.ndjson:${i + 1}`;
-  check("IngestOperation", op, where);
-  if (op.op === "upsert") check(inputSchema[op.kind], op.data, `${where} data`);
-  const expectError = results[i]?.result === "error";
-  if (!expectError) walkGtins(op.data ?? {}, where);
-  for (const f of Object.values(op.data?.files ?? {})) if (!blobShas.has(f.sha256)) fail(where, `unknown blob ${f.sha256}`);
-});
-checked++;
-if (results.length !== ops.length) fail("ingest/expected-results.json", `has ${results.length} results for ${ops.length} operations`);
-for (const c of readJSON(join(ingestDir, "expected-changes.json")).changes) {
+for (const scenario of ["ingest", "collections"]) {
+  const dir = join(root, "fixtures", scenario);
+  const ops = readFileSync(join(dir, "script.ndjson"), "utf8").split("\n").filter(Boolean).map((l) => JSON.parse(l));
+  const results = readJSON(join(dir, "expected-results.json"));
+  ops.forEach((op, i) => {
+    const where = `${scenario}/script.ndjson:${i + 1}`;
+    check("IngestOperation", op, where);
+    if (op.op === "upsert") check(inputSchema[op.kind], op.data, `${where} data`);
+    const expectError = results[i]?.result === "error";
+    if (!expectError) walkGtins(op.data ?? {}, where);
+    for (const f of Object.values(op.data?.files ?? {})) if (!blobShas.has(f.sha256)) fail(where, `unknown blob ${f.sha256}`);
+    checked++;
+    const r = results[i];
+    if (!r || r.index !== i || r.op !== op.op || r.kind !== op.kind || r.external_id !== op.external_id) fail(`${scenario}/expected-results.json`, `result ${i} does not describe operation ${i}`);
+  });
   checked++;
-  if (!(c.after_op >= 0 && c.after_op < ops.length)) fail("ingest/expected-changes.json", `after_op out of range: ${JSON.stringify(c)}`);
-  if (results[c.after_op].result === "error" || results[c.after_op].result === "unchanged") {
-    fail("ingest/expected-changes.json", `op ${c.after_op} is ${results[c.after_op].result} but produced a change`);
+  if (results.length !== ops.length) fail(`${scenario}/expected-results.json`, `has ${results.length} results for ${ops.length} operations`);
+  let last = -1;
+  for (const c of readJSON(join(dir, "expected-changes.json")).changes) {
+    checked++;
+    if (!(c.after_op >= 0 && c.after_op < ops.length)) { fail(`${scenario}/expected-changes.json`, `after_op out of range: ${JSON.stringify(c)}`); continue; }
+    if (c.after_op < last) fail(`${scenario}/expected-changes.json`, `entries out of operation order: ${JSON.stringify(c)}`);
+    last = c.after_op;
+    if (results[c.after_op].result === "error" || results[c.after_op].result === "unchanged") {
+      fail(`${scenario}/expected-changes.json`, `op ${c.after_op} is ${results[c.after_op].result} but produced a change`);
+    }
   }
 }
 

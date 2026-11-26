@@ -1086,6 +1086,92 @@ paths:
           $ref: "#/components/responses/UnsupportedMediaType"
         "422":
           $ref: "#/components/responses/ValidationFailed"
+  /admin/api/catalog/collections:
+    get:
+      tags:
+        - Catalog
+      operationId: adminListCollections
+      summary: All collection release records (held and released), proposal 0006
+      responses:
+        "200":
+          description: Collection records.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/IngestRecord"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /admin/api/catalog/collections/{external_id}:
+    parameters:
+      - $ref: "#/components/parameters/ExternalId"
+    put:
+      tags:
+        - Catalog
+      operationId: adminPutCollection
+      summary: Create or replace a collection release record
+      parameters:
+        - $ref: "#/components/parameters/Csrf"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CollectionInput"
+      responses:
+        "200":
+          $ref: "#/components/responses/IngestResult"
+        "201":
+          $ref: "#/components/responses/IngestResult"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+    patch:
+      tags:
+        - Catalog
+      operationId: adminPatchCollection
+      summary: Set the release of a collection (hold, release now, schedule)
+      description: 'The release toggle of the admin UI: `{"state": "released"}`, `{"state": "held"}` or `{"release_at": "…"}` (scheduling only with `collections.scheduled_release`). Same results and change entries as the Ingest API.'
+      parameters:
+        - $ref: "#/components/parameters/Csrf"
+      requestBody:
+        required: true
+        content:
+          application/merge-patch+json:
+            schema:
+              type: object
+      responses:
+        "200":
+          $ref: "#/components/responses/IngestResult"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+    delete:
+      tags:
+        - Catalog
+      operationId: adminDeleteCollection
+      summary: Delete a collection release record (its products are no longer held)
+      parameters:
+        - $ref: "#/components/parameters/Csrf"
+      responses:
+        "200":
+          $ref: "#/components/responses/IngestResult"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
   /admin/api/catalog/blobs/{sha256}:
     parameters:
       - name: sha256
@@ -3889,6 +3975,10 @@ components:
             retailer_api_self_service:
               type: boolean
               default: false
+            hold_new_collections:
+              type: boolean
+              default: false
+              description: When true, a product or variant write that names a `collection_external_id` without a record creates the record as `held` (proposal 0006). Existing collections are not affected.
             languages:
               type: array
               minItems: 1
@@ -5247,6 +5337,7 @@ components:
             - product
             - variant
             - asset
+            - collection
         id:
           $ref: "#/components/schemas/Id"
         external_id:
@@ -5362,6 +5453,7 @@ components:
             - product
             - variant
             - asset
+            - collection
         external_id:
           $ref: "#/components/schemas/ExternalId"
         result:
@@ -5874,6 +5966,12 @@ components:
             - string
             - "null"
           maxLength: 200
+          description: Collection name as the brand writes it (informative). Membership of a collection release record is by `collection_external_id` (proposal 0006).
+        collection_external_id:
+          anyOf:
+            - $ref: "#/components/schemas/ExternalId"
+            - type: "null"
+          description: "Proposal 0006: the external id of the collection release record its colours belong to. A variant's own `collection_external_id` overrides it for that variant's colour. A value without a record holds nothing (the record may come later). null or absent: in no collection."
         materials:
           anyOf:
             - $ref: "#/components/schemas/Materials"
@@ -6072,6 +6170,11 @@ components:
           maxLength: 200
         color:
           $ref: "#/components/schemas/Color"
+        collection_external_id:
+          anyOf:
+            - $ref: "#/components/schemas/ExternalId"
+            - type: "null"
+          description: "Proposal 0006: the collection release record of this variant's colour, overriding the product's `collection_external_id`. Membership is per colour: every variant of one colour of a product MUST have the same effective collection (422 `validation_failed`, pointer `/collection_external_id`)."
         size:
           type:
             - string
@@ -6353,6 +6456,50 @@ components:
         - product_external_id
         - role
         - position
+      additionalProperties: false
+      patternProperties:
+        ^x-[a-z0-9]+-[a-z0-9_-]+$: true
+    CollectionInput:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      $id: https://openbrandexchange.com/schemas/v0.3/CollectionInput.json
+      type: object
+      title: CollectionInput
+      description: Write model of a collection release record (Ingest API `PUT /collections/{external_id}`, admin catalog). Products and variants point at it with `collection_external_id`; a value without a record holds nothing.
+      properties:
+        brand_external_id:
+          anyOf:
+            - $ref: "#/components/schemas/ExternalId"
+            - type: "null"
+          description: MAY be omitted when the node has exactly one brand.
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: Display name. Unique per brand and season among records (409 `conflict`); not used for membership.
+        season:
+          type:
+            - string
+            - "null"
+          maxLength: 100
+        state:
+          type: string
+          enum:
+            - held
+            - released
+          description: "held: the collection's products, their variants and assets are not visible to any retailer. released: visible. Omitted on create: `held` when `release_at` is in the future, else `released`; omitted on replace: kept."
+        release_at:
+          anyOf:
+            - $ref: "#/components/schemas/DateTime"
+            - type: "null"
+          description: "Scheduled release, a MAY of proposal 0006 (capability `collections.scheduled_release`). A node that offers it: while `state` is `held` and this moment has passed, it releases the collection (state becomes `released`, `released_at` = this value). A node without it answers a future value with 422 `validation_failed` (pointer `/release_at`); a value in the past releases now on every node. null = no schedule."
+        released_at:
+          anyOf:
+            - $ref: "#/components/schemas/DateTime"
+            - type: "null"
+          readOnly: true
+          description: "Read-only (Ingest GET): when the collection last became visible, null while it never was. Ignored on write."
+      required:
+        - name
       additionalProperties: false
       patternProperties:
         ^x-[a-z0-9]+-[a-z0-9_-]+$: true
@@ -6942,6 +7089,11 @@ components:
           maxLength: 200
         color:
           $ref: "#/components/schemas/Color"
+        collection_id:
+          anyOf:
+            - $ref: "#/components/schemas/Id"
+            - type: "null"
+          description: "Proposal 0006 (optional member): the id of the released collection of this variant's colour, or null."
         size:
           type:
             - string
@@ -7201,8 +7353,13 @@ components:
           type:
             - string
             - "null"
-          description: Collection name.
+          description: Collection name (informative). Membership of a released collection is `collection_id`.
           maxLength: 200
+        collection_id:
+          anyOf:
+            - $ref: "#/components/schemas/Id"
+            - type: "null"
+          description: "Proposal 0006 (optional member): the id of the released collection the product's own colours belong to, or null. A variant's `collection_id` can differ (membership is per colour)."
         materials:
           anyOf:
             - $ref: "#/components/schemas/Materials"

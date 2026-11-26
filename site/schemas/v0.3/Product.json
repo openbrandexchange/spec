@@ -78,8 +78,19 @@
         "string",
         "null"
       ],
-      "description": "Collection name.",
+      "description": "Collection name (informative). Membership of a released collection is `collection_id`.",
       "maxLength": 200
+    },
+    "collection_id": {
+      "anyOf": [
+        {
+          "$ref": "Common.json#/$defs/Id"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Proposal 0006 (optional member): the id of the released collection the product's own colours belong to, or null. A variant's `collection_id` can differ (membership is per colour)."
     },
     "materials": {
       "anyOf": [
