@@ -124,6 +124,32 @@ for (const file of readdirSync(join(root, "fixtures", "examples"))) {
   }
 }
 
+// Neutral default per member (docs/node-admin.md#neutral-default): recompute every case.
+{
+  const fb = readJSON(join(root, "fixtures", "expected", "branding-fallback.json"));
+  const N = fb.defaults;
+  const resolve = (s) => {
+    const t = s.theme ?? {}, c = t.colors ?? {};
+    const base = { ...N.colors, ...(t.color_scheme === "dark" ? fb.dark_defaults : {}) };
+    const colors = Object.fromEntries(Object.keys(base).map((k) => [k, c[k] ?? (k === "primary" ? s.accent_color : null) ?? base[k]]));
+    const r = { color_scheme: t.color_scheme ?? N.color_scheme, colors };
+    for (const k of ["heading_font", "body_font", "radius", "grid_density", "card_style", "image_fit", "image_background"]) r[k] = t[k] ?? N[k];
+    r.login_layout = s.login?.layout ?? N.login_layout;
+    return r;
+  };
+  const neutral = (hex) => { const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)); return Math.max(r, g, b) - Math.min(r, g, b) <= 24; };
+  for (const v of [...Object.values(N.colors), ...Object.values(fb.dark_defaults), N.image_background]) {
+    checked++;
+    if (!neutral(v)) fail("expected/branding-fallback.json", `default ${v} is not neutral`);
+  }
+  for (const c of fb.cases) {
+    checked++;
+    if (!validators.BrandingSettings(c.settings)) fail("expected/branding-fallback.json", `${c.name}: settings are not valid BrandingSettings`);
+    checked++;
+    if (JSON.stringify(resolve(c.settings)) !== JSON.stringify(c.resolved)) fail("expected/branding-fallback.json", `${c.name}: resolved look does not follow the per-member fallback`);
+  }
+}
+
 // ---------------------------------------------------------------- examples
 const exDir = join(root, "fixtures", "examples");
 for (const file of readdirSync(exDir).sort()) {
