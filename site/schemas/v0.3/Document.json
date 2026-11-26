@@ -26,7 +26,7 @@
         "retail",
         "wholesale"
       ],
-      "description": "none: no prices. retail: recommended retail prices. wholesale: the caller's own purchase prices; only for an authenticated retailer the brand allows, never in a document another caller can reach."
+      "description": "none: no prices. retail: recommended retail prices. wholesale: the caller's own purchase prices; only for a logged-in retailer (a person of a retailer the brand allows, signed in to the portal), never for an API client, never in a document another caller can reach."
     },
     "currency": {
       "anyOf": [

@@ -184,6 +184,7 @@ for (const file of readdirSync(expDir).sort()) {
     if (!levels.includes(c.prices)) fail("expected/document-access.json", `unknown prices ${c.prices}`);
     if (![200, 401, 403, 404].includes(c.get)) fail("expected/document-access.json", `unexpected status ${c.get}`);
     if (c.list !== (c.get === 200)) fail("expected/document-access.json", `${c.caller} / ${c.prices}: listed exactly when it can be read`);
+    if (c.prices === "wholesale" && c.get === 200 && !c.caller.includes("signed-in portal user")) fail("expected/document-access.json", `${c.caller}: wholesale only for logged-in retailers, never an API client`);
   }
 }
 {

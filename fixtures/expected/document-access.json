@@ -1,5 +1,5 @@
 {
-  "description": "Which price levels of a collection document a caller gets (proposal 0009, conformance P-DOC-1). Collection Solstice of maison-noor, released; the brand allows wholesale prices for retailer A, not for retailer B. 'list' = the prices values GET /obx/v1/collections/{id}/documents lists for kind linesheet; 'get' = the answer to GET .../documents/linesheet?prices=<p>.",
+  "description": "Which price levels of a collection document a caller gets (proposal 0009, conformance P-DOC-1). Collection Solstice of maison-noor, released; the brand allows wholesale prices for retailer A, not for retailer B. Wholesale is only for logged-in retailers (a signed-in portal user), never for an API client. 'list' = the prices values GET /obx/v1/collections/{id}/documents lists for kind linesheet; 'get' = the answer to GET .../documents/linesheet?prices=<p>.",
   "cases": [
     {
       "caller": "retailer A, API client",
@@ -16,6 +16,18 @@
     {
       "caller": "retailer A, API client",
       "prices": "wholesale",
+      "list": false,
+      "get": 403
+    },
+    {
+      "caller": "retailer A, signed-in portal user",
+      "prices": "retail",
+      "list": true,
+      "get": 200
+    },
+    {
+      "caller": "retailer A, signed-in portal user",
+      "prices": "wholesale",
       "list": true,
       "get": 200
     },
@@ -27,6 +39,12 @@
     },
     {
       "caller": "retailer B, API client",
+      "prices": "wholesale",
+      "list": false,
+      "get": 403
+    },
+    {
+      "caller": "retailer B, signed-in portal user",
       "prices": "wholesale",
       "list": false,
       "get": 403

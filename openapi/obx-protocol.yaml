@@ -388,7 +388,7 @@ paths:
       summary: Documents of a released collection (capability `documents`, proposal 0009)
       description: |
         Every document the caller may read: one entry per kind, language and price level, each
-        with a fresh URL. A price level the caller may not get is not listed. Held collections
+        with a fresh URL. A price level the caller may not get is not listed (`wholesale` never for an API client). Held collections
         and collections outside the grant are `404`.
       parameters:
         - $ref: '#/components/parameters/IdPath'
@@ -414,9 +414,11 @@ paths:
       operationId: getCollectionDocument
       summary: The document's bytes (PDF)
       description: |
-        Authorised by Bearer token (scope catalog:read) or by the signature of a `Document.url`.
+        Authorised by Bearer token (scope catalog:read), by the signature of a `Document.url`, or
+        (wholesale, on a node with `portal`) by the portal session of a signed-in retailer user.
         Only the products and colours visible to the caller appear in it. `prices=wholesale`
-        for a caller the brand does not allow it is `403 forbidden`. Responses carry
+        is only for a logged-in retailer the brand allows: an API client, or a retailer the brand
+        does not allow, gets `403 forbidden`. Responses carry
         `Cache-Control: private` (`no-store` for wholesale) and `Content-Disposition: attachment`.
       security:
         - oauth2: [catalog:read]
