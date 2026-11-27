@@ -229,6 +229,15 @@
       "description": "Languages the content is offered in, first = default.",
       "minItems": 1
     },
+    "selectable_languages": {
+      "type": "array",
+      "items": {
+        "$ref": "Common.json#/$defs/LanguageTag"
+      },
+      "minItems": 1,
+      "uniqueItems": true,
+      "description": "Capability `language_selection` (protocol.md §2.3): every language `lang` can select, the content `languages` first in their order, then languages the node only has term names for (materials, care). Present when the node offers `language_selection`."
+    },
     "limits": {
       "type": "object",
       "properties": {

@@ -424,6 +424,8 @@ paths:
             type: integer
             minimum: 1
             default: 100
+        - $ref: "#/components/parameters/Lang"
+        - $ref: "#/components/parameters/AcceptLanguage"
       responses:
         "200":
           description: A page of changes. More pages follow while `has_more` is `true` (protocol.md §2.1 Pagination).
@@ -519,6 +521,9 @@ paths:
         - Catalog
       operationId: listBrands
       summary: Brands visible to the caller
+      parameters:
+        - $ref: "#/components/parameters/Lang"
+        - $ref: "#/components/parameters/AcceptLanguage"
       responses:
         "200":
           description: All visible brands (not paginated; a node has few brands).
@@ -545,6 +550,8 @@ paths:
       summary: One brand
       parameters:
         - $ref: "#/components/parameters/IdPath"
+        - $ref: "#/components/parameters/Lang"
+        - $ref: "#/components/parameters/AcceptLanguage"
       responses:
         "200":
           description: The brand.
@@ -769,6 +776,8 @@ paths:
             type: integer
             minimum: 1
             default: 25
+        - $ref: "#/components/parameters/Lang"
+        - $ref: "#/components/parameters/AcceptLanguage"
       responses:
         "200":
           description: A page of products. More pages follow while `next_cursor` is not `null` (protocol.md §2.1 Pagination).
@@ -804,11 +813,19 @@ paths:
       summary: One product with variants and assets
       parameters:
         - $ref: "#/components/parameters/IdPath"
+        - $ref: "#/components/parameters/Lang"
+        - $ref: "#/components/parameters/AcceptLanguage"
       responses:
         "200":
           description: The product.
           headers:
             ETag:
+              schema:
+                type: string
+            Content-Language:
+              $ref: "#/components/headers/Content-Language"
+            Vary:
+              description: "`Accept-Language` on a node with `language_selection`."
               schema:
                 type: string
           content:
@@ -837,6 +854,8 @@ paths:
           description: Comma-separated codes (max 100).
           schema:
             type: string
+        - $ref: "#/components/parameters/Lang"
+        - $ref: "#/components/parameters/AcceptLanguage"
       responses:
         "200":
           description: Lookup result.
@@ -861,6 +880,9 @@ paths:
         validated here (a wrong check digit simply won't match). Other inputs are `invalid`.
         Duplicate inputs (after normalisation) are reported once. More than 2000 inputs:
         400 `limit_exceeded`.
+      parameters:
+        - $ref: "#/components/parameters/Lang"
+        - $ref: "#/components/parameters/AcceptLanguage"
       requestBody:
         required: true
         content:
@@ -901,6 +923,8 @@ paths:
             - media:read
       parameters:
         - $ref: "#/components/parameters/IdPath"
+        - $ref: "#/components/parameters/Lang"
+        - $ref: "#/components/parameters/AcceptLanguage"
       responses:
         "200":
           description: The asset.
@@ -1456,6 +1480,25 @@ components:
       description: The `next_cursor` of the previous page; omit for the first page. Opaque.
       schema:
         $ref: "#/components/schemas/Cursor"
+    Lang:
+      name: lang
+      in: query
+      required: false
+      description: "Capability `language_selection` (protocol.md §2.3): one BCP 47 tag (`de`, `de-CH`; case-insensitive, `_` read as `-`) or `universal` (term names `null`, codes only). Every LocalizedText then holds one language: the selected one where the field has it, else a fallback reported in `language_fallbacks`; the response carries `Content-Language`. Wins over `Accept-Language`. Another value is 400 `invalid_request`. Ignored by a node without the capability."
+      schema:
+        type: string
+        maxLength: 35
+        examples:
+          - de
+          - en-GB
+          - universal
+    AcceptLanguage:
+      name: Accept-Language
+      in: header
+      required: false
+      description: "Used only without `lang` (protocol.md §2.3): the first range (by `q`) that matches one of discovery `selectable_languages` selects that language; when none matches, the response carries every language, as without a selection."
+      schema:
+        type: string
     IdempotencyKey:
       name: Idempotency-Key
       in: header
@@ -1481,6 +1524,10 @@ components:
       description: Seconds to wait.
       schema:
         type: integer
+    Content-Language:
+      description: "Only with a language selection (protocol.md §2.3): the selected language (for `lang=universal` the default language)."
+      schema:
+        $ref: "#/components/schemas/LanguageTag"
     ETag:
       description: Quoted lowercase hex sha256 of the representation.
       schema:
@@ -1700,6 +1747,13 @@ components:
             $ref: "#/components/schemas/LanguageTag"
           description: Languages the content is offered in, first = default.
           minItems: 1
+        selectable_languages:
+          type: array
+          items:
+            $ref: "#/components/schemas/LanguageTag"
+          minItems: 1
+          uniqueItems: true
+          description: "Capability `language_selection` (protocol.md §2.3): every language `lang` can select, the content `languages` first in their order, then languages the node only has term names for (materials, care). Present when the node offers `language_selection`."
         limits:
           type: object
           properties:
@@ -2130,6 +2184,13 @@ components:
       pattern: ^[^\x00-\x1F\x7F/]+$
       examples:
         - MN-1001
+    LanguageFallbacks:
+      type: object
+      description: "Language selection (protocol.md §2.3, proposal 0010): the localised fields of this object that are served in another language than the selected one. Key = JSON Pointer (RFC 6901) relative to this object (`/name`, `/materials/0/fibers/0/material/name`, `/color/name`); value = the tag the field is served in. Empty object when every field is in the selected language. Present only in responses with a language selection."
+      propertyNames:
+        pattern: ^(/[^/]*)+$
+      additionalProperties:
+        $ref: "#/components/schemas/LanguageTag"
     Brand:
       $schema: https://json-schema.org/draft/2020-12/schema
       $id: https://openbrandexchange.com/schemas/v0.3/Brand.json
@@ -2161,6 +2222,9 @@ components:
             - type: "null"
         updated_at:
           $ref: "#/components/schemas/DateTime"
+        language_fallbacks:
+          $ref: "#/components/schemas/LanguageFallbacks"
+          description: "Only present when the request selected a language (`lang` or `Accept-Language`, protocol.md §2.3): which localised fields of this object fell back to another language. Pointers into nested variants and assets are in their own objects."
       required:
         - id
         - external_id
@@ -2739,6 +2803,9 @@ components:
             - type: "null"
         updated_at:
           $ref: "#/components/schemas/DateTime"
+        language_fallbacks:
+          $ref: "#/components/schemas/LanguageFallbacks"
+          description: "Only present when the request selected a language (`lang` or `Accept-Language`, protocol.md §2.3): which localised fields of this object fell back to another language. Pointers into nested variants and assets are in their own objects."
       required:
         - id
         - external_id
@@ -3046,6 +3113,9 @@ components:
             ^x-[a-z0-9]+-[a-z0-9_-]+$: true
         updated_at:
           $ref: "#/components/schemas/DateTime"
+        language_fallbacks:
+          $ref: "#/components/schemas/LanguageFallbacks"
+          description: "Only present when the request selected a language (`lang` or `Accept-Language`, protocol.md §2.3): which localised fields of this object fell back to another language. Pointers into nested variants and assets are in their own objects."
       required:
         - id
         - external_id
@@ -3197,6 +3267,9 @@ components:
           items:
             $ref: "#/components/schemas/Asset"
           description: Present in product responses (GET /products...), absent in /changes data. Only visible assets, ordered by color_code then position.
+        language_fallbacks:
+          $ref: "#/components/schemas/LanguageFallbacks"
+          description: "Only present when the request selected a language (`lang` or `Accept-Language`, protocol.md §2.3): which localised fields of this object fell back to another language. Pointers into nested variants and assets are in their own objects."
       required:
         - id
         - external_id
@@ -3509,6 +3582,12 @@ components:
           type: boolean
           description: Include product/variant/asset lines in the manifest (default true).
           default: true
+        lang:
+          type:
+            - string
+            - "null"
+          description: "Capability `language_selection` (protocol.md §2.3): a BCP 47 tag or `universal`; the manifest's objects are written as for `?lang=` on the read endpoints. `null` or absent = every language (as 0.3)."
+          maxLength: 35
       required:
         - renditions
       additionalProperties: false
