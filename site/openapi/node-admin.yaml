@@ -7014,6 +7014,13 @@ components:
       additionalProperties: false
       patternProperties:
         ^x-[a-z0-9]+-[a-z0-9_-]+$: true
+    LanguageFallbacks:
+      type: object
+      description: "Language selection (protocol.md §2.3, proposal 0010): the localised fields of this object that are served in another language than the selected one. Key = JSON Pointer (RFC 6901) relative to this object (`/name`, `/materials/0/fibers/0/material/name`, `/color/name`); value = the tag the field is served in. Empty object when every field is in the selected language. Present only in responses with a language selection."
+      propertyNames:
+        pattern: ^(/[^/]*)+$
+      additionalProperties:
+        $ref: "#/components/schemas/LanguageTag"
     Brand:
       $schema: https://json-schema.org/draft/2020-12/schema
       $id: https://openbrandexchange.com/schemas/v0.3/Brand.json
@@ -7045,6 +7052,9 @@ components:
             - type: "null"
         updated_at:
           $ref: "#/components/schemas/DateTime"
+        language_fallbacks:
+          $ref: "#/components/schemas/LanguageFallbacks"
+          description: "Only present when the request selected a language (`lang` or `Accept-Language`, protocol.md §2.3): which localised fields of this object fell back to another language. Pointers into nested variants and assets are in their own objects."
       required:
         - id
         - external_id
@@ -7121,6 +7131,9 @@ components:
             - type: "null"
         updated_at:
           $ref: "#/components/schemas/DateTime"
+        language_fallbacks:
+          $ref: "#/components/schemas/LanguageFallbacks"
+          description: "Only present when the request selected a language (`lang` or `Accept-Language`, protocol.md §2.3): which localised fields of this object fell back to another language. Pointers into nested variants and assets are in their own objects."
       required:
         - id
         - external_id
@@ -7275,6 +7288,9 @@ components:
             ^x-[a-z0-9]+-[a-z0-9_-]+$: true
         updated_at:
           $ref: "#/components/schemas/DateTime"
+        language_fallbacks:
+          $ref: "#/components/schemas/LanguageFallbacks"
+          description: "Only present when the request selected a language (`lang` or `Accept-Language`, protocol.md §2.3): which localised fields of this object fell back to another language. Pointers into nested variants and assets are in their own objects."
       required:
         - id
         - external_id
@@ -7426,6 +7442,9 @@ components:
           items:
             $ref: "#/components/schemas/Asset"
           description: Present in product responses (GET /products...), absent in /changes data. Only visible assets, ordered by color_code then position.
+        language_fallbacks:
+          $ref: "#/components/schemas/LanguageFallbacks"
+          description: "Only present when the request selected a language (`lang` or `Accept-Language`, protocol.md §2.3): which localised fields of this object fell back to another language. Pointers into nested variants and assets are in their own objects."
       required:
         - id
         - external_id

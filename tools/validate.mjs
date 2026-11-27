@@ -229,6 +229,71 @@ for (const file of readdirSync(expDir).sort()) {
   check("GtinLookupResult", lookup, "gtin-lookup.json");
 }
 
+{
+  // Language selection (protocol.md §2.3, proposal 0010): recompute every case from the product.
+  const fx = readJSON(join(expDir, "language-selection.json"));
+  const where = "expected/language-selection.json";
+  const source = expectedProducts[fx.product];
+  const TAG = /^[a-z]{2,3}(-[A-Z][a-z]{3})?(-([A-Z]{2}|[0-9]{3}))?$/;
+  const canon = (raw) => raw.replace(/_/g, "-").split("-").map((s, i) => i === 0 ? s.toLowerCase() : s.length === 4 ? s[0].toUpperCase() + s.slice(1).toLowerCase() : s.toUpperCase()).join("-");
+  const lookup = (tag) => { const parts = tag.split("-"); for (let n = parts.length; n > 0; n--) { const t = parts.slice(0, n).join("-").toLowerCase(); const hit = fx.selectable_languages.find((s) => s.toLowerCase() === t); if (hit) return hit; } return null; };
+  const select = (req) => {
+    if (req.lang !== undefined) {
+      if (req.lang.toLowerCase() === "universal") return { tag: fx.languages[0], universal: true };
+      const t = canon(req.lang.trim());
+      if (!TAG.test(t)) return { error: 400 };
+      return { tag: lookup(t) ?? fx.languages[0], universal: false };
+    }
+    if (!req.accept_language) return null;
+    const ranges = req.accept_language.split(",").map((r, i) => { const [tag, ...ps] = r.trim().split(";"); const q = ps.map((p) => p.trim()).find((p) => p.startsWith("q=")); return { tag: tag.trim(), q: q ? Number(q.slice(2)) : 1, i }; })
+      .filter((r) => r.q > 0 && r.tag !== "*").sort((a, b) => b.q - a.q || a.i - b.i);
+    for (const r of ranges) { const hit = lookup(canon(r.tag)); if (hit) return { tag: hit, universal: false }; }
+    return null;
+  };
+  const isText = (v) => v && typeof v === "object" && !Array.isArray(v) && Object.keys(v).length > 0 && Object.entries(v).every(([k, s]) => TAG.test(k) && typeof s === "string");
+  const pick = (text, sel) => {
+    const order = [sel, ...fx.languages, ...Object.keys(text).sort()];
+    const tag = order.find((t) => t in text);
+    return [tag, { [tag]: text[tag] }];
+  };
+  // Narrow one object; nested `variants`/`assets` are objects of their own.
+  const narrow = (obj, s) => {
+    const fallbacks = {};
+    const walk = (v, ptr, term) => {
+      if (isText(v)) {
+        if (term && s.universal) return null;
+        const [tag, one] = pick(v, s.tag);
+        if (tag !== s.tag) fallbacks[ptr] = tag;
+        return one;
+      }
+      if (Array.isArray(v)) return v.map((x, i) => walk(x, `${ptr}/${i}`, false));
+      if (v && typeof v === "object") return Object.fromEntries(Object.entries(v).map(([k, x]) => {
+        if (ptr === "" && (k === "variants" || k === "assets")) return [k, x.map((o) => narrow(o, s))];
+        const inTerm = k === "name" && (ptr.startsWith("/materials/") || ptr.startsWith("/care/"));
+        return [k, walk(x, `${ptr}/${k}`, inTerm)];
+      }));
+      return v;
+    };
+    const out = walk(obj, "", false);
+    out.language_fallbacks = fallbacks;
+    return out;
+  };
+  const at = (doc, ptr) => ptr.split("/").slice(1).reduce((o, k) => o?.[k], doc);
+  for (const c of fx.cases) {
+    checked++;
+    const s = select(c.request);
+    if (c.status === 400) { if (s?.error !== 400) fail(where, `${c.name}: expected 400 invalid_request`); continue; }
+    if ((s?.tag ?? null) !== c.content_language) { fail(where, `${c.name}: selects ${s?.tag ?? "nothing"}, fixture says ${c.content_language}`); continue; }
+    const doc = s ? narrow(source, s) : source;
+    check("ProductDetail", doc, `${where} ${c.name}`);
+    for (const [ptr, want] of Object.entries(c.values ?? {})) if (JSON.stringify(at(doc, ptr)) !== JSON.stringify(want)) fail(where, `${c.name}: ${ptr} is ${JSON.stringify(at(doc, ptr))}`);
+    if (!s) { if (c.language_fallbacks !== null || "language_fallbacks" in doc) fail(where, `${c.name}: no selection has no language_fallbacks`); continue; }
+    const got = { product: doc.language_fallbacks, variants: doc.variants[0].language_fallbacks, assets: doc.assets[0].language_fallbacks };
+    for (const o of [...doc.variants, ...doc.assets]) if (JSON.stringify(o.language_fallbacks) !== JSON.stringify(o.color ? got.variants : got.assets)) fail(where, `${c.name}: ${o.external_id} differs from the first of its kind`);
+    if (JSON.stringify(got) !== JSON.stringify(c.language_fallbacks)) fail(where, `${c.name}: language_fallbacks ${JSON.stringify(got)}`);
+  }
+}
+
 // ---------------------------------------------------------------- ingest scenarios
 // fixtures/ingest (the ingest replay) and fixtures/collections (collection release, proposal 0006)
 // share one shape: script.ndjson, expected-results.json, expected-changes.json, blobs from ingest/files.
